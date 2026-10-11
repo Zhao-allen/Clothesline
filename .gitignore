@@ -1,0 +1,17 @@
+## .NET / Visual Studio
+bin/
+obj/
+publish/
+*.user
+*.suo
+.vs/
+*.userprefs
+
+## Rider
+.idea/
+
+## Build artifacts
+*.exe
+*.dll
+*.pdb
+[Tt]humbs.db

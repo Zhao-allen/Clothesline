@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="AppName" xml:space="preserve"><value>Tendedero</value></data>
+  <data name="HideLine" xml:space="preserve"><value>物干しを隠す</value></data>
+  <data name="ShowLine" xml:space="preserve"><value>物干しを表示</value></data>
+  <data name="TakeEverythingDown" xml:space="preserve"><value>すべて取り下ろす</value></data>
+  <data name="HandleScreenshots" xml:space="preserve"><value>スクリーンショットを管理</value></data>
+  <data name="HangCopiedImages" xml:space="preserve"><value>コピーした画像を掛ける</value></data>
+  <data name="BringLineDown" xml:space="preserve"><value>物干しを下ろす</value></data>
+  <data name="WhenPointerRestsAtTop" xml:space="preserve"><value>ポインタが上端に留まった時</value></data>
+  <data name="WhenSomethingNewHangs" xml:space="preserve"><value>新しいものが掛かった時</value></data>
+  <data name="OverFullScreenApps" xml:space="preserve"><value>全画面アプリの上に表示</value></data>
+  <data name="AlsoWatchFolders" xml:space="preserve"><value>フォルダも監視</value></data>
+  <data name="AddFolder" xml:space="preserve"><value>フォルダを追加…</value></data>
+  <data name="StopWatching" xml:space="preserve"><value>監視を停止</value></data>
+  <data name="KeepOnLine" xml:space="preserve"><value>物干しに残す</value></data>
+  <data name="AsManyAsFit" xml:space="preserve"><value>収まるだけ</value></data>
+  <data name="PhotosSuffix" xml:space="preserve"><value>{0} 枚</value><comment>{0} is the number</comment></data>
+  <data name="Size" xml:space="preserve"><value>サイズ</value></data>
+  <data name="Small" xml:space="preserve"><value>小</value></data>
+  <data name="Medium" xml:space="preserve"><value>中</value></data>
+  <data name="Large" xml:space="preserve"><value>大</value></data>
+  <data name="OpenScreenshotsFolder" xml:space="preserve"><value>スクリーンショット フォルダを開く</value></data>
+  <data name="Sounds" xml:space="preserve"><value>サウンド</value></data>
+  <data name="OpenAtLogin" xml:space="preserve"><value>ログイン時に起動</value></data>
+  <data name="Quit" xml:space="preserve"><value>Tendedero を終了</value></data>
+  <data name="FolderDialogDescription" xml:space="preserve"><value>このフォルダに保存された新しい画像は物干しに掛かります。</value></data>
+  <data name="Language" xml:space="preserve"><value>言語</value></data>
+  <data name="SystemDefault" xml:space="preserve"><value>システム既定</value></data>
+</root>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="AppName" xml:space="preserve"><value>Tendedero</value></data>
+  <data name="HideLine" xml:space="preserve"><value>隐藏晾衣绳</value></data>
+  <data name="ShowLine" xml:space="preserve"><value>显示晾衣绳</value></data>
+  <data name="TakeEverythingDown" xml:space="preserve"><value>全部取下</value></data>
+  <data name="HandleScreenshots" xml:space="preserve"><value>接管截图</value></data>
+  <data name="HangCopiedImages" xml:space="preserve"><value>挂载复制的图片</value></data>
+  <data name="BringLineDown" xml:space="preserve"><value>放下晾衣绳</value></data>
+  <data name="WhenPointerRestsAtTop" xml:space="preserve"><value>当指针停在屏幕顶部</value></data>
+  <data name="WhenSomethingNewHangs" xml:space="preserve"><value>当有新内容挂上时</value></data>
+  <data name="OverFullScreenApps" xml:space="preserve"><value>覆盖全屏应用</value></data>
+  <data name="AlsoWatchFolders" xml:space="preserve"><value>同时监视文件夹</value></data>
+  <data name="AddFolder" xml:space="preserve"><value>添加文件夹…</value></data>
+  <data name="StopWatching" xml:space="preserve"><value>停止监视</value></data>
+  <data name="KeepOnLine" xml:space="preserve"><value>保留在绳上</value></data>
+  <data name="AsManyAsFit" xml:space="preserve"><value>尽可能多</value></data>
+  <data name="PhotosSuffix" xml:space="preserve"><value>{0} 张照片</value><comment>{0} is the number</comment></data>
+  <data name="Size" xml:space="preserve"><value>大小</value></data>
+  <data name="Small" xml:space="preserve"><value>小</value></data>
+  <data name="Medium" xml:space="preserve"><value>中</value></data>
+  <data name="Large" xml:space="preserve"><value>大</value></data>
+  <data name="OpenScreenshotsFolder" xml:space="preserve"><value>打开截图文件夹</value></data>
+  <data name="Sounds" xml:space="preserve"><value>声音</value></data>
+  <data name="OpenAtLogin" xml:space="preserve"><value>开机启动</value></data>
+  <data name="Quit" xml:space="preserve"><value>退出 Tendedero</value></data>
+  <data name="FolderDialogDescription" xml:space="preserve"><value>保存到此文件夹的新图片将挂到晾衣绳上。</value></data>
+  <data name="Language" xml:space="preserve"><value>语言</value></data>
+  <data name="SystemDefault" xml:space="preserve"><value>系统默认</value></data>
+</root>

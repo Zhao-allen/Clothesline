@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="AppName" xml:space="preserve"><value>Tendedero</value></data>
+  <data name="HideLine" xml:space="preserve"><value>Hide line</value></data>
+  <data name="ShowLine" xml:space="preserve"><value>Show line</value></data>
+  <data name="TakeEverythingDown" xml:space="preserve"><value>Take everything down</value></data>
+  <data name="HandleScreenshots" xml:space="preserve"><value>Handle screenshots</value></data>
+  <data name="HangCopiedImages" xml:space="preserve"><value>Hang copied images</value></data>
+  <data name="BringLineDown" xml:space="preserve"><value>Bring the line down</value></data>
+  <data name="WhenPointerRestsAtTop" xml:space="preserve"><value>When the pointer rests at the top edge</value></data>
+  <data name="WhenSomethingNewHangs" xml:space="preserve"><value>When something new hangs</value></data>
+  <data name="OverFullScreenApps" xml:space="preserve"><value>Over full screen apps</value></data>
+  <data name="AlsoWatchFolders" xml:space="preserve"><value>Also watch folders</value></data>
+  <data name="AddFolder" xml:space="preserve"><value>Add Folder…</value></data>
+  <data name="StopWatching" xml:space="preserve"><value>Stop watching</value></data>
+  <data name="KeepOnLine" xml:space="preserve"><value>Keep on line</value></data>
+  <data name="AsManyAsFit" xml:space="preserve"><value>As many as fit</value></data>
+  <data name="PhotosSuffix" xml:space="preserve"><value>{0} photos</value><comment>{0} is the number</comment></data>
+  <data name="Size" xml:space="preserve"><value>Size</value></data>
+  <data name="Small" xml:space="preserve"><value>Small</value></data>
+  <data name="Medium" xml:space="preserve"><value>Medium</value></data>
+  <data name="Large" xml:space="preserve"><value>Large</value></data>
+  <data name="OpenScreenshotsFolder" xml:space="preserve"><value>Open screenshots folder</value></data>
+  <data name="Sounds" xml:space="preserve"><value>Sounds</value></data>
+  <data name="OpenAtLogin" xml:space="preserve"><value>Open at login</value></data>
+  <data name="Quit" xml:space="preserve"><value>Quit Tendedero</value></data>
+  <data name="FolderDialogDescription" xml:space="preserve"><value>New images saved to this folder will hang on the line.</value></data>
+  <data name="Language" xml:space="preserve"><value>Language</value></data>
+  <data name="SystemDefault" xml:space="preserve"><value>System default</value></data>
+</root>

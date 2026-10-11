@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="AppName" xml:space="preserve"><value>Tendedero</value></data>
+  <data name="HideLine" xml:space="preserve"><value>Ocultar tendedero</value></data>
+  <data name="ShowLine" xml:space="preserve"><value>Mostrar tendedero</value></data>
+  <data name="TakeEverythingDown" xml:space="preserve"><value>Bajarlo todo</value></data>
+  <data name="HandleScreenshots" xml:space="preserve"><value>Gestionar capturas</value></data>
+  <data name="HangCopiedImages" xml:space="preserve"><value>Colgar imágenes copiadas</value></data>
+  <data name="BringLineDown" xml:space="preserve"><value>Bajar el tendedero</value></data>
+  <data name="WhenPointerRestsAtTop" xml:space="preserve"><value>Cuando el puntero reposa en el borde superior</value></data>
+  <data name="WhenSomethingNewHangs" xml:space="preserve"><value>Cuando cuelga algo nuevo</value></data>
+  <data name="OverFullScreenApps" xml:space="preserve"><value>Sobre apps a pantalla completa</value></data>
+  <data name="AlsoWatchFolders" xml:space="preserve"><value>Vigilar también carpetas</value></data>
+  <data name="AddFolder" xml:space="preserve"><value>Añadir carpeta…</value></data>
+  <data name="StopWatching" xml:space="preserve"><value>Dejar de vigilar</value></data>
+  <data name="KeepOnLine" xml:space="preserve"><value>Mantener en el tendedero</value></data>
+  <data name="AsManyAsFit" xml:space="preserve"><value>Tantas como quepan</value></data>
+  <data name="PhotosSuffix" xml:space="preserve"><value>{0} fotos</value><comment>{0} is the number</comment></data>
+  <data name="Size" xml:space="preserve"><value>Tamaño</value></data>
+  <data name="Small" xml:space="preserve"><value>Pequeño</value></data>
+  <data name="Medium" xml:space="preserve"><value>Mediano</value></data>
+  <data name="Large" xml:space="preserve"><value>Grande</value></data>
+  <data name="OpenScreenshotsFolder" xml:space="preserve"><value>Abrir carpeta de capturas</value></data>
+  <data name="Sounds" xml:space="preserve"><value>Sonidos</value></data>
+  <data name="OpenAtLogin" xml:space="preserve"><value>Abrir al iniciar sesión</value></data>
+  <data name="Quit" xml:space="preserve"><value>Salir de Tendedero</value></data>
+  <data name="FolderDialogDescription" xml:space="preserve"><value>Las imágenes nuevas guardadas en esta carpeta colgarán del tendedero.</value></data>
+  <data name="Language" xml:space="preserve"><value>Idioma</value></data>
+  <data name="SystemDefault" xml:space="preserve"><value>Predeterminado del sistema</value></data>
+</root>
