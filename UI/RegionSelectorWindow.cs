@@ -7,6 +7,8 @@ using System.Drawing;
 using Clothesline.Services;
 using WpfPath = System.Windows.Shapes.Path;
 using WpfRectangle = System.Windows.Shapes.Rectangle;
+using MouseEventArgs = System.Windows.Input.MouseEventArgs;
+using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 
 namespace Clothesline.UI;
 
