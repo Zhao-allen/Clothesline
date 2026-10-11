@@ -47,6 +47,16 @@ internal sealed class HotKey : IDisposable
         return hk.IsRegistered ? hk : null;
     }
 
+    /// <summary>
+    /// Register the screenshot shortcut: Win + Alt + S.
+    /// </summary>
+    public static HotKey? RegisterScreenshot(Action onPressed)
+    {
+        uint vk = (uint)KeyInterop.VirtualKeyFromKey(Key.S);
+        var hk = new HotKey(NativeMethods.MOD_WIN | NativeMethods.MOD_ALT | NativeMethods.MOD_NOREPEAT, vk, onPressed);
+        return hk.IsRegistered ? hk : null;
+    }
+
     private sealed class MessageWindow : NativeWindow, IDisposable
     {
         private readonly Action<int> _onHotKey;

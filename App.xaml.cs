@@ -19,6 +19,7 @@ internal partial class App : Application
     private List<ScreenshotWatcher> _folderWatchers = new();
     private ClipboardWatcher? _clipboardWatcher;
     private HotKey? _hotKey;
+    private HotKey? _screenshotHotKey;
 
     public static bool OpensFromMenuBar
     {
@@ -60,6 +61,7 @@ internal partial class App : Application
         ApplyClipboardWatch();
 
         _hotKey = HotKey.RegisterDefault(() => _window.Toggle());
+        _screenshotHotKey = HotKey.RegisterScreenshot(TakeScreenshot);
 
         _tray = new TrayIcon(_line, _window);
 
@@ -139,6 +141,30 @@ internal partial class App : Application
         });
     }
 
+    /// <summary>
+    /// Capture the screen under the pointer, save it, and hang it on the line.
+    /// Triggered by Win+Alt+S or the tray menu.
+    /// </summary>
+    public void TakeScreenshot()
+    {
+        // Hide the line briefly so it doesn't appear in the capture.
+        if (_window.IsRevealed) _window.SetRevealed(false);
+
+        Task.Delay(120).ContinueWith(_ =>
+        {
+            string? path = ScreenCapture.CaptureScreenUnderPointer();
+            if (path is not null)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    Sound.PlayShot();
+                    HangCapture(path);
+                    _window.Reveal(peekSeconds: 3);
+                });
+            }
+        });
+    }
+
     public void Refresh()
     {
         bool blocked = FullScreen.BlocksLineUnderPointer();
@@ -183,6 +209,7 @@ internal partial class App : Application
     public void ShutdownApp()
     {
         _hotKey?.Dispose();
+        _screenshotHotKey?.Dispose();
         _watcher?.Dispose();
         _safetyWatcher?.Dispose();
         foreach (var w in _folderWatchers) w.Dispose();

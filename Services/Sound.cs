@@ -29,4 +29,11 @@ internal static class Sound
     {
         try { SystemSounds.Beep.Play(); } catch { }
     }
+
+    /// <summary>Shutter sound when a screenshot is taken via Win+Alt+S.</summary>
+    public static void PlayShot()
+    {
+        if (!SoundOn) return;
+        try { SystemSounds.Exclamation.Play(); } catch { }
+    }
 }

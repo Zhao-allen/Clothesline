@@ -27,6 +27,7 @@ internal partial class LineWindow : Window
     private readonly Path _ropePath = new();
     private readonly Path _ropeShadow = new();
     private readonly Path _ropeHighlight = new();
+    private readonly Border _emptyHint = new();
     private readonly Dictionary<Guid, PeggedCard> _cards = new();
 
     private DispatcherTimer? _mouseTimer;
@@ -75,25 +76,56 @@ internal partial class LineWindow : Window
 
     private void BuildRope()
     {
-        _ropeShadow.Stroke = new SolidColorBrush(Color.FromArgb(70, 0, 0, 0));
-        _ropeShadow.StrokeThickness = 2.2;
+        // Shadow: soft blurred shadow under the rope (mirrors the original's
+        // .blur(radius: 1.2)).
+        _ropeShadow.Stroke = new SolidColorBrush(Color.FromArgb(56, 0, 0, 0));
+        _ropeShadow.StrokeThickness = 1.4;
         _ropeShadow.IsHitTestVisible = false;
-        RenderOptions.SetEdgeMode(_ropeShadow, EdgeMode.Aliased);
+        _ropeShadow.Effect = new System.Windows.Media.Effects.BlurEffect { Radius = 1.2 };
 
-        _ropePath.Stroke = new SolidColorBrush(Color.FromRgb(110, 110, 110));
-        _ropePath.StrokeThickness = 2.0;
+        // Core rope: mid-gray, 1.2px. Anti-aliased (no Aliased) so the curve
+        // stays smooth on high-DPI screens.
+        _ropePath.Stroke = new SolidColorBrush(Color.FromRgb(140, 140, 140));
+        _ropePath.StrokeThickness = 1.2;
         _ropePath.IsHitTestVisible = false;
-        RenderOptions.SetEdgeMode(_ropePath, EdgeMode.Aliased);
 
-        _ropeHighlight.Stroke = new SolidColorBrush(Color.FromArgb(120, 255, 255, 255));
-        _ropeHighlight.StrokeThickness = 0.6;
+        // Highlight: faint white line above the core, 0.4px.
+        _ropeHighlight.Stroke = new SolidColorBrush(Color.FromArgb(115, 255, 255, 255));
+        _ropeHighlight.StrokeThickness = 0.4;
         _ropeHighlight.IsHitTestVisible = false;
-        RenderOptions.SetEdgeMode(_ropeHighlight, EdgeMode.Aliased);
+
+        // Fade both ends so the rope seems to come from beyond the screen.
+        var fade = new LinearGradientBrush
+        {
+            StartPoint = new Point(0, 0),
+            EndPoint = new Point(1, 0)
+        };
+        fade.GradientStops.Add(new GradientStop(Colors.Transparent, 0.0));
+        fade.GradientStops.Add(new GradientStop(Colors.Black, 0.08));
+        fade.GradientStops.Add(new GradientStop(Colors.Black, 0.92));
+        fade.GradientStops.Add(new GradientStop(Colors.Transparent, 1.0));
+        _ropeShadow.OpacityMask = fade;
+        _ropePath.OpacityMask = fade;
+        _ropeHighlight.OpacityMask = fade;
 
         RootCanvas.Children.Add(_ropeShadow);
         RootCanvas.Children.Add(_ropePath);
         RootCanvas.Children.Add(_ropeHighlight);
         Panel.SetZIndex(_ropePath, 0);
+
+        // Empty-state hint shown when the line has no screenshots.
+        _emptyHint.Child = new TextBlock
+        {
+            Text = "Press Win+Alt+S to take a screenshot",
+            Foreground = new SolidColorBrush(Color.FromArgb(180, 90, 90, 90)),
+            FontSize = 12,
+            Padding = new Thickness(12, 6, 12, 6)
+        };
+        _emptyHint.Background = new SolidColorBrush(Color.FromArgb(180, 245, 245, 245));
+        _emptyHint.CornerRadius = new CornerRadius(14);
+        _emptyHint.IsHitTestVisible = false;
+        RootCanvas.Children.Add(_emptyHint);
+        Panel.SetZIndex(_emptyHint, 0);
     }
 
     private void UpdateRope()
@@ -123,11 +155,33 @@ internal partial class LineWindow : Window
         screen ??= ScreenUnderPointer();
         if (screen is null) return;
         var bounds = screen.Bounds;
-        Left = bounds.Left;
-        Top = bounds.Top;
-        Width = bounds.Width;
+
+        // Screen.Bounds is in physical pixels; WPF uses DIPs. With Per-Monitor
+        // V2 DPI awareness we must convert so the window covers the screen
+        // crisply at any scaling.
+        var dpi = GetDpiForScreen(screen);
+        double scale = dpi / 96.0;
+        Left = bounds.Left / scale;
+        Top = bounds.Top / scale;
+        Width = bounds.Width / scale;
         Height = Layout.PanelHeight;
         UpdateRope();
+    }
+
+    private static double GetDpiForScreen(Screen screen)
+    {
+        try
+        {
+            var pt = new NativeMethods.POINT { X = screen.Bounds.Left + 1, Y = screen.Bounds.Top + 1 };
+            var hmon = NativeMethods.MonitorFromPoint(pt, NativeMethods.MONITOR_DEFAULTTONEAREST);
+            if (hmon != IntPtr.Zero)
+            {
+                NativeMethods.GetDpiForMonitor(hmon, NativeMethods.MDT_EFFECTIVE_DPI, out uint dx, out _);
+                if (dx > 0) return dx;
+            }
+        }
+        catch { }
+        return 96.0;
     }
 
     public static Screen? ScreenUnderPointer()
@@ -196,6 +250,20 @@ internal partial class LineWindow : Window
             card.Width = Layout.CardWidth;
             card.Height = cardHeight;
             card.UpdateFade(x, w);
+        }
+
+        // Show the empty hint only when there are no screenshots.
+        if (count == 0)
+        {
+            double ropeMidY = Layout.RopeY(w / 2, w);
+            _emptyHint.Visibility = Visibility.Visible;
+            _emptyHint.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            Canvas.SetLeft(_emptyHint, w / 2 - _emptyHint.DesiredSize.Width / 2);
+            Canvas.SetTop(_emptyHint, ropeMidY + 34);
+        }
+        else
+        {
+            _emptyHint.Visibility = Visibility.Collapsed;
         }
     }
 
@@ -356,9 +424,13 @@ internal partial class LineWindow : Window
             return;
         }
 
-        var zoneTop = screen?.Bounds.Top ?? 0;
+        // Convert cursor Y from physical pixels to DIPs so it matches the
+        // window's Top/Height (which WPF keeps in DIPs with PerMonitorV2).
+        double scale = screen is not null ? GetDpiForScreen(screen) / 96.0 : 1.0;
+        double cursorY = cursor.Y / scale;
+        var zoneTop = screen is not null ? screen.Bounds.Top / scale : 0;
         var zoneBottom = Top + Height;
-        bool inside = cursor.Y >= zoneTop && cursor.Y <= zoneBottom + 20;
+        bool inside = cursorY >= zoneTop && cursorY <= zoneBottom + 20;
         if (inside && Pinned) Pinned = false;
 
         bool busy = Pinned || PeggedCard.IsDragging || _line.PressedId is not null || now < _peekUntil;

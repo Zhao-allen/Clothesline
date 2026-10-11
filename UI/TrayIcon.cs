@@ -59,6 +59,13 @@ internal sealed class TrayIcon : IDisposable
         toggle.Click += (_, _) => _window.Toggle();
         menu.Items.Add(toggle);
 
+        var screenshot = new ToolStripMenuItem("Take Screenshot")
+        {
+            ShortcutKeyDisplayString = "Win+Alt+S"
+        };
+        screenshot.Click += (_, _) => App.Instance.TakeScreenshot();
+        menu.Items.Add(screenshot);
+
         var clear = new ToolStripMenuItem(I18n.Get("TakeEverythingDown"));
         clear.Click += (_, _) => _line.Clear();
         menu.Items.Add(clear);
@@ -175,10 +182,11 @@ internal sealed class TrayIcon : IDisposable
     private void RefreshMenu(ContextMenuStrip menu)
     {
         ((ToolStripMenuItem)menu.Items[0]).Text = _window.IsRevealed ? I18n.Get("HideLine") : I18n.Get("ShowLine");
-        ((ToolStripMenuItem)menu.Items[1]).Enabled = _line.LiveCount > 0;
-        ((ToolStripMenuItem)menu.Items[3]).Checked = Inbox.IsEnabled;
-        ((ToolStripMenuItem)menu.Items[4]).Checked = ClipboardWatcher.IsEnabled;
-        // Items 5..9 may shift; refresh by tag where possible.
+        // Index 1 = Take Screenshot, Index 2 = Take Everything Down
+        ((ToolStripMenuItem)menu.Items[2]).Enabled = _line.LiveCount > 0;
+        // Index 3 = separator, 4 = Handle Screenshots, 5 = Hang Copied Images
+        ((ToolStripMenuItem)menu.Items[4]).Checked = Inbox.IsEnabled;
+        ((ToolStripMenuItem)menu.Items[5]).Checked = ClipboardWatcher.IsEnabled;
         foreach (var item in menu.Items.OfType<ToolStripMenuItem>())
         {
             if (item.Text == I18n.Get("Sounds")) item.Checked = Sound.SoundOn;
@@ -186,23 +194,44 @@ internal sealed class TrayIcon : IDisposable
         }
     }
 
-    /// <summary>Draws a simple t-shirt icon (filled when clipboard watch is on).</summary>
+    /// <summary>
+    /// Draws a clothesline icon: a curved rope with a photo hanging from a
+    /// clothespin. Filled (colored) when clipboard watch is on.
+    /// </summary>
     private static Icon MakeTShirtIcon(bool filled)
     {
         const int size = 64;
         var dv = new DrawingVisual();
         using (var dc = dv.RenderOpen())
         {
-            var color = filled ? Colors.DarkSlateBlue : Colors.Gray;
-            var brush = new SolidColorBrush(color);
-            // Body
-            dc.DrawRoundedRectangle(brush, null, new Rect(14, 24, 36, 32), 6, 6);
-            // Left sleeve
-            dc.DrawRoundedRectangle(brush, null, new Rect(6, 26, 12, 14), 4, 4);
-            // Right sleeve
-            dc.DrawRoundedRectangle(brush, null, new Rect(46, 26, 12, 14), 4, 4);
-            // Collar
-            dc.DrawEllipse(Brushes.Transparent, null, new Point(32, 24), 8, 6);
+            var ropeColor = filled ? Color.FromRgb(80, 80, 80) : Color.FromRgb(140, 140, 140);
+            var ropePen = new Pen(new SolidColorBrush(ropeColor), 2.5);
+            var ropeGeo = new StreamGeometry();
+            using (var ctx = ropeGeo.Open())
+            {
+                ctx.BeginFigure(new Point(4, 18), false, false);
+                ctx.QuadraticBezierTo(new Point(32, 30), new Point(60, 18), true, false);
+            }
+            dc.DrawGeometry(null, ropePen, ropeGeo);
+
+            // Clothespin
+            var pinColor = filled ? Color.FromRgb(70, 70, 70) : Color.FromRgb(150, 150, 150);
+            dc.DrawRoundedRectangle(new SolidColorBrush(pinColor), null,
+                new Rect(29, 14, 6, 12), 1, 1);
+
+            // Photo card
+            var cardColor = filled ? Color.FromRgb(100, 80, 200) : Color.FromRgb(180, 180, 180);
+            dc.DrawRoundedRectangle(new SolidColorBrush(cardColor),
+                new Pen(Brushes.White, 1.5),
+                new Rect(20, 26, 24, 28), 4, 4);
+            // Photo inner
+            dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(180, 255, 255, 255)), null,
+                new Rect(24, 30, 16, 14));
+            // A little "mountain" in the photo
+            dc.DrawPolygon(Brushes.White, new[]
+            {
+                new Point(26, 40), new Point(31, 34), new Point(36, 40)
+            });
         }
         var rtb = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
         rtb.Render(dv);

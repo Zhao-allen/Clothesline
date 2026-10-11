@@ -54,10 +54,47 @@ internal static class NativeMethods
     public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
     public const int WM_HOTKEY = 0x0312;
-    public const uint MOD_CONTROL = 0x0002;
     public const uint MOD_ALT = 0x0001;
+    public const uint MOD_CONTROL = 0x0002;
     public const uint MOD_SHIFT = 0x0004;
+    public const uint MOD_WIN = 0x0008;
     public const uint MOD_NOREPEAT = 0x4000;
+
+    // Screen capture
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetDC(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
+
+    [DllImport("gdi32.dll")]
+    public static extern IntPtr CreateCompatibleDC(IntPtr hdc);
+
+    [DllImport("gdi32.dll")]
+    public static extern IntPtr CreateCompatibleBitmap(IntPtr hdc, int nWidth, int nHeight);
+
+    [DllImport("gdi32.dll")]
+    public static extern IntPtr SelectObject(IntPtr hdc, IntPtr hgdiobj);
+
+    [DllImport("gdi32.dll")]
+    public static extern bool BitBlt(IntPtr hdcDest, int nXDest, int nYDest,
+        int nWidth, int nHeight, IntPtr hdcSrc, int nXSrc, int nYSrc, int dwRop);
+
+    [DllImport("gdi32.dll")]
+    public static extern bool DeleteObject(IntPtr hObject);
+
+    [DllImport("gdi32.dll")]
+    public static extern bool DeleteDC(IntPtr hdc);
+
+    public const int SRCCOPY = 0x00CC0020;
+
+    // Virtual screen bounds (all monitors)
+    [DllImport("user32.dll")]
+    public static extern int GetSystemMetrics(int nIndex);
+    public const int SM_XVIRTUALSCREEN = 76;
+    public const int SM_YVIRTUALSCREEN = 77;
+    public const int SM_CXVIRTUALSCREEN = 78;
+    public const int SM_CYVIRTUALSCREEN = 79;
 
     // Monitor / screen
     [DllImport("user32.dll")]
