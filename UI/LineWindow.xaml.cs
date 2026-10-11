@@ -75,18 +75,20 @@ internal partial class LineWindow : Window
 
     private void BuildRope()
     {
-        _ropeShadow.Stroke = new SolidColorBrush(Color.FromArgb(56, 0, 0, 0));
-        _ropeShadow.StrokeThickness = 1.4;
+        _ropeShadow.Stroke = new SolidColorBrush(Color.FromArgb(70, 0, 0, 0));
+        _ropeShadow.StrokeThickness = 2.2;
         _ropeShadow.IsHitTestVisible = false;
         RenderOptions.SetEdgeMode(_ropeShadow, EdgeMode.Aliased);
 
-        _ropePath.Stroke = new SolidColorBrush(Color.FromRgb(140, 140, 140));
-        _ropePath.StrokeThickness = 1.2;
+        _ropePath.Stroke = new SolidColorBrush(Color.FromRgb(110, 110, 110));
+        _ropePath.StrokeThickness = 2.0;
         _ropePath.IsHitTestVisible = false;
+        RenderOptions.SetEdgeMode(_ropePath, EdgeMode.Aliased);
 
-        _ropeHighlight.Stroke = new SolidColorBrush(Color.FromArgb(115, 255, 255, 255));
-        _ropeHighlight.StrokeThickness = 0.4;
+        _ropeHighlight.Stroke = new SolidColorBrush(Color.FromArgb(120, 255, 255, 255));
+        _ropeHighlight.StrokeThickness = 0.6;
         _ropeHighlight.IsHitTestVisible = false;
+        RenderOptions.SetEdgeMode(_ropeHighlight, EdgeMode.Aliased);
 
         RootCanvas.Children.Add(_ropeShadow);
         RootCanvas.Children.Add(_ropePath);
