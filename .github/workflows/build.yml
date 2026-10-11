@@ -38,16 +38,12 @@ jobs:
       - name: Restore
         run: dotnet restore Clothesline.csproj -r ${{ matrix.runtime }}
 
-      - name: Build
-        run: dotnet build Clothesline.csproj -c Release -r ${{ matrix.runtime }} --no-restore
-
       - name: Publish (self-contained single-file)
         run: >
           dotnet publish Clothesline.csproj
           -c Release
           -r ${{ matrix.runtime }}
           --self-contained true
-          --no-build
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
           -p:EnableCompressionInSingleFile=true
