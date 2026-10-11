@@ -33,7 +33,7 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
-  <data name="AppName" xml:space="preserve"><value>Tendedero</value></data>
+  <data name="AppName" xml:space="preserve"><value>Clothesline</value></data>
   <data name="HideLine" xml:space="preserve"><value>物干しを隠す</value></data>
   <data name="ShowLine" xml:space="preserve"><value>物干しを表示</value></data>
   <data name="TakeEverythingDown" xml:space="preserve"><value>すべて取り下ろす</value></data>
@@ -56,7 +56,7 @@
   <data name="OpenScreenshotsFolder" xml:space="preserve"><value>スクリーンショット フォルダを開く</value></data>
   <data name="Sounds" xml:space="preserve"><value>サウンド</value></data>
   <data name="OpenAtLogin" xml:space="preserve"><value>ログイン時に起動</value></data>
-  <data name="Quit" xml:space="preserve"><value>Tendedero を終了</value></data>
+  <data name="Quit" xml:space="preserve"><value>Clothesline を終了</value></data>
   <data name="FolderDialogDescription" xml:space="preserve"><value>このフォルダに保存された新しい画像は物干しに掛かります。</value></data>
   <data name="Language" xml:space="preserve"><value>言語</value></data>
   <data name="SystemDefault" xml:space="preserve"><value>システム既定</value></data>

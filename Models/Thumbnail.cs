@@ -3,7 +3,7 @@ using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
-namespace Tendedero.Models;
+namespace Clothesline.Models;
 
 internal static class Media
 {

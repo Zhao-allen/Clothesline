@@ -4,13 +4,13 @@ using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using Tendedero.Models;
-using Tendedero.Services;
+using Clothesline.Models;
+using Clothesline.Services;
 
-namespace Tendedero.UI;
+namespace Clothesline.UI;
 
 /// <summary>
-/// System tray icon with the full Tendedero menu. Mirrors the macOS status
+/// System tray icon with the full Clothesline menu. Mirrors the macOS status
 /// item menu in <c>AppDelegate</c>.
 /// </summary>
 internal sealed class TrayIcon : IDisposable
@@ -27,7 +27,7 @@ internal sealed class TrayIcon : IDisposable
         _icon = new NotifyIcon
         {
             Visible = true,
-            Text = "Tendedero"
+            Text = "Clothesline"
         };
         UpdateIcon();
         _icon.ContextMenuStrip = BuildMenu();

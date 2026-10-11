@@ -1,11 +1,11 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Forms;
-using Tendedero.Models;
-using Tendedero.Services;
-using Tendedero.UI;
+using Clothesline.Models;
+using Clothesline.Services;
+using Clothesline.UI;
 
-namespace Tendedero;
+namespace Clothesline;
 
 internal partial class App : Application
 {
@@ -100,7 +100,7 @@ internal partial class App : Application
         foreach (var w in _folderWatchers) w.Dispose();
         _folderWatchers.Clear();
 
-        // Primary watcher: Tendedero's own folder (inbox) or the system
+        // Primary watcher: Clothesline's own folder (inbox) or the system
         // Screenshots folder.
         string primary = Inbox.IsEnabled ? Inbox.Folder : Inbox.ScreenshotsFolder;
         Inbox.EnsureFolder();

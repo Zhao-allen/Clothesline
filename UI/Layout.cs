@@ -1,4 +1,4 @@
-namespace Tendedero.UI;
+namespace Clothesline.UI;
 
 /// <summary>
 /// Layout math for the line. Mirrors the Swift `Layout` enum.

@@ -9,8 +9,8 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
-    <RootNamespace>Tendedero</RootNamespace>
-    <AssemblyName>Tendedero</AssemblyName>
+    <RootNamespace>Clothesline</RootNamespace>
+    <AssemblyName>Clothesline</AssemblyName>
     <SatelliteResourceLanguages>en;es;zh;ja;fr</SatelliteResourceLanguages>
   </PropertyGroup>
 
@@ -26,7 +26,7 @@
     <EmbeddedResource Update="Resources\Strings.resx">
       <Generator>PublicResXFileCodeGenerator</Generator>
       <LastGenOutput>Strings.Designer.cs</LastGenOutput>
-      <CustomToolNamespace>Tendedero.Resources</CustomToolNamespace>
+      <CustomToolNamespace>Clothesline.Resources</CustomToolNamespace>
     </EmbeddedResource>
     <EmbeddedResource Update="Resources\Strings.es.resx">
       <Generator></Generator>

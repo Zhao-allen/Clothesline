@@ -1,6 +1,6 @@
 using System.Windows.Media;
 
-namespace Tendedero.Models;
+namespace Clothesline.Models;
 
 /// <summary>
 /// One screenshot hanging on the line. Mirrors the Swift `Pegged` struct.

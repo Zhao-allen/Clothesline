@@ -3,7 +3,7 @@ using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Input;
 
-namespace Tendedero.Services;
+namespace Clothesline.Services;
 
 /// <summary>
 /// Global hotkey. Default: Ctrl+Alt+T (mirrors the Mac's ^⌥T).
@@ -54,7 +54,7 @@ internal sealed class HotKey : IDisposable
         public MessageWindow(Action<int> onHotKey)
         {
             _onHotKey = onHotKey;
-            CreateHandle(new CreateParams { Caption = "TendederoHotKey" });
+            CreateHandle(new CreateParams { Caption = "ClotheslineHotKey" });
         }
 
         protected override void WndProc(ref Message m)

@@ -8,17 +8,17 @@ using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Threading;
-using Tendedero.Models;
-using Tendedero.Services;
+using Clothesline.Models;
+using Clothesline.Services;
 
-using Line = Tendedero.Models.Line;
+using Line = Clothesline.Models.Line;
 using Image = System.Windows.Controls.Image;
 using UserControl = System.Windows.Controls.UserControl;
 using MouseEventArgs = System.Windows.Input.MouseEventArgs;
 using HA = System.Windows.HorizontalAlignment;
 using VA = System.Windows.VerticalAlignment;
 
-namespace Tendedero.UI;
+namespace Clothesline.UI;
 
 /// <summary>
 /// One photo with its clothespin. All the charm lives here: it drops onto

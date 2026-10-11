@@ -1,4 +1,4 @@
-namespace Tendedero.Services;
+namespace Clothesline.Services;
 
 /// <summary>
 /// Detects whether a full-screen app is running on the screen under the

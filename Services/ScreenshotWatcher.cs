@@ -1,7 +1,7 @@
 using System.IO;
 using Timer = System.Threading.Timer;
 
-namespace Tendedero.Services;
+namespace Clothesline.Services;
 
 /// <summary>
 /// Watches a folder for new screenshots/images and reports them.

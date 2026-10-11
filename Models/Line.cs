@@ -5,10 +5,10 @@ using System.IO;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using Tendedero.Services;
-using Tendedero.UI;
+using Clothesline.Services;
+using Clothesline.UI;
 
-namespace Tendedero.Models;
+namespace Clothesline.Models;
 
 /// <summary>
 /// The line itself: what hangs on it and what you can do with each item.

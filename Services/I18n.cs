@@ -1,8 +1,8 @@
 using System.Globalization;
 using System.Resources;
-using Tendedero.Resources;
+using Clothesline.Resources;
 
-namespace Tendedero.Services;
+namespace Clothesline.Services;
 
 /// <summary>
 /// Internationalization helper. Loads localized strings from String.resx

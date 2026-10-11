@@ -3,11 +3,11 @@ using System.Windows;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
-namespace Tendedero.Services;
+namespace Clothesline.Services;
 
 /// <summary>
 /// Polls the clipboard for copied images (PrintScreen or copy in an app).
-/// Each found image is saved as a PNG in Tendedero's folder so it hangs like
+/// Each found image is saved as a PNG in Clothesline's folder so it hangs like
 /// any screenshot. Off by default.
 /// </summary>
 internal sealed class ClipboardWatcher : IDisposable

@@ -1,6 +1,6 @@
 using Microsoft.Win32;
 
-namespace Tendedero.Services;
+namespace Clothesline.Services;
 
 /// <summary>
 /// "Open at login" via the HKCU Run registry key.
@@ -8,7 +8,7 @@ namespace Tendedero.Services;
 internal static class StartupManager
 {
     private const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string AppName = "Tendedero";
+    private const string AppName = "Clothesline";
 
     public static bool IsEnabled
     {
@@ -16,7 +16,7 @@ internal static class StartupManager
         {
             using var key = Registry.CurrentUser.OpenSubKey(RunKey, false);
             var val = key?.GetValue(AppName) as string;
-            return val is not null && val.StartsWith("\"") && val.Contains("Tendedero");
+            return val is not null && val.StartsWith("\"") && val.Contains("Clothesline");
         }
     }
 

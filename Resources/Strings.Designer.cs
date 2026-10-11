@@ -7,7 +7,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace Tendedero.Resources {
+namespace Clothesline.Resources {
     using System;
 
 
@@ -33,7 +33,7 @@ namespace Tendedero.Resources {
         public static System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.Equals(resourceMan, null)) {
-                    var temp = new System.Resources.ResourceManager("Tendedero.Resources.Strings", typeof(Strings).Assembly);
+                    var temp = new System.Resources.ResourceManager("Clothesline.Resources.Strings", typeof(Strings).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;

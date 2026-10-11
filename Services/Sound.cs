@@ -1,6 +1,6 @@
 using System.Media;
 
-namespace Tendedero.Services;
+namespace Clothesline.Services;
 
 /// <summary>
 /// Simple sound feedback. Tink when a photo hangs, Pop when it drops.

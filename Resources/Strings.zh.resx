@@ -33,7 +33,7 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
-  <data name="AppName" xml:space="preserve"><value>Tendedero</value></data>
+  <data name="AppName" xml:space="preserve"><value>Clothesline</value></data>
   <data name="HideLine" xml:space="preserve"><value>隐藏晾衣绳</value></data>
   <data name="ShowLine" xml:space="preserve"><value>显示晾衣绳</value></data>
   <data name="TakeEverythingDown" xml:space="preserve"><value>全部取下</value></data>
@@ -56,7 +56,7 @@
   <data name="OpenScreenshotsFolder" xml:space="preserve"><value>打开截图文件夹</value></data>
   <data name="Sounds" xml:space="preserve"><value>声音</value></data>
   <data name="OpenAtLogin" xml:space="preserve"><value>开机启动</value></data>
-  <data name="Quit" xml:space="preserve"><value>退出 Tendedero</value></data>
+  <data name="Quit" xml:space="preserve"><value>退出 Clothesline</value></data>
   <data name="FolderDialogDescription" xml:space="preserve"><value>保存到此文件夹的新图片将挂到晾衣绳上。</value></data>
   <data name="Language" xml:space="preserve"><value>语言</value></data>
   <data name="SystemDefault" xml:space="preserve"><value>系统默认</value></data>

@@ -33,7 +33,7 @@
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
-  <data name="AppName" xml:space="preserve"><value>Tendedero</value></data>
+  <data name="AppName" xml:space="preserve"><value>Clothesline</value></data>
   <data name="HideLine" xml:space="preserve"><value>Masquer le fil</value></data>
   <data name="ShowLine" xml:space="preserve"><value>Afficher le fil</value></data>
   <data name="TakeEverythingDown" xml:space="preserve"><value>Tout décrocher</value></data>
@@ -56,7 +56,7 @@
   <data name="OpenScreenshotsFolder" xml:space="preserve"><value>Ouvrir le dossier des captures</value></data>
   <data name="Sounds" xml:space="preserve"><value>Sons</value></data>
   <data name="OpenAtLogin" xml:space="preserve"><value>Ouvrir à la connexion</value></data>
-  <data name="Quit" xml:space="preserve"><value>Quitter Tendedero</value></data>
+  <data name="Quit" xml:space="preserve"><value>Quitter Clothesline</value></data>
   <data name="FolderDialogDescription" xml:space="preserve"><value>Les nouvelles images enregistrées dans ce dossier seront accrochées au fil.</value></data>
   <data name="Language" xml:space="preserve"><value>Langue</value></data>
   <data name="SystemDefault" xml:space="preserve"><value>Valeur système par défaut</value></data>

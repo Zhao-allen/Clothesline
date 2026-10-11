@@ -9,12 +9,12 @@ using System.Windows.Media.Animation;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using System.Windows.Forms;
-using Tendedero.Models;
-using Tendedero.Services;
+using Clothesline.Models;
+using Clothesline.Services;
 
-using Line = Tendedero.Models.Line;
+using Line = Clothesline.Models.Line;
 
-namespace Tendedero.UI;
+namespace Clothesline.UI;
 
 /// <summary>
 /// The transparent strip along the top of the screen that floats over every

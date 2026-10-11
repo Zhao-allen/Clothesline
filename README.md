@@ -7,6 +7,8 @@
 </p>
 
 <p align="center">
+  Free and open source. For Windows 10 1809 or later.
+
   <a href="#download">Download&nbsp;&rsaquo;</a>
   &nbsp;&nbsp;
   <a href="#build-from-source">Build from source&nbsp;&rsaquo;</a>
@@ -20,26 +22,26 @@ Every screenshot you take hangs on a line just above your screen.
 Rest the pointer at the top edge and it glides down. Move away and it's gone.
 
 <p align="center">
-  <em>The pointer rests against the top edge, the line slides down with three screenshots swinging gently, a click copies one, and the line tucks away when the pointer leaves.</em>
+  <em>The pointer rests against the top edge, the line slides down with screenshots swinging gently, a click copies one, and the line tucks away when the pointer leaves.</em>
 </p>
 
 ## A gesture for everything.
 
 <p align="center">
-  <em>Click to copy. Hold to mark up. Drag to share. Let it go.</em>
+  <em>Click to copy. Hold to edit. Drag to share. Let it go.</em>
 </p>
 
-| <br />                                          | <br />                             |
-| :---------------------------------------------- | :--------------------------------- |
-| **Click**                                       | Copy the image.                    |
-| **Press and hold**                              | Open it in your image editor.      |
-| **Double click**                                | Open it at full size.              |
-| **Drag into an app**                            | Send a copy. It stays on the line. |
-| **Drag into a folder**                          | Keep it there. It leaves the line. |
-| **Drag to the Recycle Bin, or click the ✕**     | Let it go.                         |
-| **Rest the pointer at the top edge**            | Bring the line down.               |
-| **Move the pointer away**                       | Tuck it back up.                   |
-| <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd> | Show or hide the line.             |
+| | |
+|:--|:--|
+| **Click** | Copy the image. |
+| **Press and hold** | Open it in your image editor. |
+| **Double click** | Open it at full size. |
+| **Drag into an app** | Send a copy. It stays on the line. |
+| **Drag into a folder** | Keep it there. It leaves the line. |
+| **Drag to the Recycle Bin, or click the ✕** | Let it go. |
+| **Rest the pointer at the top edge** | Bring the line down. |
+| **Move the pointer away** | Tuck it back up. |
+| <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd> | Show or hide the line. |
 
 ## Your desktop. Finally clear.
 
@@ -55,15 +57,15 @@ Clothesline runs entirely on your PC, and your screenshots never leave it.
 
 ## Tech Specs
 
-| <br />             | <br />                              |
-| :----------------- | :---------------------------------- |
-| **Compatibility**  | Windows 10 1809 or later, x64       |
-| **Size**           | \~160 MB (self-contained)           |
-| **Languages**      | English, Español, 中文, 日本語, Français |
-| **Built with**     | C# 13, WPF, .NET 9                  |
-| **Network access** | None                                |
-| **Price**          | Free                                |
-| **License**        | MIT                                 |
+| | |
+|:--|:--|
+| **Compatibility** | Windows 10 1809 or later, x64 |
+| **Size** | ~160 MB (self-contained) |
+| **Languages** | English, Español, 中文, 日本語, Français |
+| **Built with** | C# 13, WPF, .NET 9 |
+| **Network access** | None |
+| **Price** | Free |
+| **License** | MIT |
 
 ## Download
 
@@ -80,8 +82,8 @@ winget install Clothesline
 ## Build from source
 
 ```powershell
-git clone https://github.com/<your-fork>/clothesline.git
-cd clothesline
+git clone https://github.com/<your-fork>/tendedero-windows.git
+cd tendedero-windows
 dotnet build -c Release
 ```
 
@@ -101,21 +103,21 @@ the WPF workload.
 <details>
 <summary>Inside the app</summary>
 
-| File                            | Role                                                    |
-| :------------------------------ | :------------------------------------------------------ |
-| `App.xaml.cs`                   | Startup, services wiring, tray, hotkey, watchers        |
-| `UI/LineWindow.cs`              | Transparent topmost strip, slide in/out, mouse tracking |
-| `UI/PeggedCard.cs`              | One photo: glass frame, clip, swing and breeze          |
-| `UI/TrayIcon.cs`                | System tray menu (WinForms `NotifyIcon`)                |
-| `UI/Layout.cs`                  | Math: parabolic rope, card spacing, sizes               |
-| `Services/ScreenshotWatcher.cs` | Notices new screenshots                                 |
-| `Services/ClipboardWatcher.cs`  | Hangs copied images from the clipboard                  |
-| `Services/HotKey.cs`            | Global `Ctrl+Alt+T`                                     |
-| `Services/FullScreen.cs`        | Knows when to stay hidden                               |
-| `Services/Inbox.cs`             | Where captured screenshots are kept                     |
-| `Services/Settings.cs`          | JSON-backed persisted settings                          |
-| `Services/I18n.cs`              | Culture selection, resource lookup                      |
-| `Resources/Strings.*.resx`      | Localized UI strings                                    |
+| File | Role |
+|:--|:--|
+| `App.xaml.cs` | Startup, services wiring, tray, hotkey, watchers |
+| `UI/LineWindow.xaml.cs` | Transparent topmost strip, slide in/out, mouse tracking |
+| `UI/PeggedCard.cs` | One photo: glass frame, clip, swing and breeze |
+| `UI/TrayIcon.cs` | System tray menu (WinForms `NotifyIcon`) |
+| `UI/Layout.cs` | Math: parabolic rope, card spacing, sizes |
+| `Services/ScreenshotWatcher.cs` | Notices new screenshots |
+| `Services/ClipboardWatcher.cs` | Hangs copied images from the clipboard |
+| `Services/HotKey.cs` | Global `Ctrl+Alt+T` |
+| `Services/FullScreen.cs` | Knows when to stay hidden |
+| `Services/Inbox.cs` | Where captured screenshots are kept |
+| `Services/Settings.cs` | JSON-backed persisted settings |
+| `Services/I18n.cs` | Culture selection, resource lookup |
+| `Resources/Strings.*.resx` | Localized UI strings |
 
 </details>
 
@@ -125,12 +127,12 @@ Clothesline ships with **five languages** and follows the system UI language
 automatically. Pick one from the tray menu → **Language**.
 
 | Code | Language | Native name |
-| :--: | :------- | :---------- |
-| `en` | English  | English     |
-| `es` | Español  | Español     |
-| `zh` | 中文       | 中文          |
-| `ja` | 日本語      | 日本語         |
-| `fr` | Français | Français    |
+|:--:|:--|:--|
+| `en` | English | English |
+| `es` | Español | Español |
+| `zh` | 中文 | 中文 |
+| `ja` | 日本語 | 日本語 |
+| `fr` | Français | Français |
 
 To add a translation, drop a `Strings.<culture>.resx` file in `Resources/`
 and add the culture code to `SatelliteResourceLanguages` in `Clothesline.csproj`.

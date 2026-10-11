@@ -1,7 +1,7 @@
 using System.IO;
 using System.Text.Json;
 
-namespace Tendedero.Services;
+namespace Clothesline.Services;
 
 /// <summary>
 /// Persisted settings, replacing macOS UserDefaults. Stored as JSON next to
@@ -10,7 +10,7 @@ namespace Tendedero.Services;
 internal sealed class Settings
 {
     private static readonly string Folder = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Tendedero");
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Clothesline");
 
     private static readonly string FilePath = Path.Combine(Folder, "settings.json");
 

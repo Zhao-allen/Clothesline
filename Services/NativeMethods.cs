@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace Tendedero.Services;
+namespace Clothesline.Services;
 
 internal static class NativeMethods
 {

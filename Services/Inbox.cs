@@ -1,18 +1,18 @@
 using System.IO;
 
-namespace Tendedero.Services;
+namespace Clothesline.Services;
 
 /// <summary>
 /// Inbox mode: where screenshots are kept. Unlike macOS, Windows has no system
 /// API to redirect the Win+PrintScreen save location, so Inbox mode here means
 /// watching the user's Screenshots folder and (optionally) moving captures into
-/// Tendedero's own folder so the Desktop/Pictures folder stays clear.
+/// Clothesline's own folder so the Desktop/Pictures folder stays clear.
 /// </summary>
 internal static class Inbox
 {
     public static string Folder => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "Tendedero", "Screenshots");
+        "Clothesline", "Screenshots");
 
     public static string DesktopFolder =>
         Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
