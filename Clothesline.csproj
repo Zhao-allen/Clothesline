@@ -9,6 +9,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationIcon>Resources\Clothesline.ico</ApplicationIcon>
     <RootNamespace>Clothesline</RootNamespace>
     <AssemblyName>Clothesline</AssemblyName>
     <SatelliteResourceLanguages>en;es;zh;ja;fr</SatelliteResourceLanguages>

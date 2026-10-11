@@ -263,7 +263,7 @@ internal sealed class PeggedCard : UserControl, IDisposable
             IsHitTestVisible = false,
             Child = new TextBlock
             {
-                Text = "✓ Copied",
+                Text = "✓ " + I18n.Get("Copied"),
                 FontSize = 11,
                 FontWeight = FontWeights.SemiBold,
                 Foreground = Brushes.Black
@@ -323,6 +323,35 @@ internal sealed class PeggedCard : UserControl, IDisposable
     }
 
     public void Land() => Nudge(2.2);
+
+    /// <summary>
+    /// The card lets go of the line: it swings, accelerates downward and
+    /// fades out before being removed from the canvas. Mirrors the original
+    /// Tendedero "fall" animation.
+    /// </summary>
+    public void Fall()
+    {
+        double dropTo = Layout.PanelHeight + 140;
+        var duration = TimeSpan.FromMilliseconds(560);
+
+        var dropAnim = new DoubleAnimation(dropTo, duration)
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+        };
+        _arrival.BeginAnimation(TranslateTransform.YProperty, dropAnim);
+
+        var swingAnim = new DoubleAnimation(40, duration)
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
+        };
+        _swing.BeginAnimation(RotateTransform.AngleProperty, swingAnim);
+
+        var fadeAnim = new DoubleAnimation(0, TimeSpan.FromMilliseconds(380))
+        {
+            BeginTime = TimeSpan.FromMilliseconds(180)
+        };
+        BeginAnimation(OpacityProperty, fadeAnim);
+    }
 
     public void Breeze()
     {
@@ -449,27 +478,27 @@ internal sealed class PeggedCard : UserControl, IDisposable
         var menu = new ContextMenu();
         var inInbox = _line.IsInInbox(_item.Id);
 
-        AddItem(menu, "Copy", () => _line.Copy(_item.Id));
-        AddItem(menu, "Open", () => _line.Open(_item.Id));
+        AddItem(menu, I18n.Get("Copy"), () => _line.Copy(_item.Id));
+        AddItem(menu, I18n.Get("Open"), () => _line.Open(_item.Id));
         if (!_item.IsRecording)
-            AddItem(menu, "Edit", () => _line.Markup(_item.Id));
-        AddItem(menu, "Show in Explorer", () => _line.Reveal(_item.Id));
+            AddItem(menu, I18n.Get("Edit"), () => _line.Markup(_item.Id));
+        AddItem(menu, I18n.Get("ShowInExplorer"), () => _line.Reveal(_item.Id));
         if (inInbox)
-            AddItem(menu, "Save to Desktop", () => _line.SaveToDesktop(_item.Id));
+            AddItem(menu, I18n.Get("SaveToDesktop"), () => _line.SaveToDesktop(_item.Id));
 
         menu.Items.Add(new Separator());
         if (inInbox)
-            AddItem(menu, "Discard", () => _line.Discard(_item.Id));
+            AddItem(menu, I18n.Get("Discard"), () => _line.Discard(_item.Id));
         else
         {
-            AddItem(menu, "Take down", () => _line.Discard(_item.Id));
-            AddItem(menu, "Move to Trash", () => _line.Trash(_item.Id));
+            AddItem(menu, I18n.Get("TakeDown"), () => _line.Discard(_item.Id));
+            AddItem(menu, I18n.Get("MoveToTrash"), () => _line.Trash(_item.Id));
         }
 
-        var left = AddItem(menu, "Take down everything to the left",
+        var left = AddItem(menu, I18n.Get("TakeDownLeft"),
             () => _line.TakeDown(_item.Id, true));
         left.IsEnabled = _line.Neighbours(_item.Id, true).Count > 0;
-        var right = AddItem(menu, "Take down everything to the right",
+        var right = AddItem(menu, I18n.Get("TakeDownRight"),
             () => _line.TakeDown(_item.Id, false));
         right.IsEnabled = _line.Neighbours(_item.Id, false).Count > 0;
 

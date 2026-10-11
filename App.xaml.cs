@@ -40,6 +40,14 @@ internal partial class App : Application
         set => Settings.Default.SetStringList("extraFolders", value);
     }
 
+    public enum ShotMode { FullScreen, Region }
+
+    public static ShotMode ScreenshotMode
+    {
+        get => Enum.TryParse<ShotMode>(Settings.Default.GetString("screenshotMode"), out var m) ? m : ShotMode.Region;
+        set => Settings.Default.SetString("screenshotMode", value.ToString());
+    }
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -51,7 +59,7 @@ internal partial class App : Application
         _window = new LineWindow(_line);
         _window.RequestRefresh += Refresh;
         _line.ItemsChanged += () => _window.ItemsChanged();
-        _line.Fall += _ => { /* fall animation handled by card removal */ };
+        // Fall animation is handled by LineWindow (OnFall).
 
         _window.ComeDown();
         if (_line.LiveCount > 0)
@@ -142,25 +150,48 @@ internal partial class App : Application
     }
 
     /// <summary>
-    /// Capture the screen under the pointer, save it, and hang it on the line.
-    /// Triggered by Win+Alt+S or the tray menu.
+    /// Capture the screen (full monitor or a user-selected region) and hang it
+    /// on the line. Triggered by Win+Alt+S or the tray menu.
     /// </summary>
     public void TakeScreenshot()
     {
-        // Hide the line briefly so it doesn't appear in the capture.
         if (_window.IsRevealed) _window.SetRevealed(false);
 
-        Task.Delay(120).ContinueWith(_ =>
+        Dispatcher.InvokeAsync(async () =>
         {
-            string? path = ScreenCapture.CaptureScreenUnderPointer();
+            await Task.Delay(140); // let the line slide out of view
+
+            string? path = null;
+            // Make the line fully transparent so it never appears in the shot.
+            double prevOpacity = _window.Opacity;
+            _window.Opacity = 0;
+            try
+            {
+                if (ScreenshotMode == ShotMode.Region)
+                {
+                    var screen = LineWindow.ScreenUnderPointer();
+                    if (screen is not null)
+                    {
+                        var selector = new RegionSelectorWindow(screen);
+                        var rect = selector.Select();
+                        if (rect.HasValue) path = ScreenCapture.CaptureRect(rect.Value);
+                    }
+                }
+                else
+                {
+                    path = ScreenCapture.CaptureScreenUnderPointer();
+                }
+            }
+            finally
+            {
+                _window.Opacity = prevOpacity;
+            }
+
             if (path is not null)
             {
-                Dispatcher.Invoke(() =>
-                {
-                    Sound.PlayShot();
-                    HangCapture(path);
-                    _window.Reveal(peekSeconds: 3);
-                });
+                Sound.PlayShot();
+                HangCapture(path);
+                _window.Reveal(peekSeconds: 3);
             }
         });
     }

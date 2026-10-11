@@ -59,12 +59,28 @@ internal sealed class TrayIcon : IDisposable
         toggle.Click += (_, _) => _window.Toggle();
         menu.Items.Add(toggle);
 
-        var screenshot = new ToolStripMenuItem("Take Screenshot")
+        var screenshot = new ToolStripMenuItem(I18n.Get("TakeScreenshot"))
         {
             ShortcutKeyDisplayString = "Win+Alt+S"
         };
         screenshot.Click += (_, _) => App.Instance.TakeScreenshot();
         menu.Items.Add(screenshot);
+
+        // Screenshot mode: full screen or region selection.
+        var shotMode = new ToolStripMenuItem(I18n.Get("ScreenshotMode"));
+        var fullScreen = new ToolStripMenuItem(I18n.Get("ScreenshotModeFull"))
+        {
+            Checked = App.ScreenshotMode == App.ShotMode.FullScreen
+        };
+        fullScreen.Click += (_, _) => { App.ScreenshotMode = App.ShotMode.FullScreen; Rebuild(); };
+        var region = new ToolStripMenuItem(I18n.Get("ScreenshotModeRegion"))
+        {
+            Checked = App.ScreenshotMode == App.ShotMode.Region
+        };
+        region.Click += (_, _) => { App.ScreenshotMode = App.ShotMode.Region; Rebuild(); };
+        shotMode.DropDownItems.Add(fullScreen);
+        shotMode.DropDownItems.Add(region);
+        menu.Items.Add(shotMode);
 
         var clear = new ToolStripMenuItem(I18n.Get("TakeEverythingDown"));
         clear.Click += (_, _) => _line.Clear();
@@ -182,11 +198,10 @@ internal sealed class TrayIcon : IDisposable
     private void RefreshMenu(ContextMenuStrip menu)
     {
         ((ToolStripMenuItem)menu.Items[0]).Text = _window.IsRevealed ? I18n.Get("HideLine") : I18n.Get("ShowLine");
-        // Index 1 = Take Screenshot, Index 2 = Take Everything Down
-        ((ToolStripMenuItem)menu.Items[2]).Enabled = _line.LiveCount > 0;
-        // Index 3 = separator, 4 = Handle Screenshots, 5 = Hang Copied Images
-        ((ToolStripMenuItem)menu.Items[4]).Checked = Inbox.IsEnabled;
-        ((ToolStripMenuItem)menu.Items[5]).Checked = ClipboardWatcher.IsEnabled;
+        // 0 toggle, 1 screenshot, 2 mode, 3 clear, 4 separator, 5 inbox, 6 clipboard
+        ((ToolStripMenuItem)menu.Items[3]).Enabled = _line.LiveCount > 0;
+        ((ToolStripMenuItem)menu.Items[5]).Checked = Inbox.IsEnabled;
+        ((ToolStripMenuItem)menu.Items[6]).Checked = ClipboardWatcher.IsEnabled;
         foreach (var item in menu.Items.OfType<ToolStripMenuItem>())
         {
             if (item.Text == I18n.Get("Sounds")) item.Checked = Sound.SoundOn;

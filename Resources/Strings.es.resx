@@ -60,4 +60,21 @@
   <data name="FolderDialogDescription" xml:space="preserve"><value>Las imágenes nuevas guardadas en esta carpeta colgarán del tendedero.</value></data>
   <data name="Language" xml:space="preserve"><value>Idioma</value></data>
   <data name="SystemDefault" xml:space="preserve"><value>Predeterminado del sistema</value></data>
+  <data name="Copy" xml:space="preserve"><value>Copiar</value></data>
+  <data name="Copied" xml:space="preserve"><value>Copiado</value></data>
+  <data name="Open" xml:space="preserve"><value>Abrir</value></data>
+  <data name="Edit" xml:space="preserve"><value>Editar</value></data>
+  <data name="ShowInExplorer" xml:space="preserve"><value>Mostrar en el Explorador</value></data>
+  <data name="SaveToDesktop" xml:space="preserve"><value>Guardar en el escritorio</value></data>
+  <data name="Discard" xml:space="preserve"><value>Descartar</value></data>
+  <data name="TakeDown" xml:space="preserve"><value>Quitar</value></data>
+  <data name="MoveToTrash" xml:space="preserve"><value>Mover a la Papelera</value></data>
+  <data name="TakeDownLeft" xml:space="preserve"><value>Quitar todo lo de la izquierda</value></data>
+  <data name="TakeDownRight" xml:space="preserve"><value>Quitar todo lo de la derecha</value></data>
+  <data name="TakeScreenshot" xml:space="preserve"><value>Hacer captura</value></data>
+  <data name="ScreenshotMode" xml:space="preserve"><value>Modo de captura</value></data>
+  <data name="EmptyHint" xml:space="preserve"><value>Pulsa Win+Alt+S para hacer una captura</value></data>
+  <data name="ScreenshotModeFull" xml:space="preserve"><value>Pantalla completa</value></data>
+  <data name="ScreenshotModeRegion" xml:space="preserve"><value>Región</value></data>
+  <data name="DragToSelect" xml:space="preserve"><value>Arrastra para seleccionar</value></data>
 </root>

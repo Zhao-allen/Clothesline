@@ -60,4 +60,21 @@
   <data name="FolderDialogDescription" xml:space="preserve"><value>New images saved to this folder will hang on the line.</value></data>
   <data name="Language" xml:space="preserve"><value>Language</value></data>
   <data name="SystemDefault" xml:space="preserve"><value>System default</value></data>
+  <data name="Copy" xml:space="preserve"><value>Copy</value></data>
+  <data name="Copied" xml:space="preserve"><value>Copied</value></data>
+  <data name="Open" xml:space="preserve"><value>Open</value></data>
+  <data name="Edit" xml:space="preserve"><value>Edit</value></data>
+  <data name="ShowInExplorer" xml:space="preserve"><value>Show in Explorer</value></data>
+  <data name="SaveToDesktop" xml:space="preserve"><value>Save to Desktop</value></data>
+  <data name="Discard" xml:space="preserve"><value>Discard</value></data>
+  <data name="TakeDown" xml:space="preserve"><value>Take down</value></data>
+  <data name="MoveToTrash" xml:space="preserve"><value>Move to Trash</value></data>
+  <data name="TakeDownLeft" xml:space="preserve"><value>Take down everything to the left</value></data>
+  <data name="TakeDownRight" xml:space="preserve"><value>Take down everything to the right</value></data>
+  <data name="TakeScreenshot" xml:space="preserve"><value>Take Screenshot</value></data>
+  <data name="ScreenshotMode" xml:space="preserve"><value>Screenshot mode</value></data>
+  <data name="EmptyHint" xml:space="preserve"><value>Press Win+Alt+S to take a screenshot</value></data>
+  <data name="ScreenshotModeFull" xml:space="preserve"><value>Full screen</value></data>
+  <data name="ScreenshotModeRegion" xml:space="preserve"><value>Region</value></data>
+  <data name="DragToSelect" xml:space="preserve"><value>Drag to select a region</value></data>
 </root>

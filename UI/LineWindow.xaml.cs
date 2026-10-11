@@ -59,6 +59,7 @@ internal partial class LineWindow : Window
             UpdateCapacity();
             _line.Items.CollectionChanged += Items_CollectionChanged;
             _line.PropertyChanged += Line_PropertyChanged;
+            _line.Fall += OnFall;
             foreach (var item in _line.Items) AddCard(item);
             LayoutItems();
         };
@@ -116,7 +117,7 @@ internal partial class LineWindow : Window
         // Empty-state hint shown when the line has no screenshots.
         _emptyHint.Child = new TextBlock
         {
-            Text = "Press Win+Alt+S to take a screenshot",
+            Text = I18n.Get("EmptyHint"),
             Foreground = new SolidColorBrush(Color.FromArgb(180, 90, 90, 90)),
             FontSize = 12,
             Padding = new Thickness(12, 6, 12, 6)
@@ -215,6 +216,11 @@ internal partial class LineWindow : Window
             LayoutItems();
         else if (e.PropertyName == nameof(Line.Gust))
             foreach (var c in _cards.Values) c.Breeze();
+    }
+
+    private void OnFall(PeggedItem item)
+    {
+        if (_cards.TryGetValue(item.Id, out var card)) card.Fall();
     }
 
     private void AddCard(PeggedItem item)

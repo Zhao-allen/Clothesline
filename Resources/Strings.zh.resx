@@ -60,4 +60,21 @@
   <data name="FolderDialogDescription" xml:space="preserve"><value>保存到此文件夹的新图片将挂到晾衣绳上。</value></data>
   <data name="Language" xml:space="preserve"><value>语言</value></data>
   <data name="SystemDefault" xml:space="preserve"><value>系统默认</value></data>
+  <data name="Copy" xml:space="preserve"><value>复制</value></data>
+  <data name="Copied" xml:space="preserve"><value>已复制</value></data>
+  <data name="Open" xml:space="preserve"><value>打开</value></data>
+  <data name="Edit" xml:space="preserve"><value>编辑</value></data>
+  <data name="ShowInExplorer" xml:space="preserve"><value>在资源管理器中显示</value></data>
+  <data name="SaveToDesktop" xml:space="preserve"><value>保存到桌面</value></data>
+  <data name="Discard" xml:space="preserve"><value>丢弃</value></data>
+  <data name="TakeDown" xml:space="preserve"><value>取下</value></data>
+  <data name="MoveToTrash" xml:space="preserve"><value>移到回收站</value></data>
+  <data name="TakeDownLeft" xml:space="preserve"><value>取下左侧所有</value></data>
+  <data name="TakeDownRight" xml:space="preserve"><value>取下右侧所有</value></data>
+  <data name="TakeScreenshot" xml:space="preserve"><value>截图</value></data>
+  <data name="ScreenshotMode" xml:space="preserve"><value>截图方式</value></data>
+  <data name="EmptyHint" xml:space="preserve"><value>按 Win+Alt+S 截图</value></data>
+  <data name="ScreenshotModeFull" xml:space="preserve"><value>全屏</value></data>
+  <data name="ScreenshotModeRegion" xml:space="preserve"><value>区域</value></data>
+  <data name="DragToSelect" xml:space="preserve"><value>拖拽选择区域</value></data>
 </root>

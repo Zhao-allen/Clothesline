@@ -60,4 +60,21 @@
   <data name="FolderDialogDescription" xml:space="preserve"><value>このフォルダに保存された新しい画像は物干しに掛かります。</value></data>
   <data name="Language" xml:space="preserve"><value>言語</value></data>
   <data name="SystemDefault" xml:space="preserve"><value>システム既定</value></data>
+  <data name="Copy" xml:space="preserve"><value>コピー</value></data>
+  <data name="Copied" xml:space="preserve"><value>コピーしました</value></data>
+  <data name="Open" xml:space="preserve"><value>開く</value></data>
+  <data name="Edit" xml:space="preserve"><value>編集</value></data>
+  <data name="ShowInExplorer" xml:space="preserve"><value>エクスプローラーで表示</value></data>
+  <data name="SaveToDesktop" xml:space="preserve"><value>デスクトップに保存</value></data>
+  <data name="Discard" xml:space="preserve"><value>破棄</value></data>
+  <data name="TakeDown" xml:space="preserve"><value>下ろす</value></data>
+  <data name="MoveToTrash" xml:space="preserve"><value>ゴミ箱に移動</value></data>
+  <data name="TakeDownLeft" xml:space="preserve"><value>左側をすべて下ろす</value></data>
+  <data name="TakeDownRight" xml:space="preserve"><value>右側をすべて下ろす</value></data>
+  <data name="TakeScreenshot" xml:space="preserve"><value>スクリーンショット</value></data>
+  <data name="ScreenshotMode" xml:space="preserve"><value>キャプチャ方式</value></data>
+  <data name="EmptyHint" xml:space="preserve"><value>Win+Alt+S でスクリーンショット</value></data>
+  <data name="ScreenshotModeFull" xml:space="preserve"><value>全画面</value></data>
+  <data name="ScreenshotModeRegion" xml:space="preserve"><value>範囲</value></data>
+  <data name="DragToSelect" xml:space="preserve"><value>ドラッグして範囲選択</value></data>
 </root>

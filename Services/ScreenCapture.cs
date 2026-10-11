@@ -49,6 +49,16 @@ internal static class ScreenCapture
         }
     }
 
+    /// <summary>
+    /// Capture an arbitrary rectangle (in physical screen pixels) and save a
+    /// timestamped PNG. Returns the saved file path, or null on failure.
+    /// </summary>
+    public static string? CaptureRect(Rectangle rect)
+    {
+        if (rect.Width <= 0 || rect.Height <= 0) return null;
+        return CaptureRegion(rect.X, rect.Y, rect.Width, rect.Height);
+    }
+
     private static string? CaptureRegion(int x, int y, int width, int height)
     {
         if (width <= 0 || height <= 0) return null;
