@@ -257,7 +257,7 @@ internal partial class LineWindow : Window
         {
             double ropeMidY = Layout.RopeY(w / 2, w);
             _emptyHint.Visibility = Visibility.Visible;
-            _emptyHint.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            _emptyHint.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
             Canvas.SetLeft(_emptyHint, w / 2 - _emptyHint.DesiredSize.Width / 2);
             Canvas.SetTop(_emptyHint, ropeMidY + 34);
         }

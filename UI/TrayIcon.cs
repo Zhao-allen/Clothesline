@@ -205,7 +205,7 @@ internal sealed class TrayIcon : IDisposable
         using (var dc = dv.RenderOpen())
         {
             var ropeColor = filled ? Color.FromRgb(80, 80, 80) : Color.FromRgb(140, 140, 140);
-            var ropePen = new Pen(new SolidColorBrush(ropeColor), 2.5);
+            var ropePen = new System.Windows.Media.Pen(new SolidColorBrush(ropeColor), 2.5);
             var ropeGeo = new StreamGeometry();
             using (var ctx = ropeGeo.Open())
             {
@@ -222,16 +222,17 @@ internal sealed class TrayIcon : IDisposable
             // Photo card
             var cardColor = filled ? Color.FromRgb(100, 80, 200) : Color.FromRgb(180, 180, 180);
             dc.DrawRoundedRectangle(new SolidColorBrush(cardColor),
-                new Pen(Brushes.White, 1.5),
+                new System.Windows.Media.Pen(Brushes.White, 1.5),
                 new Rect(20, 26, 24, 28), 4, 4);
             // Photo inner
             dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(180, 255, 255, 255)), null,
                 new Rect(24, 30, 16, 14));
             // A little "mountain" in the photo
-            dc.DrawPolygon(Brushes.White, new[]
-            {
-                new Point(26, 40), new Point(31, 34), new Point(36, 40)
-            });
+            dc.DrawGeometry(Brushes.White, null,
+                new PolygonGeometry(new[]
+                {
+                    new Point(26, 40), new Point(31, 34), new Point(36, 40)
+                }));
         }
         var rtb = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
         rtb.Render(dv);

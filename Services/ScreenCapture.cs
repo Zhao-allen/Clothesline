@@ -1,6 +1,7 @@
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using Clothesline.UI;
 
 namespace Clothesline.Services;
 
