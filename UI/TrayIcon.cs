@@ -228,11 +228,14 @@ internal sealed class TrayIcon : IDisposable
             dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(180, 255, 255, 255)), null,
                 new Rect(24, 30, 16, 14));
             // A little "mountain" in the photo
-            dc.DrawGeometry(Brushes.White, null,
-                new PolygonGeometry(new[]
-                {
-                    new Point(26, 40), new Point(31, 34), new Point(36, 40)
-                }));
+            var mountain = new StreamGeometry();
+            using (var mctx = mountain.Open())
+            {
+                mctx.BeginFigure(new Point(26, 40), true, true);
+                mctx.LineTo(new Point(31, 34), true, false);
+                mctx.LineTo(new Point(36, 40), true, false);
+            }
+            dc.DrawGeometry(Brushes.White, null, mountain);
         }
         var rtb = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
         rtb.Render(dv);
