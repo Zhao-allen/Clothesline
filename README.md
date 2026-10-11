@@ -1,6 +1,10 @@
 # Clothesline
 
 <p align="center">
+  <img src="docs/hero.jpg" alt="Clothesline. Screenshots, hung out to dry. Four screenshots in glass frames hang from a thin line at the top of the screen." width="100%">
+</p>
+
+<p align="center">
   <em>Screenshots, hung out to dry.</em>
   <br/>
   <sub>A Windows clothesline for your screenshots. Rest the pointer at the top of the screen and the line glides down.</sub>
@@ -22,13 +26,13 @@ Every screenshot you take hangs on a line just above your screen.
 Rest the pointer at the top edge and it glides down. Move away and it's gone.
 
 <p align="center">
-  <em>The pointer rests against the top edge, the line slides down with screenshots swinging gently, a click copies one, and the line tucks away when the pointer leaves.</em>
+  <img src="docs/demo.jpg" alt="The line slides down with screenshots swinging gently; a click copies one and the line tucks away when the pointer leaves." width="80%">
 </p>
 
 ## A gesture for everything.
 
 <p align="center">
-  <em>Click to copy. Hold to edit. Drag to share. Let it go.</em>
+  <img src="docs/bento.jpg" alt="Click to copy. Press and hold to edit. Drag to share." width="100%">
 </p>
 
 | | |
@@ -81,15 +85,18 @@ winget install Clothesline
 
 ## Build from source
 
+The easiest way is the bundled build script:
+
 ```powershell
-git clone https://github.com/<your-fork>/tendedero-windows.git
-cd tendedero-windows
-dotnet build -c Release
+git clone https://github.com/Zhao-allen/Clothesline.git
+cd Clothesline
+.\build.ps1 -Clean -Zip
 ```
 
-To produce a self-contained single-file EXE:
+Or manually:
 
 ```powershell
+dotnet build -c Release
 dotnet publish -c Release -r win-x64 `
   --self-contained true `
   -p:PublishSingleFile=true `

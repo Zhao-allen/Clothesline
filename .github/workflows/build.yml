@@ -1,0 +1,103 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag (e.g. v1.0.0). If empty, uses a timestamp."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_VERSION: "9.0.x"
+  RUNTIME: "win-x64"
+
+jobs:
+  build:
+    name: Build Clothesline (${{ matrix.runtime }})
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        runtime: [win-x64]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore Clothesline.csproj -r ${{ matrix.runtime }}
+
+      - name: Build
+        run: dotnet build Clothesline.csproj -c Release -r ${{ matrix.runtime }} --no-restore
+
+      - name: Publish (self-contained single-file)
+        run: >
+          dotnet publish Clothesline.csproj
+          -c Release
+          -r ${{ matrix.runtime }}
+          --self-contained true
+          --no-build
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -p:DebugType=embedded
+          -o publish
+
+      - name: Package zip
+        shell: pwsh
+        run: |
+          Compress-Archive -Path publish\* -DestinationPath Clothesline-${{ matrix.runtime }}.zip -Force
+          Get-Item Clothesline-${{ matrix.runtime }}.zip | Select-Object Name, @{N='SizeMB';E={[math]::Round($_.Length/1MB,1)}}
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Clothesline-${{ matrix.runtime }}
+          path: |
+            publish/Clothesline.exe
+            Clothesline-${{ matrix.runtime }}.zip
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Determine version
+        id: version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.version }}" ]; then
+            echo "tag=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=v$(date +%Y%m%d-%H%M)" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Clothesline ${{ steps.version.outputs.tag }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            Clothesline-win-x64/Clothesline.exe
+            Clothesline-win-x64/Clothesline-win-x64.zip
