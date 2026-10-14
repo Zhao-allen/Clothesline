@@ -5,10 +5,9 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using System.Drawing;
 using Clothesline.Services;
-using WpfPath = System.Windows.Shapes.Path;
-using WpfRectangle = System.Windows.Shapes.Rectangle;
-using MouseEventArgs = System.Windows.Input.MouseEventArgs;
-using KeyEventArgs = System.Windows.Input.KeyEventArgs;
+
+using WpfCursors = System.Windows.Input.Cursors;
+using WpfSize = System.Windows.Size;
 
 namespace Clothesline.UI;
 
@@ -39,7 +38,7 @@ internal sealed class RegionSelectorWindow : Window
         Topmost = true;
         ShowInTaskbar = false;
         ShowActivated = true;
-        Cursor = Cursors.Cross;
+        Cursor = WpfCursors.Cross;
         ResizeMode = ResizeMode.NoResize;
         SnapsToDevicePixels = true;
         UseLayoutRounding = true;
@@ -99,7 +98,7 @@ internal sealed class RegionSelectorWindow : Window
 
     private void UpdateHintPosition()
     {
-        _hint.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        _hint.Measure(new WpfWpfSize(double.PositiveInfinity, double.PositiveInfinity));
         Canvas.SetLeft(_hint, (Width - _hint.DesiredSize.Width) / 2);
     }
 
@@ -176,7 +175,7 @@ internal sealed class RegionSelectorWindow : Window
         int pw = (int)Math.Round(r.Width * _scale);
         int ph = (int)Math.Round(r.Height * _scale);
         _sizeLabel.Text = $"{pw} × {ph}";
-        _sizeLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        _sizeLabel.Measure(new WpfWpfSize(double.PositiveInfinity, double.PositiveInfinity));
         Canvas.SetLeft(_sizeLabel, r.X + r.Width - _sizeLabel.DesiredSize.Width - 4);
         Canvas.SetTop(_sizeLabel, r.Y + r.Height + 4);
     }
