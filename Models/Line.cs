@@ -321,10 +321,14 @@ internal sealed class Line : INotifyPropertyChanged
     public void Markup(Guid id)
     {
         var item = Items.FirstOrDefault(i => i.Id == id);
-        if (item is null) return;
-        // Windows has no built-in Markup editor API; open in the default
-        // photo editor (Photos) which offers editing.
-        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(item.Url) { UseShellExecute = true }); }
+        if (item is null || !File.Exists(item.Url)) return;
+        try
+        {
+            var win = new AnnotationWindow(item.Url);
+            win.ShowDialog();
+            // Reload thumbnail after possible edit
+            ReloadThumbnail(item.Url);
+        }
         catch { Sound.Beep(); }
     }
 
