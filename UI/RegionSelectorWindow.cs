@@ -21,7 +21,7 @@ internal sealed class RegionSelectorWindow : Window
     private readonly Screen _screen;
     private readonly double _scale;
     private Point? _startPoint;
-    private Rectangle? _result;
+    private System.Drawing.Rectangle? _result;
 
     private readonly WpfPath _dimPath;
     private readonly WpfRectangle _selectionBorder;
@@ -103,7 +103,7 @@ internal sealed class RegionSelectorWindow : Window
         Canvas.SetLeft(_hint, (Width - _hint.DesiredSize.Width) / 2);
     }
 
-    public Rectangle? Select()
+    public System.Drawing.Rectangle? Select()
     {
         ShowDialog();
         return _result;
@@ -136,7 +136,7 @@ internal sealed class RegionSelectorWindow : Window
         {
             // Near-click → full screen of this monitor
             var b = _screen.Bounds;
-            _result = new Rectangle(b.X, b.Y, b.Width, b.Height);
+            _result = new System.Drawing.Rectangle(b.X, b.Y, b.Width, b.Height);
         }
         else
         {
@@ -190,13 +190,13 @@ internal sealed class RegionSelectorWindow : Window
         return new Rect(x, y, w, h);
     }
 
-    private Rectangle ToPhysical(Rect r)
+    private System.Drawing.Rectangle ToPhysical(Rect r)
     {
         int x = (int)Math.Round(_screen.Bounds.Left + r.X * _scale);
         int y = (int)Math.Round(_screen.Bounds.Top + r.Y * _scale);
         int w = (int)Math.Round(r.Width * _scale);
         int h = (int)Math.Round(r.Height * _scale);
-        return new Rectangle(x, y, Math.Max(1, w), Math.Max(1, h));
+        return new System.Drawing.Rectangle(x, y, Math.Max(1, w), Math.Max(1, h));
     }
 
     private static double GetDpi(Screen screen)
