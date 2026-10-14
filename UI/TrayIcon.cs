@@ -246,7 +246,7 @@ internal sealed class TrayIcon : IDisposable
                 new System.Windows.Media.Pen(Brushes.White, 1.5),
                 new Rect(20, 26, 24, 28), 4, 4);
             // Photo inner
-            dc.DrawRectangle(new SolidColorBrush(System.Drawing.Color.FromArgb(180, 255, 255, 255)), null,
+            dc.DrawRectangle(new SolidColorBrush(System.Windows.Media.Color.FromArgb(180, 255, 255, 255)), null,
                 new Rect(24, 30, 16, 14));
             // A little "mountain" in the photo
             var mountain = new StreamGeometry();
