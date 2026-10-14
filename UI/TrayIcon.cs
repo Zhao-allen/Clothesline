@@ -72,22 +72,6 @@ internal sealed class TrayIcon : IDisposable
         screenshot.Click += (_, _) => App.Instance.TakeScreenshot();
         menu.Items.Add(screenshot);
 
-        // Screenshot mode: full screen or region selection.
-        var shotMode = new ToolStripMenuItem(I18n.Get("ScreenshotMode"));
-        var fullScreen = new ToolStripMenuItem(I18n.Get("ScreenshotModeFull"))
-        {
-            Checked = App.ScreenshotMode == App.ShotMode.FullScreen
-        };
-        fullScreen.Click += (_, _) => { App.ScreenshotMode = App.ShotMode.FullScreen; Rebuild(); };
-        var region = new ToolStripMenuItem(I18n.Get("ScreenshotModeRegion"))
-        {
-            Checked = App.ScreenshotMode == App.ShotMode.Region
-        };
-        region.Click += (_, _) => { App.ScreenshotMode = App.ShotMode.Region; Rebuild(); };
-        shotMode.DropDownItems.Add(fullScreen);
-        shotMode.DropDownItems.Add(region);
-        menu.Items.Add(shotMode);
-
         var clear = new ToolStripMenuItem(I18n.Get("TakeEverythingDown"));
         clear.Click += (_, _) => _line.Clear();
         menu.Items.Add(clear);

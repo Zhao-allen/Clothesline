@@ -41,14 +41,6 @@ internal partial class App : Application
         set => Settings.Default.SetStringList("extraFolders", value);
     }
 
-    public enum ShotMode { FullScreen, Region }
-
-    public static ShotMode ScreenshotMode
-    {
-        get => Enum.TryParse<ShotMode>(Settings.Default.GetString("screenshotMode"), out var m) ? m : ShotMode.Region;
-        set => Settings.Default.SetString("screenshotMode", value.ToString());
-    }
-
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -151,8 +143,8 @@ internal partial class App : Application
     }
 
     /// <summary>
-    /// Capture the screen (full monitor or a user-selected region) and hang it
-    /// on the line. Triggered by Win+Alt+S or the tray menu.
+    /// Capture a user-selected region and hang it on the line. Triggered by
+    /// Win+Alt+S or the tray menu.
     /// </summary>
     public void TakeScreenshot()
     {
@@ -174,19 +166,12 @@ internal partial class App : Application
             _window.Opacity = 0;
             try
             {
-                if (ScreenshotMode == ShotMode.Region)
+                var screen = LineWindow.ScreenUnderPointer();
+                if (screen is not null)
                 {
-                    var screen = LineWindow.ScreenUnderPointer();
-                    if (screen is not null)
-                    {
-                        var selector = new RegionSelectorWindow(screen);
-                        var rect = selector.Select();
-                        if (rect.HasValue) path = ScreenCapture.CaptureRect(rect.Value);
-                    }
-                }
-                else
-                {
-                    path = ScreenCapture.CaptureScreenUnderPointer();
+                    var selector = new RegionSelectorWindow(screen);
+                    var rect = selector.Select();
+                    if (rect.HasValue) path = ScreenCapture.CaptureRect(rect.Value);
                 }
             }
             finally

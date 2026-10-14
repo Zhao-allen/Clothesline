@@ -8,7 +8,6 @@ using Clothesline.Services;
 
 using WpfCursors = System.Windows.Input.Cursors;
 using WpfSize = System.Windows.Size;
-
 using WpfPath = System.Windows.Shapes.Path;
 using WpfRectangle = System.Windows.Shapes.Rectangle;
 using WpfMouseEventArgs = System.Windows.Input.MouseEventArgs;
@@ -17,10 +16,8 @@ using WpfKeyEventArgs = System.Windows.Input.KeyEventArgs;
 namespace Clothesline.UI;
 
 /// <summary>
-/// Full-screen overlay for drag-selecting a screenshot region.
-/// The capture rectangle is derived from WPF's screen-coordinate transform,
-/// rather than from an assumed monitor scale. This keeps it correct on mixed
-/// DPI and multi-monitor desktops.
+/// Full-screen overlay for drag-selecting a screenshot region. The capture
+/// rectangle is derived from the overlay's actual screen coordinates.
 /// </summary>
 internal sealed class RegionSelectorWindow : Window
 {
@@ -28,7 +25,6 @@ internal sealed class RegionSelectorWindow : Window
     private readonly double _scale;
     private Point? _startPoint;
     private System.Drawing.Rectangle? _result;
-
     private readonly WpfPath _dimPath;
     private readonly WpfRectangle _selectionBorder;
     private readonly TextBlock _hint;
@@ -58,7 +54,6 @@ internal sealed class RegionSelectorWindow : Window
 
         var canvas = new Canvas { Background = Brushes.Transparent };
         Content = canvas;
-
         _dimPath = new WpfPath
         {
             Fill = new SolidColorBrush(Color.FromArgb(100, 0, 0, 0)),
@@ -127,29 +122,27 @@ internal sealed class RegionSelectorWindow : Window
     private void OnMove(object sender, WpfMouseEventArgs e)
     {
         if (_startPoint is null) return;
-        var current = e.GetPosition(this);
-        UpdateSelection(_startPoint.Value, current);
+        UpdateSelection(_startPoint.Value, e.GetPosition(this));
     }
 
     private void OnUp(object sender, MouseButtonEventArgs e)
     {
         if (_startPoint is null) return;
-        var current = e.GetPosition(this);
-        var rect = DipRect(_startPoint.Value, current);
+        var rect = DipRect(_startPoint.Value, e.GetPosition(this));
         ReleaseMouseCapture();
+        _startPoint = null;
 
+        // This capture mode is always user-defined: a click does not fall back
+        // to a full-screen screenshot.
         if (rect.Width < 8 || rect.Height < 8)
         {
-            // Near-click → full screen of this monitor
-            var b = _screen.Bounds;
-            _result = new System.Drawing.Rectangle(b.X, b.Y, b.Width, b.Height);
-        }
-        else
-        {
-            _result = ToPhysical(rect);
+            _selectionBorder.Visibility = Visibility.Collapsed;
+            _sizeLabel.Visibility = Visibility.Collapsed;
+            _hint.Visibility = Visibility.Visible;
+            return;
         }
 
-        // Hide immediately so BitBlt does not capture the overlay
+        _result = ToScreenRect(rect);
         Opacity = 0;
         Hide();
         DialogResult = true;
@@ -157,17 +150,14 @@ internal sealed class RegionSelectorWindow : Window
 
     private void OnKey(object sender, WpfKeyEventArgs e)
     {
-        if (e.Key == Key.Escape)
-        {
-            _result = null;
-            DialogResult = false;
-        }
+        if (e.Key != Key.Escape) return;
+        _result = null;
+        DialogResult = false;
     }
 
     private void UpdateSelection(Point a, Point b)
     {
         var r = DipRect(a, b);
-
         var group = new GeometryGroup { FillRule = FillRule.EvenOdd };
         group.Children.Add(new RectangleGeometry(new Rect(0, 0, Width, Height)));
         group.Children.Add(new RectangleGeometry(r));
@@ -178,8 +168,6 @@ internal sealed class RegionSelectorWindow : Window
         _selectionBorder.Width = r.Width;
         _selectionBorder.Height = r.Height;
 
-        // PointToScreen accounts for the DPI of the actual overlay window,
-        // which is more reliable than multiplying by a monitor-wide scale.
         var screenRect = ToScreenRect(r);
         _sizeLabel.Text = $"{screenRect.Width} × {screenRect.Height}";
         _sizeLabel.Measure(new WpfSize(double.PositiveInfinity, double.PositiveInfinity));
@@ -191,12 +179,8 @@ internal sealed class RegionSelectorWindow : Window
     {
         double x = Math.Min(a.X, b.X);
         double y = Math.Min(a.Y, b.Y);
-        double w = Math.Abs(a.X - b.X);
-        double h = Math.Abs(a.Y - b.Y);
-        return new Rect(x, y, w, h);
+        return new Rect(x, y, Math.Abs(a.X - b.X), Math.Abs(a.Y - b.Y));
     }
-
-    private System.Drawing.Rectangle ToPhysical(Rect r) => ToScreenRect(r);
 
     private System.Drawing.Rectangle ToScreenRect(Rect r)
     {
@@ -219,11 +203,11 @@ internal sealed class RegionSelectorWindow : Window
                 X = screen.Bounds.Left + screen.Bounds.Width / 2,
                 Y = screen.Bounds.Top + screen.Bounds.Height / 2
             };
-            var hmon = NativeMethods.MonitorFromPoint(pt, NativeMethods.MONITOR_DEFAULTTONEAREST);
-            if (hmon != IntPtr.Zero)
+            var monitor = NativeMethods.MonitorFromPoint(pt, NativeMethods.MONITOR_DEFAULTTONEAREST);
+            if (monitor != IntPtr.Zero)
             {
-                NativeMethods.GetDpiForMonitor(hmon, NativeMethods.MDT_EFFECTIVE_DPI, out uint dx, out _);
-                if (dx > 0) return dx;
+                NativeMethods.GetDpiForMonitor(monitor, NativeMethods.MDT_EFFECTIVE_DPI, out uint dpi, out _);
+                if (dpi > 0) return dpi;
             }
         }
         catch { }
