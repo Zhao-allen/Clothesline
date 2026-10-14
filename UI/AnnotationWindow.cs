@@ -8,6 +8,11 @@ using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using Clothesline.Services;
 
+
+using WpfMouseEventArgs = System.Windows.Input.MouseEventArgs;
+using WpfKeyEventArgs = System.Windows.Input.KeyEventArgs;
+using WpfTextBox = System.Windows.Controls.TextBox;
+
 namespace Clothesline.UI;
 
 /// <summary>
@@ -192,7 +197,7 @@ internal sealed class AnnotationWindow : Window
 
         if (_currentTool == Tool.Text)
         {
-            var tb = new TextBox
+            var tb = new WpfTextBox
             {
                 Background = Brushes.Transparent,
                 Foreground = new SolidColorBrush(_currentColor),
@@ -207,7 +212,7 @@ internal sealed class AnnotationWindow : Window
             Canvas.SetTop(tb, _shapeStart.Y);
             _shapeCanvas.Children.Add(tb);
             tb.Focus();
-            tb.LostFocus += (_, _) => CommitTextBox(tb);
+            tb.LostFocus += (_, _) => CommitWpfTextBox(tb);
             e.Handled = true;
             return;
         }
@@ -220,7 +225,7 @@ internal sealed class AnnotationWindow : Window
         e.Handled = true;
     }
 
-    private void OnShapeMove(object sender, MouseEventArgs e)
+    private void OnShapeMove(object sender, WpfMouseEventArgs e)
     {
         if (_previewShape == null || !_shapeCanvas.IsMouseCaptured) return;
         var pos = e.GetPosition(_shapeCanvas);
@@ -287,7 +292,7 @@ internal sealed class AnnotationWindow : Window
         RedrawShapes();
     }
 
-    private void CommitTextBox(TextBox tb)
+    private void CommitWpfTextBox(WpfTextBox tb)
     {
         var text = tb.Text?.Trim();
         if (!string.IsNullOrEmpty(text))
@@ -369,7 +374,7 @@ internal sealed class AnnotationWindow : Window
         _shapeCanvas.Children.Clear();
     }
 
-    private void OnKeyDown(object sender, KeyEventArgs e)
+    private void OnKeyDown(object sender, WpfKeyEventArgs e)
     {
         if (e.Key == Key.Escape) Close();
         if (e.Key == Key.S && (Keyboard.Modifiers & ModifierKeys.Control) != 0) Save();
