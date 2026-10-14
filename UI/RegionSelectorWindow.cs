@@ -2,7 +2,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Forms;
+using System.Windows.Shapes;
 using System.Drawing;
 using Clothesline.Services;
 using WpfPath = System.Windows.Shapes.Path;
@@ -13,10 +13,8 @@ using KeyEventArgs = System.Windows.Input.KeyEventArgs;
 namespace Clothesline.UI;
 
 /// <summary>
-/// Full-screen overlay that lets the user drag-select a rectangular region for
-/// a screenshot. The area outside the selection is dimmed; the selected area
-/// shows the desktop untouched. Returns the chosen rectangle in physical
-/// screen pixels, or null if the user cancels (Esc / click without dragging).
+/// Full-screen overlay for drag-selecting a screenshot region.
+/// Improved DPI handling, live size display, and reliable hide-before-capture.
 /// </summary>
 internal sealed class RegionSelectorWindow : Window
 {
@@ -28,6 +26,7 @@ internal sealed class RegionSelectorWindow : Window
     private readonly WpfPath _dimPath;
     private readonly WpfRectangle _selectionBorder;
     private readonly TextBlock _hint;
+    private readonly TextBlock _sizeLabel;
 
     public RegionSelectorWindow(Screen screen)
     {
@@ -41,8 +40,9 @@ internal sealed class RegionSelectorWindow : Window
         ShowInTaskbar = false;
         ShowActivated = true;
         Cursor = Cursors.Cross;
-        ResizeMode = NoResize;
+        ResizeMode = ResizeMode.NoResize;
         SnapsToDevicePixels = true;
+        UseLayoutRounding = true;
 
         var bounds = screen.Bounds;
         Left = bounds.Left / _scale;
@@ -53,15 +53,13 @@ internal sealed class RegionSelectorWindow : Window
         var canvas = new Canvas { Background = Brushes.Transparent };
         Content = canvas;
 
-        // Dim layer with a rectangular hole where the selection is.
         _dimPath = new WpfPath
         {
-            Fill = new SolidColorBrush(Color.FromArgb(120, 0, 0, 0)),
+            Fill = new SolidColorBrush(Color.FromArgb(100, 0, 0, 0)),
             IsHitTestVisible = false
         };
         canvas.Children.Add(_dimPath);
 
-        // 1px white border around the selection.
         _selectionBorder = new WpfRectangle
         {
             Stroke = Brushes.White,
@@ -71,17 +69,26 @@ internal sealed class RegionSelectorWindow : Window
         };
         canvas.Children.Add(_selectionBorder);
 
-        // Hint text at top-center.
         _hint = new TextBlock
         {
-            Text = I18n.Get("DragToSelect"),
+            Text = I18n.Culture.Name.StartsWith("zh") ? "拖拽选择区域" : I18n.Get("DragToSelect"),
             Foreground = Brushes.White,
             FontSize = 14,
-            Background = new SolidColorBrush(Color.FromArgb(160, 0, 0, 0)),
+            Background = new SolidColorBrush(Color.FromArgb(180, 0, 0, 0)),
             Padding = new Thickness(14, 6, 14, 6)
         };
         canvas.Children.Add(_hint);
-        Canvas.SetTop(_hint, 16);
+        Canvas.SetTop(_hint, 20);
+
+        _sizeLabel = new TextBlock
+        {
+            Foreground = Brushes.White,
+            FontSize = 12,
+            Background = new SolidColorBrush(Color.FromArgb(200, 0, 0, 0)),
+            Padding = new Thickness(8, 3, 8, 3),
+            Visibility = Visibility.Collapsed
+        };
+        canvas.Children.Add(_sizeLabel);
 
         MouseLeftButtonDown += OnDown;
         MouseMove += OnMove;
@@ -92,11 +99,10 @@ internal sealed class RegionSelectorWindow : Window
 
     private void UpdateHintPosition()
     {
-        _hint.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+        _hint.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         Canvas.SetLeft(_hint, (Width - _hint.DesiredSize.Width) / 2);
     }
 
-    /// <summary>Show the overlay and block until the user picks a region or cancels.</summary>
     public Rectangle? Select()
     {
         ShowDialog();
@@ -108,6 +114,7 @@ internal sealed class RegionSelectorWindow : Window
         _startPoint = e.GetPosition(this);
         _selectionBorder.Visibility = Visibility.Visible;
         _hint.Visibility = Visibility.Collapsed;
+        _sizeLabel.Visibility = Visibility.Visible;
         CaptureMouse();
     }
 
@@ -125,9 +132,9 @@ internal sealed class RegionSelectorWindow : Window
         var rect = DipRect(_startPoint.Value, current);
         ReleaseMouseCapture();
 
-        if (rect.Width < 5 || rect.Height < 5)
+        if (rect.Width < 8 || rect.Height < 8)
         {
-            // Treat a near-click as "capture the whole screen".
+            // Near-click → full screen of this monitor
             var b = _screen.Bounds;
             _result = new Rectangle(b.X, b.Y, b.Width, b.Height);
         }
@@ -136,7 +143,8 @@ internal sealed class RegionSelectorWindow : Window
             _result = ToPhysical(rect);
         }
 
-        // Hide the overlay before BitBlt so it isn't captured.
+        // Hide immediately so BitBlt does not capture the overlay
+        Opacity = 0;
         Hide();
         DialogResult = true;
     }
@@ -154,7 +162,6 @@ internal sealed class RegionSelectorWindow : Window
     {
         var r = DipRect(a, b);
 
-        // GeometryGroup with EvenOdd fill: full-screen rect minus selection.
         var group = new GeometryGroup { FillRule = FillRule.EvenOdd };
         group.Children.Add(new RectangleGeometry(new Rect(0, 0, Width, Height)));
         group.Children.Add(new RectangleGeometry(r));
@@ -164,6 +171,14 @@ internal sealed class RegionSelectorWindow : Window
         Canvas.SetTop(_selectionBorder, r.Y);
         _selectionBorder.Width = r.Width;
         _selectionBorder.Height = r.Height;
+
+        // Live size in physical pixels
+        int pw = (int)Math.Round(r.Width * _scale);
+        int ph = (int)Math.Round(r.Height * _scale);
+        _sizeLabel.Text = $"{pw} × {ph}";
+        _sizeLabel.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        Canvas.SetLeft(_sizeLabel, r.X + r.Width - _sizeLabel.DesiredSize.Width - 4);
+        Canvas.SetTop(_sizeLabel, r.Y + r.Height + 4);
     }
 
     private static Rect DipRect(Point a, Point b)
@@ -181,7 +196,7 @@ internal sealed class RegionSelectorWindow : Window
         int y = (int)Math.Round(_screen.Bounds.Top + r.Y * _scale);
         int w = (int)Math.Round(r.Width * _scale);
         int h = (int)Math.Round(r.Height * _scale);
-        return new Rectangle(x, y, w, h);
+        return new Rectangle(x, y, Math.Max(1, w), Math.Max(1, h));
     }
 
     private static double GetDpi(Screen screen)
@@ -190,8 +205,8 @@ internal sealed class RegionSelectorWindow : Window
         {
             var pt = new NativeMethods.POINT
             {
-                X = screen.Bounds.Left + 1,
-                Y = screen.Bounds.Top + 1
+                X = screen.Bounds.Left + screen.Bounds.Width / 2,
+                Y = screen.Bounds.Top + screen.Bounds.Height / 2
             };
             var hmon = NativeMethods.MonitorFromPoint(pt, NativeMethods.MONITOR_DEFAULTTONEAREST);
             if (hmon != IntPtr.Zero)
