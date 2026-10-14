@@ -9,6 +9,14 @@ using System.Windows.Shapes;
 using Clothesline.Services;
 
 
+
+
+using WpfOrientation = System.Windows.Controls.Orientation;
+using WpfComboBox = System.Windows.Controls.ComboBox;
+using WpfImage = System.Windows.Controls.Image;
+using WpfRectangle = System.Windows.Shapes.Rectangle;
+using WpfButton = System.Windows.Controls.Button;
+using WpfCursors = System.Windows.Input.Cursors;
 using WpfMouseEventArgs = System.Windows.Input.MouseEventArgs;
 using WpfKeyEventArgs = System.Windows.Input.KeyEventArgs;
 using WpfTextBox = System.Windows.Controls.TextBox;
@@ -75,7 +83,7 @@ internal sealed class AnnotationWindow : Window
         // Toolbar
         var toolbar = new StackPanel
         {
-            Orientation = Orientation.Horizontal,
+            Orientation = WpfOrientation.Horizontal,
             Background = new SolidColorBrush(Color.FromRgb(48, 48, 48)),
             Height = 50
         };
@@ -101,7 +109,7 @@ internal sealed class AnnotationWindow : Window
 
         var widthLabel = new TextBlock { Text = "粗细", Foreground = Brushes.White, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 4, 0) };
         toolbar.Children.Add(widthLabel);
-        var widthBox = new ComboBox { Width = 50, SelectedIndex = 1, VerticalAlignment = VerticalAlignment.Center };
+        var widthBox = new WpfComboBox { Width = 50, SelectedIndex = 1, VerticalAlignment = VerticalAlignment.Center };
         widthBox.Items.Add(2); widthBox.Items.Add(4); widthBox.Items.Add(6); widthBox.Items.Add(8);
         widthBox.SelectionChanged += (_, _) =>
         {
@@ -135,7 +143,7 @@ internal sealed class AnnotationWindow : Window
         };
         scroll.Content = container;
 
-        var img = new Image
+        var img = new WpfImage
         {
             Source = _original,
             Width = _original.PixelWidth,
@@ -218,7 +226,7 @@ internal sealed class AnnotationWindow : Window
         }
 
         _previewShape = _currentTool == Tool.Rectangle
-            ? new Rectangle { Stroke = new SolidColorBrush(_currentColor), StrokeThickness = _strokeWidth, Fill = Brushes.Transparent }
+            ? new WpfRectangle { Stroke = new SolidColorBrush(_currentColor), StrokeThickness = _strokeWidth, Fill = Brushes.Transparent }
             : new Line { Stroke = new SolidColorBrush(_currentColor), StrokeThickness = _strokeWidth, StrokeEndLineCap = PenLineCap.Triangle };
 
         _shapeCanvas.Children.Add(_previewShape);
@@ -230,7 +238,7 @@ internal sealed class AnnotationWindow : Window
         if (_previewShape == null || !_shapeCanvas.IsMouseCaptured) return;
         var pos = e.GetPosition(_shapeCanvas);
 
-        if (_previewShape is Rectangle rect)
+        if (_previewShape is WpfRectangle rect)
         {
             var x = Math.Min(_shapeStart.X, pos.X);
             var y = Math.Min(_shapeStart.Y, pos.Y);
@@ -270,7 +278,7 @@ internal sealed class AnnotationWindow : Window
                 });
             }
         }
-        else if (_previewShape is Rectangle)
+        else if (_previewShape is WpfRectangle)
         {
             var w = Math.Abs(pos.X - _shapeStart.X);
             var h = Math.Abs(pos.Y - _shapeStart.Y);
@@ -332,7 +340,7 @@ internal sealed class AnnotationWindow : Window
             }
             else
             {
-                var rect = new Rectangle
+                var rect = new WpfRectangle
                 {
                     Width = shape.End.X - shape.Start.X,
                     Height = shape.End.Y - shape.Start.Y,
@@ -382,7 +390,7 @@ internal sealed class AnnotationWindow : Window
 
     private void AddToolButton(StackPanel parent, string text, Action action)
     {
-        var btn = new Button
+        var btn = new WpfButton
         {
             Content = text,
             Margin = new Thickness(4, 8, 0, 8),
@@ -390,7 +398,7 @@ internal sealed class AnnotationWindow : Window
             Background = new SolidColorBrush(Color.FromRgb(68, 68, 68)),
             Foreground = Brushes.White,
             BorderThickness = new Thickness(0),
-            Cursor = Cursors.Hand
+            Cursor = WpfCursors.Hand
         };
         btn.Click += (_, _) => action();
         parent.Children.Add(btn);
@@ -398,7 +406,7 @@ internal sealed class AnnotationWindow : Window
 
     private void AddColorButton(StackPanel parent, Color color)
     {
-        var btn = new Button
+        var btn = new WpfButton
         {
             Width = 24,
             Height = 24,
@@ -406,7 +414,7 @@ internal sealed class AnnotationWindow : Window
             Background = new SolidColorBrush(color),
             BorderThickness = new Thickness(1),
             BorderBrush = Brushes.White,
-            Cursor = Cursors.Hand
+            Cursor = WpfCursors.Hand
         };
         btn.Click += (_, _) =>
         {
