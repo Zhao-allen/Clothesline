@@ -5,31 +5,41 @@ using System.Windows.Ink;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Shapes;
 using Clothesline.Services;
 
 namespace Clothesline.UI;
 
 /// <summary>
-/// Simple annotation window. Freehand ink over the screenshot (1:1 pixels).
-/// Save overwrites the original file and reloads the thumbnail.
+/// Annotation window with freehand, rectangle, arrow, and text tools.
+/// Saves over the original PNG and reloads the thumbnail.
 /// </summary>
 internal sealed class AnnotationWindow : Window
 {
     private readonly string _path;
     private readonly BitmapSource _original;
     private readonly InkCanvas _ink;
+    private readonly Canvas _shapeCanvas;
+    private readonly TextBox? _activeTextBox;
+
+    private enum Tool { Pen, Select, Erase, Rectangle, Arrow, Text }
+    private Tool _currentTool = Tool.Pen;
+    private Point _shapeStart;
+    private Shape? _previewShape;
+    private Color _currentColor = Colors.Red;
+    private double _strokeWidth = 4;
 
     public AnnotationWindow(string path)
     {
         _path = path;
         _original = LoadImage(path);
 
-        Title = "Annotate – Clothesline";
+        Title = "标注 – Clothesline";
         WindowStyle = WindowStyle.ToolWindow;
         ResizeMode = ResizeMode.CanResizeWithGrip;
         Background = new SolidColorBrush(Color.FromRgb(30, 30, 30));
         Width = Math.Min(1200, _original.PixelWidth + 60);
-        Height = Math.Min(900, _original.PixelHeight + 100);
+        Height = Math.Min(900, _original.PixelHeight + 120);
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
 
         var grid = new Grid();
@@ -42,24 +52,52 @@ internal sealed class AnnotationWindow : Window
         {
             Orientation = Orientation.Horizontal,
             Background = new SolidColorBrush(Color.FromRgb(48, 48, 48)),
-            Height = 46
+            Height = 50
         };
         Grid.SetRow(toolbar, 0);
         grid.Children.Add(toolbar);
 
-        AddToolButton(toolbar, "Pen", () => _ink.EditingMode = InkCanvasEditingMode.Ink);
-        AddToolButton(toolbar, "Select", () => _ink.EditingMode = InkCanvasEditingMode.Select);
-        AddToolButton(toolbar, "Erase", () => _ink.EditingMode = InkCanvasEditingMode.EraseByPoint);
+        AddToolButton(toolbar, "画笔", () => SetTool(Tool.Pen));
+        AddToolButton(toolbar, "矩形", () => SetTool(Tool.Rectangle));
+        AddToolButton(toolbar, "箭头", () => SetTool(Tool.Arrow));
+        AddToolButton(toolbar, "文字", () => SetTool(Tool.Text));
+        AddToolButton(toolbar, "选择", () => SetTool(Tool.Select));
+        AddToolButton(toolbar, "橡皮", () => SetTool(Tool.Erase));
+
+        // Separator
+        toolbar.Children.Add(new Border { Width = 1, Background = Brushes.Gray, Margin = new Thickness(8, 8, 8, 8) });
+
         AddColorButton(toolbar, Colors.Red);
         AddColorButton(toolbar, Colors.Orange);
         AddColorButton(toolbar, Colors.Yellow);
         AddColorButton(toolbar, Colors.LimeGreen);
         AddColorButton(toolbar, Colors.DeepSkyBlue);
         AddColorButton(toolbar, Colors.White);
-        AddToolButton(toolbar, "Save", Save);
-        AddToolButton(toolbar, "Cancel", Close);
+        AddColorButton(toolbar, Colors.Black);
 
-        // Scrollable 1:1 viewer so ink coordinates match pixels
+        // Width selector
+        var widthLabel = new TextBlock { Text = "粗细", Foreground = Brushes.White, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 4, 0) };
+        toolbar.Children.Add(widthLabel);
+        var widthBox = new ComboBox { Width = 50, SelectedIndex = 1, VerticalAlignment = VerticalAlignment.Center };
+        widthBox.Items.Add(2);
+        widthBox.Items.Add(4);
+        widthBox.Items.Add(6);
+        widthBox.Items.Add(8);
+        widthBox.SelectionChanged += (_, _) =>
+        {
+            if (widthBox.SelectedItem is int w)
+            {
+                _strokeWidth = w;
+                _ink.DefaultDrawingAttributes.Width = w;
+                _ink.DefaultDrawingAttributes.Height = w;
+            }
+        };
+        toolbar.Children.Add(widthBox);
+
+        AddToolButton(toolbar, "保存", Save);
+        AddToolButton(toolbar, "取消", Close);
+
+        // Viewer
         var scroll = new ScrollViewer
         {
             HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
@@ -85,6 +123,14 @@ internal sealed class AnnotationWindow : Window
         };
         container.Children.Add(img);
 
+        _shapeCanvas = new Canvas
+        {
+            Width = _original.PixelWidth,
+            Height = _original.PixelHeight,
+            Background = Brushes.Transparent
+        };
+        container.Children.Add(_shapeCanvas);
+
         _ink = new InkCanvas
         {
             Width = _original.PixelWidth,
@@ -94,18 +140,103 @@ internal sealed class AnnotationWindow : Window
         };
         _ink.DefaultDrawingAttributes = new DrawingAttributes
         {
-            Color = Colors.Red,
-            Width = 4,
-            Height = 4,
+            Color = _currentColor,
+            Width = _strokeWidth,
+            Height = _strokeWidth,
             FitToCurve = true
         };
         container.Children.Add(_ink);
 
-        KeyDown += (_, e) =>
+        // Shape drawing events on the canvas
+        _shapeCanvas.MouseLeftButtonDown += OnShapeDown;
+        _shapeCanvas.MouseMove += OnShapeMove;
+        _shapeCanvas.MouseLeftButtonUp += OnShapeUp;
+
+        KeyDown += OnKeyDown;
+    }
+
+    private void SetTool(Tool tool)
+    {
+        _currentTool = tool;
+        _ink.EditingMode = tool switch
         {
-            if (e.Key == Key.Escape) Close();
-            if (e.Key == Key.S && (Keyboard.Modifiers & ModifierKeys.Control) != 0) Save();
+            Tool.Pen => InkCanvasEditingMode.Ink,
+            Tool.Select => InkCanvasEditingMode.Select,
+            Tool.Erase => InkCanvasEditingMode.EraseByPoint,
+            _ => InkCanvasEditingMode.None
         };
+        _shapeCanvas.IsHitTestVisible = tool is Tool.Rectangle or Tool.Arrow or Tool.Text;
+        _ink.IsHitTestVisible = tool is not (Tool.Rectangle or Tool.Arrow or Tool.Text);
+    }
+
+    private void OnShapeDown(object sender, MouseButtonEventArgs e)
+    {
+        if (_currentTool is not (Tool.Rectangle or Tool.Arrow or Tool.Text)) return;
+        _shapeStart = e.GetPosition(_shapeCanvas);
+        _shapeCanvas.CaptureMouse();
+
+        if (_currentTool == Tool.Text)
+        {
+            var tb = new TextBox
+            {
+                Background = Brushes.Transparent,
+                Foreground = new SolidColorBrush(_currentColor),
+                BorderThickness = new Thickness(1),
+                BorderBrush = new SolidColorBrush(_currentColor),
+                FontSize = 18,
+                Padding = new Thickness(2),
+                AcceptsReturn = true
+            };
+            Canvas.SetLeft(tb, _shapeStart.X);
+            Canvas.SetTop(tb, _shapeStart.Y);
+            _shapeCanvas.Children.Add(tb);
+            tb.Focus();
+            tb.LostFocus += (_, _) => { if (string.IsNullOrWhiteSpace(tb.Text)) _shapeCanvas.Children.Remove(tb); };
+            e.Handled = true;
+            return;
+        }
+
+        _previewShape = _currentTool == Tool.Rectangle
+            ? new Rectangle { Stroke = new SolidColorBrush(_currentColor), StrokeThickness = _strokeWidth, Fill = Brushes.Transparent }
+            : new Line { Stroke = new SolidColorBrush(_currentColor), StrokeThickness = _strokeWidth, StrokeEndLineCap = PenLineCap.Triangle, StrokeStartLineCap = PenLineCap.Round };
+
+        _shapeCanvas.Children.Add(_previewShape);
+        e.Handled = true;
+    }
+
+    private void OnShapeMove(object sender, MouseEventArgs e)
+    {
+        if (_previewShape == null || !_shapeCanvas.IsMouseCaptured) return;
+        var pos = e.GetPosition(_shapeCanvas);
+
+        if (_previewShape is Rectangle rect)
+        {
+            var x = Math.Min(_shapeStart.X, pos.X);
+            var y = Math.Min(_shapeStart.Y, pos.Y);
+            rect.Width = Math.Abs(pos.X - _shapeStart.X);
+            rect.Height = Math.Abs(pos.Y - _shapeStart.Y);
+            Canvas.SetLeft(rect, x);
+            Canvas.SetTop(rect, y);
+        }
+        else if (_previewShape is Line line)
+        {
+            line.X1 = _shapeStart.X;
+            line.Y1 = _shapeStart.Y;
+            line.X2 = pos.X;
+            line.Y2 = pos.Y;
+        }
+    }
+
+    private void OnShapeUp(object sender, MouseButtonEventArgs e)
+    {
+        _shapeCanvas.ReleaseMouseCapture();
+        _previewShape = null;
+    }
+
+    private void OnKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Escape) Close();
+        if (e.Key == Key.S && (Keyboard.Modifiers & ModifierKeys.Control) != 0) Save();
     }
 
     private void AddToolButton(StackPanel parent, string text, Action action)
@@ -113,8 +244,8 @@ internal sealed class AnnotationWindow : Window
         var btn = new Button
         {
             Content = text,
-            Margin = new Thickness(6, 6, 0, 6),
-            Padding = new Thickness(14, 4, 14, 4),
+            Margin = new Thickness(4, 8, 0, 8),
+            Padding = new Thickness(12, 4, 12, 4),
             Background = new SolidColorBrush(Color.FromRgb(68, 68, 68)),
             Foreground = Brushes.White,
             BorderThickness = new Thickness(0),
@@ -128,9 +259,9 @@ internal sealed class AnnotationWindow : Window
     {
         var btn = new Button
         {
-            Width = 26,
-            Height = 26,
-            Margin = new Thickness(4, 10, 0, 10),
+            Width = 24,
+            Height = 24,
+            Margin = new Thickness(3, 13, 0, 13),
             Background = new SolidColorBrush(color),
             BorderThickness = new Thickness(1),
             BorderBrush = Brushes.White,
@@ -138,8 +269,9 @@ internal sealed class AnnotationWindow : Window
         };
         btn.Click += (_, _) =>
         {
+            _currentColor = color;
             _ink.DefaultDrawingAttributes.Color = color;
-            _ink.EditingMode = InkCanvasEditingMode.Ink;
+            SetTool(Tool.Pen);
         };
         parent.Children.Add(btn);
     }
@@ -167,6 +299,44 @@ internal sealed class AnnotationWindow : Window
             using (var dc = dv.RenderOpen())
             {
                 dc.DrawImage(_original, new Rect(0, 0, w, h));
+
+                // Render shapes
+                foreach (UIElement child in _shapeCanvas.Children)
+                {
+                    if (child is Shape shape)
+                    {
+                        var visual = new DrawingVisual();
+                        using (var sdc = visual.RenderOpen())
+                        {
+                            if (shape is Rectangle r)
+                            {
+                                var left = Canvas.GetLeft(r);
+                                var top = Canvas.GetTop(r);
+                                sdc.DrawRectangle(null, new Pen(shape.Stroke, shape.StrokeThickness), new Rect(left, top, r.Width, r.Height));
+                            }
+                            else if (shape is Line l)
+                            {
+                                sdc.DrawLine(new Pen(shape.Stroke, shape.StrokeThickness) { EndLineCap = PenLineCap.Triangle, StartLineCap = PenLineCap.Round },
+                                    new Point(l.X1, l.Y1), new Point(l.X2, l.Y2));
+                            }
+                        }
+                        visual.Drawing.Freeze();
+                        dc.DrawDrawing(visual.Drawing);
+                    }
+                    else if (child is TextBox tb && !string.IsNullOrWhiteSpace(tb.Text))
+                    {
+                        var ft = new FormattedText(
+                            tb.Text,
+                            System.Globalization.CultureInfo.CurrentCulture,
+                            FlowDirection.LeftToRight,
+                            new Typeface(tb.FontFamily, tb.FontStyle, tb.FontWeight, tb.FontStretch),
+                            tb.FontSize,
+                            tb.Foreground,
+                            VisualTreeHelper.GetDpi(this).PixelsPerDip);
+                        dc.DrawText(ft, new Point(Canvas.GetLeft(tb), Canvas.GetTop(tb)));
+                    }
+                }
+
                 _ink.Strokes.Draw(dc);
             }
             rtb.Render(dv);
@@ -180,7 +350,7 @@ internal sealed class AnnotationWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Save failed:\n{ex.Message}", "Clothesline", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show($"保存失败:\n{ex.Message}", "Clothesline", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 }
