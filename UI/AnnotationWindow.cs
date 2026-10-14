@@ -219,7 +219,7 @@ internal sealed class AnnotationWindow : Window
         e.Handled = true;
     }
 
-    private void OnShapeMove(object sender, WpfWpfMouseEventArgs e)
+    private void OnShapeMove(object sender, WpfMouseEventArgs e)
     {
         if (_previewShape == null || !_shapeCanvas.IsMouseCaptured) return;
         var pos = e.GetPosition(_shapeCanvas);
@@ -248,7 +248,7 @@ internal sealed class AnnotationWindow : Window
         _previewShape = null;
     }
 
-    private void OnKeyDown(object sender, WpfWpfKeyEventArgs e)
+    private void OnKeyDown(object sender, WpfKeyEventArgs e)
     {
         if (e.Key == Key.Escape) Close();
         if (e.Key == Key.S && (Keyboard.Modifiers & ModifierKeys.Control) != 0) Save();
