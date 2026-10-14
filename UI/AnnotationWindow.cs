@@ -21,6 +21,9 @@ using WpfMouseEventArgs = System.Windows.Input.MouseEventArgs;
 using WpfKeyEventArgs = System.Windows.Input.KeyEventArgs;
 using WpfTextBox = System.Windows.Controls.TextBox;
 
+using WpfPen = System.Windows.Media.Pen;
+using WpfMessageBox = System.Windows.MessageBox;
+
 namespace Clothesline.UI;
 
 /// <summary>
@@ -452,7 +455,7 @@ internal sealed class AnnotationWindow : Window
                 // Draw shapes from model
                 foreach (var shape in _shapes)
                 {
-                    var pen = new Pen(new SolidColorBrush(shape.Color), shape.Thickness);
+                    var pen = new WpfPen(new SolidColorBrush(shape.Color), shape.Thickness);
                     if (shape.IsArrow)
                     {
                         pen.EndLineCap = PenLineCap.Triangle;
@@ -471,7 +474,7 @@ internal sealed class AnnotationWindow : Window
                     var ft = new FormattedText(
                         txt.Text,
                         System.Globalization.CultureInfo.CurrentCulture,
-                        FlowDirection.LeftToRight,
+                        System.Windows.FlowDirection.LeftToRight,
                         new Typeface("Segoe UI"),
                         txt.FontSize,
                         new SolidColorBrush(txt.Color),
@@ -492,7 +495,7 @@ internal sealed class AnnotationWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"保存失败:\n{ex.Message}", "Clothesline", MessageBoxButton.OK, MessageBoxImage.Warning);
+            WpfMessageBox.Show($"保存失败:\n{ex.Message}", "Clothesline", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 }
