@@ -8,6 +8,11 @@ using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using Clothesline.Services;
 
+
+using WpfMouseEventArgs = System.Windows.Input.MouseEventArgs;
+using WpfKeyEventArgs = System.Windows.Input.KeyEventArgs;
+using WpfTextBox = System.Windows.Controls.TextBox;
+
 namespace Clothesline.UI;
 
 /// <summary>
@@ -20,7 +25,7 @@ internal sealed class AnnotationWindow : Window
     private readonly BitmapSource _original;
     private readonly InkCanvas _ink;
     private readonly Canvas _shapeCanvas;
-    private readonly TextBox? _activeTextBox;
+    private readonly WpfTextBox? _activeTextBox;
 
     private enum Tool { Pen, Select, Erase, Rectangle, Arrow, Text }
     private Tool _currentTool = Tool.Pen;
@@ -177,7 +182,7 @@ internal sealed class AnnotationWindow : Window
 
         if (_currentTool == Tool.Text)
         {
-            var tb = new TextBox
+            var tb = new WpfTextBox
             {
                 Background = Brushes.Transparent,
                 Foreground = new SolidColorBrush(_currentColor),
@@ -204,7 +209,7 @@ internal sealed class AnnotationWindow : Window
         e.Handled = true;
     }
 
-    private void OnShapeMove(object sender, MouseEventArgs e)
+    private void OnShapeMove(object sender, WpfMouseEventArgs e)
     {
         if (_previewShape == null || !_shapeCanvas.IsMouseCaptured) return;
         var pos = e.GetPosition(_shapeCanvas);
@@ -233,7 +238,7 @@ internal sealed class AnnotationWindow : Window
         _previewShape = null;
     }
 
-    private void OnKeyDown(object sender, KeyEventArgs e)
+    private void OnKeyDown(object sender, WpfKeyEventArgs e)
     {
         if (e.Key == Key.Escape) Close();
         if (e.Key == Key.S && (Keyboard.Modifiers & ModifierKeys.Control) != 0) Save();
@@ -323,7 +328,7 @@ internal sealed class AnnotationWindow : Window
                         visual.Drawing.Freeze();
                         dc.DrawDrawing(visual.Drawing);
                     }
-                    else if (child is TextBox tb && !string.IsNullOrWhiteSpace(tb.Text))
+                    else if (child is WpfTextBox tb && !string.IsNullOrWhiteSpace(tb.Text))
                     {
                         var ft = new FormattedText(
                             tb.Text,
