@@ -20,6 +20,7 @@ internal partial class App : Application
     private ClipboardWatcher? _clipboardWatcher;
     private HotKey? _hotKey;
     private HotKey? _screenshotHotKey;
+    private bool _isTakingScreenshot;
 
     public static bool OpensFromMenuBar
     {
@@ -155,6 +156,12 @@ internal partial class App : Application
     /// </summary>
     public void TakeScreenshot()
     {
+        // A modal region picker runs a nested message loop, so the global
+        // shortcut can be received again before the first pick finishes.
+        // Ignore those duplicate requests instead of creating stacked pickers.
+        if (_isTakingScreenshot) return;
+        _isTakingScreenshot = true;
+
         if (_window.IsRevealed) _window.SetRevealed(false);
 
         Dispatcher.InvokeAsync(async () =>
@@ -185,6 +192,7 @@ internal partial class App : Application
             finally
             {
                 _window.Opacity = prevOpacity;
+                _isTakingScreenshot = false;
             }
 
             if (path is not null)

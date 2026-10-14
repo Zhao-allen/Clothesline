@@ -18,7 +18,9 @@ namespace Clothesline.UI;
 
 /// <summary>
 /// Full-screen overlay for drag-selecting a screenshot region.
-/// Improved DPI handling, live size display, and reliable hide-before-capture.
+/// The capture rectangle is derived from WPF's screen-coordinate transform,
+/// rather than from an assumed monitor scale. This keeps it correct on mixed
+/// DPI and multi-monitor desktops.
 /// </summary>
 internal sealed class RegionSelectorWindow : Window
 {
@@ -176,10 +178,10 @@ internal sealed class RegionSelectorWindow : Window
         _selectionBorder.Width = r.Width;
         _selectionBorder.Height = r.Height;
 
-        // Live size in physical pixels
-        int pw = (int)Math.Round(r.Width * _scale);
-        int ph = (int)Math.Round(r.Height * _scale);
-        _sizeLabel.Text = $"{pw} × {ph}";
+        // PointToScreen accounts for the DPI of the actual overlay window,
+        // which is more reliable than multiplying by a monitor-wide scale.
+        var screenRect = ToScreenRect(r);
+        _sizeLabel.Text = $"{screenRect.Width} × {screenRect.Height}";
         _sizeLabel.Measure(new WpfSize(double.PositiveInfinity, double.PositiveInfinity));
         Canvas.SetLeft(_sizeLabel, r.X + r.Width - _sizeLabel.DesiredSize.Width - 4);
         Canvas.SetTop(_sizeLabel, r.Y + r.Height + 4);
@@ -194,13 +196,18 @@ internal sealed class RegionSelectorWindow : Window
         return new Rect(x, y, w, h);
     }
 
-    private System.Drawing.Rectangle ToPhysical(Rect r)
+    private System.Drawing.Rectangle ToPhysical(Rect r) => ToScreenRect(r);
+
+    private System.Drawing.Rectangle ToScreenRect(Rect r)
     {
-        int x = (int)Math.Round(_screen.Bounds.Left + r.X * _scale);
-        int y = (int)Math.Round(_screen.Bounds.Top + r.Y * _scale);
-        int w = (int)Math.Round(r.Width * _scale);
-        int h = (int)Math.Round(r.Height * _scale);
-        return new System.Drawing.Rectangle(x, y, Math.Max(1, w), Math.Max(1, h));
+        var topLeft = PointToScreen(new Point(r.Left, r.Top));
+        var bottomRight = PointToScreen(new Point(r.Right, r.Bottom));
+        int left = (int)Math.Floor(Math.Min(topLeft.X, bottomRight.X));
+        int top = (int)Math.Floor(Math.Min(topLeft.Y, bottomRight.Y));
+        int right = (int)Math.Ceiling(Math.Max(topLeft.X, bottomRight.X));
+        int bottom = (int)Math.Ceiling(Math.Max(topLeft.Y, bottomRight.Y));
+        return System.Drawing.Rectangle.FromLTRB(left, top,
+            Math.Max(left + 1, right), Math.Max(top + 1, bottom));
     }
 
     private static double GetDpi(Screen screen)
