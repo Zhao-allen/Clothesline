@@ -9,6 +9,11 @@ using Clothesline.Services;
 using WpfCursors = System.Windows.Input.Cursors;
 using WpfSize = System.Windows.Size;
 
+using WpfPath = System.Windows.Shapes.Path;
+using WpfRectangle = System.Windows.Shapes.Rectangle;
+using WpfMouseEventArgs = System.Windows.Input.MouseEventArgs;
+using WpfKeyEventArgs = System.Windows.Input.KeyEventArgs;
+
 namespace Clothesline.UI;
 
 /// <summary>
@@ -117,7 +122,7 @@ internal sealed class RegionSelectorWindow : Window
         CaptureMouse();
     }
 
-    private void OnMove(object sender, MouseEventArgs e)
+    private void OnMove(object sender, WpfMouseEventArgs e)
     {
         if (_startPoint is null) return;
         var current = e.GetPosition(this);
@@ -148,7 +153,7 @@ internal sealed class RegionSelectorWindow : Window
         DialogResult = true;
     }
 
-    private void OnKey(object sender, KeyEventArgs e)
+    private void OnKey(object sender, WpfKeyEventArgs e)
     {
         if (e.Key == Key.Escape)
         {
