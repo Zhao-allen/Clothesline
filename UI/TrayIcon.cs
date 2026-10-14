@@ -246,7 +246,7 @@ internal sealed class TrayIcon : IDisposable
                 new System.Windows.Media.Pen(Brushes.White, 1.5),
                 new Rect(20, 26, 24, 28), 4, 4);
             // Photo inner
-            dc.DrawRectangle(new SolidColorBrush(Color.FromArgb(180, 255, 255, 255)), null,
+            dc.DrawRectangle(new SolidColorBrush(System.Drawing.Color.FromArgb(180, 255, 255, 255)), null,
                 new Rect(24, 30, 16, 14));
             // A little "mountain" in the photo
             var mountain = new StreamGeometry();
@@ -283,10 +283,10 @@ internal sealed class TrayIcon : IDisposable
 /// <summary>Slightly softer professional renderer for the tray menu.</summary>
 internal sealed class TrayColorTable : ProfessionalColorTable
 {
-    public override Color MenuItemSelected => Color.FromArgb(230, 240, 255);
-    public override Color MenuItemBorder => Color.FromArgb(180, 200, 230);
-    public override Color MenuBorder => Color.FromArgb(200, 200, 200);
-    public override Color ToolStripDropDownBackground => Color.FromArgb(250, 250, 252);
-    public override Color ImageMarginGradientBegin => Color.FromArgb(245, 245, 248);
-    public override Color ImageMarginGradientEnd => Color.FromArgb(245, 245, 248);
+    public override System.Drawing.Color MenuItemSelected => System.Drawing.Color.FromArgb(230, 240, 255);
+    public override System.Drawing.Color MenuItemBorder => System.Drawing.Color.FromArgb(180, 200, 230);
+    public override System.Drawing.Color MenuBorder => System.Drawing.Color.FromArgb(200, 200, 200);
+    public override System.Drawing.Color ToolStripDropDownBackground => System.Drawing.Color.FromArgb(250, 250, 252);
+    public override System.Drawing.Color ImageMarginGradientBegin => System.Drawing.Color.FromArgb(245, 245, 248);
+    public override System.Drawing.Color ImageMarginGradientEnd => System.Drawing.Color.FromArgb(245, 245, 248);
 }
