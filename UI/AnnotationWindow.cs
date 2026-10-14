@@ -9,6 +9,16 @@ using System.Windows.Shapes;
 using Clothesline.Services;
 
 
+
+
+using WpfOrientation = System.Windows.Controls.Orientation;
+using WpfComboBox = System.Windows.Controls.ComboBox;
+using WpfImage = System.Windows.Controls.Image;
+using WpfRectangle = System.Windows.Shapes.Rectangle;
+using WpfButton = System.Windows.Controls.Button;
+using WpfCursors = System.Windows.Input.Cursors;
+using WpfPen = System.Windows.Media.Pen;
+using WpfMessageBox = System.Windows.MessageBox;
 using WpfMouseEventArgs = System.Windows.Input.MouseEventArgs;
 using WpfKeyEventArgs = System.Windows.Input.KeyEventArgs;
 using WpfTextBox = System.Windows.Controls.TextBox;
@@ -55,7 +65,7 @@ internal sealed class AnnotationWindow : Window
         // Toolbar
         var toolbar = new StackPanel
         {
-            Orientation = Orientation.Horizontal,
+            Orientation = WpfOrientation.Horizontal,
             Background = new SolidColorBrush(Color.FromRgb(48, 48, 48)),
             Height = 50
         };
@@ -83,7 +93,7 @@ internal sealed class AnnotationWindow : Window
         // Width selector
         var widthLabel = new TextBlock { Text = "粗细", Foreground = Brushes.White, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 4, 0) };
         toolbar.Children.Add(widthLabel);
-        var widthBox = new ComboBox { Width = 50, SelectedIndex = 1, VerticalAlignment = VerticalAlignment.Center };
+        var widthBox = new WpfComboBox { Width = 50, SelectedIndex = 1, VerticalAlignment = VerticalAlignment.Center };
         widthBox.Items.Add(2);
         widthBox.Items.Add(4);
         widthBox.Items.Add(6);
@@ -119,7 +129,7 @@ internal sealed class AnnotationWindow : Window
         };
         scroll.Content = container;
 
-        var img = new Image
+        var img = new WpfImage
         {
             Source = _original,
             Width = _original.PixelWidth,
@@ -202,19 +212,19 @@ internal sealed class AnnotationWindow : Window
         }
 
         _previewShape = _currentTool == Tool.Rectangle
-            ? new Rectangle { Stroke = new SolidColorBrush(_currentColor), StrokeThickness = _strokeWidth, Fill = Brushes.Transparent }
+            ? new WpfRectangle { Stroke = new SolidColorBrush(_currentColor), StrokeThickness = _strokeWidth, Fill = Brushes.Transparent }
             : new Line { Stroke = new SolidColorBrush(_currentColor), StrokeThickness = _strokeWidth, StrokeEndLineCap = PenLineCap.Triangle, StrokeStartLineCap = PenLineCap.Round };
 
         _shapeCanvas.Children.Add(_previewShape);
         e.Handled = true;
     }
 
-    private void OnShapeMove(object sender, WpfMouseEventArgs e)
+    private void OnShapeMove(object sender, WpfWpfMouseEventArgs e)
     {
         if (_previewShape == null || !_shapeCanvas.IsMouseCaptured) return;
         var pos = e.GetPosition(_shapeCanvas);
 
-        if (_previewShape is Rectangle rect)
+        if (_previewShape is WpfRectangle rect)
         {
             var x = Math.Min(_shapeStart.X, pos.X);
             var y = Math.Min(_shapeStart.Y, pos.Y);
@@ -238,7 +248,7 @@ internal sealed class AnnotationWindow : Window
         _previewShape = null;
     }
 
-    private void OnKeyDown(object sender, WpfKeyEventArgs e)
+    private void OnKeyDown(object sender, WpfWpfKeyEventArgs e)
     {
         if (e.Key == Key.Escape) Close();
         if (e.Key == Key.S && (Keyboard.Modifiers & ModifierKeys.Control) != 0) Save();
@@ -246,7 +256,7 @@ internal sealed class AnnotationWindow : Window
 
     private void AddToolButton(StackPanel parent, string text, Action action)
     {
-        var btn = new Button
+        var btn = new WpfButton
         {
             Content = text,
             Margin = new Thickness(4, 8, 0, 8),
@@ -254,7 +264,7 @@ internal sealed class AnnotationWindow : Window
             Background = new SolidColorBrush(Color.FromRgb(68, 68, 68)),
             Foreground = Brushes.White,
             BorderThickness = new Thickness(0),
-            Cursor = Cursors.Hand
+            Cursor = WpfCursors.Hand
         };
         btn.Click += (_, _) => action();
         parent.Children.Add(btn);
@@ -262,7 +272,7 @@ internal sealed class AnnotationWindow : Window
 
     private void AddColorButton(StackPanel parent, Color color)
     {
-        var btn = new Button
+        var btn = new WpfButton
         {
             Width = 24,
             Height = 24,
@@ -270,7 +280,7 @@ internal sealed class AnnotationWindow : Window
             Background = new SolidColorBrush(color),
             BorderThickness = new Thickness(1),
             BorderBrush = Brushes.White,
-            Cursor = Cursors.Hand
+            Cursor = WpfCursors.Hand
         };
         btn.Click += (_, _) =>
         {
@@ -313,15 +323,15 @@ internal sealed class AnnotationWindow : Window
                         var visual = new DrawingVisual();
                         using (var sdc = visual.RenderOpen())
                         {
-                            if (shape is Rectangle r)
+                            if (shape is WpfRectangle r)
                             {
                                 var left = Canvas.GetLeft(r);
                                 var top = Canvas.GetTop(r);
-                                sdc.DrawRectangle(null, new Pen(shape.Stroke, shape.StrokeThickness), new Rect(left, top, r.Width, r.Height));
+                                sdc.DrawRectangle(null, new WpfPen(shape.Stroke, shape.StrokeThickness), new Rect(left, top, r.Width, r.Height));
                             }
                             else if (shape is Line l)
                             {
-                                sdc.DrawLine(new Pen(shape.Stroke, shape.StrokeThickness) { EndLineCap = PenLineCap.Triangle, StartLineCap = PenLineCap.Round },
+                                sdc.DrawLine(new WpfPen(shape.Stroke, shape.StrokeThickness) { EndLineCap = PenLineCap.Triangle, StartLineCap = PenLineCap.Round },
                                     new Point(l.X1, l.Y1), new Point(l.X2, l.Y2));
                             }
                         }
@@ -333,7 +343,7 @@ internal sealed class AnnotationWindow : Window
                         var ft = new FormattedText(
                             tb.Text,
                             System.Globalization.CultureInfo.CurrentCulture,
-                            FlowDirection.LeftToRight,
+                            System.Windows.FlowDirection.LeftToRight,
                             new Typeface(tb.FontFamily, tb.FontStyle, tb.FontWeight, tb.FontStretch),
                             tb.FontSize,
                             tb.Foreground,
@@ -355,7 +365,7 @@ internal sealed class AnnotationWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"保存失败:\n{ex.Message}", "Clothesline", MessageBoxButton.OK, MessageBoxImage.Warning);
+            WpfMessageBox.Show($"保存失败:\n{ex.Message}", "Clothesline", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 }
