@@ -53,7 +53,13 @@ internal sealed class TrayIcon : IDisposable
 
     private ContextMenuStrip BuildMenu()
     {
-        var menu = new ContextMenuStrip();
+        var menu = new ContextMenuStrip
+        {
+            Font = new Font("Segoe UI", 9.5f),
+            Padding = new Padding(4, 6, 4, 6),
+            ShowImageMargin = true,
+            Renderer = new ToolStripProfessionalRenderer(new TrayColorTable())
+        };
 
         var toggle = new ToolStripMenuItem(_window.IsRevealed ? I18n.Get("HideLine") : I18n.Get("ShowLine"));
         toggle.Click += (_, _) => _window.Toggle();
@@ -272,4 +278,15 @@ internal sealed class TrayIcon : IDisposable
         _icon.Visible = false;
         _icon.Dispose();
     }
+}
+
+/// <summary>Slightly softer professional renderer for the tray menu.</summary>
+internal sealed class TrayColorTable : ProfessionalColorTable
+{
+    public override Color MenuItemSelected => Color.FromArgb(230, 240, 255);
+    public override Color MenuItemBorder => Color.FromArgb(180, 200, 230);
+    public override Color MenuBorder => Color.FromArgb(200, 200, 200);
+    public override Color ToolStripDropDownBackground => Color.FromArgb(250, 250, 252);
+    public override Color ImageMarginGradientBegin => Color.FromArgb(245, 245, 248);
+    public override Color ImageMarginGradientEnd => Color.FromArgb(245, 245, 248);
 }
