@@ -55,10 +55,11 @@ internal sealed class TrayIcon : IDisposable
     {
         var menu = new ContextMenuStrip
         {
-            Font = new Font("Segoe UI", 9.5f),
-            Padding = new Padding(4, 6, 4, 6),
-            ShowImageMargin = true,
-            Renderer = new ToolStripProfessionalRenderer(new TrayColorTable())
+            Font = new Font("Segoe UI", 10f),
+            Padding = new Padding(2, 4, 2, 4),
+            ShowImageMargin = false,
+            Renderer = new ToolStripProfessionalRenderer(new TrayColorTable()),
+            ForeColor = System.Drawing.Color.FromArgb(230, 230, 230)
         };
 
         var toggle = new ToolStripMenuItem(_window.IsRevealed ? I18n.Get("HideLine") : I18n.Get("ShowLine"));
@@ -177,6 +178,14 @@ internal sealed class TrayIcon : IDisposable
 
         menu.Items.Add(new ToolStripSeparator());
 
+        var update = new ToolStripMenuItem("检查更新");
+        update.Click += (_, _) =>
+        {
+            try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://github.com/Zhao-allen/Clothesline/releases") { UseShellExecute = true }); }
+            catch { }
+        };
+        menu.Items.Add(update);
+
         var quit = new ToolStripMenuItem(I18n.Get("Quit"));
         quit.Click += (_, _) => App.Instance.ShutdownApp();
         menu.Items.Add(quit);
@@ -267,10 +276,10 @@ internal sealed class TrayIcon : IDisposable
 /// <summary>Slightly softer professional renderer for the tray menu.</summary>
 internal sealed class TrayColorTable : ProfessionalColorTable
 {
-    public override System.Drawing.Color MenuItemSelected => System.Drawing.Color.FromArgb(230, 240, 255);
+    public override System.Drawing.Color MenuItemSelected => System.Drawing.Color.FromArgb(50, 50, 55);
     public override System.Drawing.Color MenuItemBorder => System.Drawing.Color.FromArgb(180, 200, 230);
     public override System.Drawing.Color MenuBorder => System.Drawing.Color.FromArgb(200, 200, 200);
-    public override System.Drawing.Color ToolStripDropDownBackground => System.Drawing.Color.FromArgb(250, 250, 252);
+    public override System.Drawing.Color ToolStripDropDownBackground => System.Drawing.Color.FromArgb(32, 32, 36);
     public override System.Drawing.Color ImageMarginGradientBegin => System.Drawing.Color.FromArgb(245, 245, 248);
     public override System.Drawing.Color ImageMarginGradientEnd => System.Drawing.Color.FromArgb(245, 245, 248);
 }

@@ -16,8 +16,8 @@ using WpfKeyEventArgs = System.Windows.Input.KeyEventArgs;
 namespace Clothesline.UI;
 
 /// <summary>
-/// Full-screen overlay for drag-selecting a screenshot region. The capture
-/// rectangle is derived from the overlay's actual screen coordinates.
+/// Full-screen overlay for free-form region selection, similar to QQ screenshot.
+/// Covers the entire monitor under the pointer so you can drag from anywhere.
 /// </summary>
 internal sealed class RegionSelectorWindow : Window
 {
@@ -25,10 +25,12 @@ internal sealed class RegionSelectorWindow : Window
     private readonly double _scale;
     private Point? _startPoint;
     private System.Drawing.Rectangle? _result;
+
     private readonly WpfPath _dimPath;
     private readonly WpfRectangle _selectionBorder;
     private readonly TextBlock _hint;
     private readonly TextBlock _sizeLabel;
+    private readonly StackPanel _toolbar;
 
     public RegionSelectorWindow(Screen screen)
     {
@@ -46,6 +48,7 @@ internal sealed class RegionSelectorWindow : Window
         SnapsToDevicePixels = true;
         UseLayoutRounding = true;
 
+        // Cover the full monitor in DIP
         var bounds = screen.Bounds;
         Left = bounds.Left / _scale;
         Top = bounds.Top / _scale;
@@ -54,9 +57,10 @@ internal sealed class RegionSelectorWindow : Window
 
         var canvas = new Canvas { Background = Brushes.Transparent };
         Content = canvas;
+
         _dimPath = new WpfPath
         {
-            Fill = new SolidColorBrush(Color.FromArgb(100, 0, 0, 0)),
+            Fill = new SolidColorBrush(Color.FromArgb(120, 0, 0, 0)),
             IsHitTestVisible = false
         };
         canvas.Children.Add(_dimPath);
@@ -64,7 +68,7 @@ internal sealed class RegionSelectorWindow : Window
         _selectionBorder = new WpfRectangle
         {
             Stroke = Brushes.White,
-            StrokeThickness = 1.5,
+            StrokeThickness = 2,
             IsHitTestVisible = false,
             Visibility = Visibility.Collapsed
         };
@@ -72,30 +76,50 @@ internal sealed class RegionSelectorWindow : Window
 
         _hint = new TextBlock
         {
-            Text = I18n.Culture.Name.StartsWith("zh") ? "拖拽选择区域" : I18n.Get("DragToSelect"),
+            Text = I18n.Culture.Name.StartsWith("zh") ? "拖拽选择区域 · ESC 取消" : "Drag to select · ESC to cancel",
             Foreground = Brushes.White,
-            FontSize = 14,
-            Background = new SolidColorBrush(Color.FromArgb(180, 0, 0, 0)),
-            Padding = new Thickness(14, 6, 14, 6)
+            FontSize = 15,
+            Background = new SolidColorBrush(Color.FromArgb(200, 30, 30, 30)),
+            Padding = new Thickness(16, 8, 16, 8)
         };
         canvas.Children.Add(_hint);
-        Canvas.SetTop(_hint, 20);
+        Canvas.SetTop(_hint, 30);
 
         _sizeLabel = new TextBlock
         {
             Foreground = Brushes.White,
-            FontSize = 12,
-            Background = new SolidColorBrush(Color.FromArgb(200, 0, 0, 0)),
-            Padding = new Thickness(8, 3, 8, 3),
+            FontSize = 13,
+            Background = new SolidColorBrush(Color.FromArgb(220, 0, 0, 0)),
+            Padding = new Thickness(8, 4, 8, 4),
             Visibility = Visibility.Collapsed
         };
         canvas.Children.Add(_sizeLabel);
+
+        // Floating toolbar (appears after selection)
+        _toolbar = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Background = new SolidColorBrush(Color.FromArgb(230, 40, 40, 40)),
+            Visibility = Visibility.Collapsed
+        };
+        var okBtn = new Button { Content = "确定", Margin = new Thickness(6, 4, 2, 4), Padding = new Thickness(12, 4, 12, 4), Background = new SolidColorBrush(Color.FromRgb(0, 120, 215)), Foreground = Brushes.White, BorderThickness = new Thickness(0) };
+        var cancelBtn = new Button { Content = "取消", Margin = new Thickness(2, 4, 6, 4), Padding = new Thickness(12, 4, 12, 4), Background = new SolidColorBrush(Color.FromRgb(80, 80, 80)), Foreground = Brushes.White, BorderThickness = new Thickness(0) };
+        okBtn.Click += (_, _) => Confirm();
+        cancelBtn.Click += (_, _) => Cancel();
+        _toolbar.Children.Add(okBtn);
+        _toolbar.Children.Add(cancelBtn);
+        canvas.Children.Add(_toolbar);
 
         MouseLeftButtonDown += OnDown;
         MouseMove += OnMove;
         MouseLeftButtonUp += OnUp;
         KeyDown += OnKey;
-        Loaded += (_, _) => UpdateHintPosition();
+        Loaded += (_, _) =>
+        {
+            UpdateHintPosition();
+            // Ensure window is exactly on the monitor
+            Activate();
+        };
     }
 
     private void UpdateHintPosition()
@@ -116,6 +140,7 @@ internal sealed class RegionSelectorWindow : Window
         _selectionBorder.Visibility = Visibility.Visible;
         _hint.Visibility = Visibility.Collapsed;
         _sizeLabel.Visibility = Visibility.Visible;
+        _toolbar.Visibility = Visibility.Collapsed;
         CaptureMouse();
     }
 
@@ -132,27 +157,58 @@ internal sealed class RegionSelectorWindow : Window
         ReleaseMouseCapture();
         _startPoint = null;
 
-        // This capture mode is always user-defined: a click does not fall back
-        // to a full-screen screenshot.
-        if (rect.Width < 8 || rect.Height < 8)
+        if (rect.Width < 10 || rect.Height < 10)
         {
-            _selectionBorder.Visibility = Visibility.Collapsed;
-            _sizeLabel.Visibility = Visibility.Collapsed;
-            _hint.Visibility = Visibility.Visible;
+            ResetSelection();
             return;
         }
 
         _result = ToScreenRect(rect);
-        Opacity = 0;
-        Hide();
-        DialogResult = true;
+        // Show toolbar near the selection for confirm/cancel
+        PositionToolbar(rect);
+        _toolbar.Visibility = Visibility.Visible;
+    }
+
+    private void PositionToolbar(Rect r)
+    {
+        _toolbar.Measure(new WpfSize(double.PositiveInfinity, double.PositiveInfinity));
+        double left = r.X + r.Width - _toolbar.DesiredSize.Width;
+        double top = r.Y + r.Height + 8;
+        if (left < 0) left = r.X;
+        if (top + _toolbar.DesiredSize.Height > Height) top = r.Y - _toolbar.DesiredSize.Height - 8;
+        Canvas.SetLeft(_toolbar, Math.Max(0, left));
+        Canvas.SetTop(_toolbar, Math.Max(0, top));
+    }
+
+    private void Confirm()
+    {
+        if (_result.HasValue)
+        {
+            Opacity = 0;
+            Hide();
+            DialogResult = true;
+        }
+    }
+
+    private void Cancel()
+    {
+        _result = null;
+        DialogResult = false;
+    }
+
+    private void ResetSelection()
+    {
+        _selectionBorder.Visibility = Visibility.Collapsed;
+        _sizeLabel.Visibility = Visibility.Collapsed;
+        _toolbar.Visibility = Visibility.Collapsed;
+        _hint.Visibility = Visibility.Visible;
+        _dimPath.Data = null;
     }
 
     private void OnKey(object sender, WpfKeyEventArgs e)
     {
-        if (e.Key != Key.Escape) return;
-        _result = null;
-        DialogResult = false;
+        if (e.Key == Key.Escape) Cancel();
+        if (e.Key == Key.Enter && _result.HasValue) Confirm();
     }
 
     private void UpdateSelection(Point a, Point b)
@@ -171,8 +227,8 @@ internal sealed class RegionSelectorWindow : Window
         var screenRect = ToScreenRect(r);
         _sizeLabel.Text = $"{screenRect.Width} × {screenRect.Height}";
         _sizeLabel.Measure(new WpfSize(double.PositiveInfinity, double.PositiveInfinity));
-        Canvas.SetLeft(_sizeLabel, r.X + r.Width - _sizeLabel.DesiredSize.Width - 4);
-        Canvas.SetTop(_sizeLabel, r.Y + r.Height + 4);
+        Canvas.SetLeft(_sizeLabel, r.X + r.Width - _sizeLabel.DesiredSize.Width - 6);
+        Canvas.SetTop(_sizeLabel, r.Y + r.Height + 6);
     }
 
     private static Rect DipRect(Point a, Point b)
@@ -190,19 +246,14 @@ internal sealed class RegionSelectorWindow : Window
         int top = (int)Math.Floor(Math.Min(topLeft.Y, bottomRight.Y));
         int right = (int)Math.Ceiling(Math.Max(topLeft.X, bottomRight.X));
         int bottom = (int)Math.Ceiling(Math.Max(topLeft.Y, bottomRight.Y));
-        return System.Drawing.Rectangle.FromLTRB(left, top,
-            Math.Max(left + 1, right), Math.Max(top + 1, bottom));
+        return System.Drawing.Rectangle.FromLTRB(left, top, Math.Max(left + 1, right), Math.Max(top + 1, bottom));
     }
 
     private static double GetDpi(Screen screen)
     {
         try
         {
-            var pt = new NativeMethods.POINT
-            {
-                X = screen.Bounds.Left + screen.Bounds.Width / 2,
-                Y = screen.Bounds.Top + screen.Bounds.Height / 2
-            };
+            var pt = new NativeMethods.POINT { X = screen.Bounds.Left + screen.Bounds.Width / 2, Y = screen.Bounds.Top + screen.Bounds.Height / 2 };
             var monitor = NativeMethods.MonitorFromPoint(pt, NativeMethods.MONITOR_DEFAULTTONEAREST);
             if (monitor != IntPtr.Zero)
             {
