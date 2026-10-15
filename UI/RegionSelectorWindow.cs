@@ -13,6 +13,9 @@ using WpfRectangle = System.Windows.Shapes.Rectangle;
 using WpfMouseEventArgs = System.Windows.Input.MouseEventArgs;
 using WpfKeyEventArgs = System.Windows.Input.KeyEventArgs;
 
+using WpfOrientation = System.Windows.Controls.Orientation;
+using WpfButton = System.Windows.Controls.Button;
+
 namespace Clothesline.UI;
 
 /// <summary>
@@ -98,12 +101,12 @@ internal sealed class RegionSelectorWindow : Window
         // Floating toolbar (appears after selection)
         _toolbar = new StackPanel
         {
-            Orientation = Orientation.Horizontal,
+            Orientation = WpfOrientation.Horizontal,
             Background = new SolidColorBrush(Color.FromArgb(230, 40, 40, 40)),
             Visibility = Visibility.Collapsed
         };
-        var okBtn = new Button { Content = "确定", Margin = new Thickness(6, 4, 2, 4), Padding = new Thickness(12, 4, 12, 4), Background = new SolidColorBrush(Color.FromRgb(0, 120, 215)), Foreground = Brushes.White, BorderThickness = new Thickness(0) };
-        var cancelBtn = new Button { Content = "取消", Margin = new Thickness(2, 4, 6, 4), Padding = new Thickness(12, 4, 12, 4), Background = new SolidColorBrush(Color.FromRgb(80, 80, 80)), Foreground = Brushes.White, BorderThickness = new Thickness(0) };
+        var okBtn = new WpfButton { Content = "确定", Margin = new Thickness(6, 4, 2, 4), Padding = new Thickness(12, 4, 12, 4), Background = new SolidColorBrush(Color.FromRgb(0, 120, 215)), Foreground = Brushes.White, BorderThickness = new Thickness(0) };
+        var cancelBtn = new WpfButton { Content = "取消", Margin = new Thickness(2, 4, 6, 4), Padding = new Thickness(12, 4, 12, 4), Background = new SolidColorBrush(Color.FromRgb(80, 80, 80)), Foreground = Brushes.White, BorderThickness = new Thickness(0) };
         okBtn.Click += (_, _) => Confirm();
         cancelBtn.Click += (_, _) => Cancel();
         _toolbar.Children.Add(okBtn);
