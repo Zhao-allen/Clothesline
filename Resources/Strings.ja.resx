@@ -72,9 +72,9 @@
   <data name="TakeDownLeft" xml:space="preserve"><value>左側をすべて下ろす</value></data>
   <data name="TakeDownRight" xml:space="preserve"><value>右側をすべて下ろす</value></data>
   <data name="TakeScreenshot" xml:space="preserve"><value>スクリーンショット</value></data>
-  <data name="ScreenshotMode" xml:space="preserve"><value>キャプチャ方式</value></data>
-  <data name="EmptyHint" xml:space="preserve"><value>Win+Alt+S でスクリーンショット</value></data>
-  <data name="ScreenshotModeFull" xml:space="preserve"><value>全画面</value></data>
-  <data name="ScreenshotModeRegion" xml:space="preserve"><value>範囲</value></data>
-  <data name="DragToSelect" xml:space="preserve"><value>ドラッグして範囲選択</value></data>
+  <data name="EmptyHint" xml:space="preserve"><value>Win+Shift+S でスクリーンショット</value></data>
+  <data name="InboxOfferTitle" xml:space="preserve"><value>Clothesline にスクリーンショットを任せますか？</value></data>
+  <data name="InboxOfferBody" xml:space="preserve"><value>Win+Shift+S または Win+PrintScreen で撮った画像は即座にラインに並び、デスクトップに溜まりません。フォルダにドラッグすれば保存、✕ をクリックすれば破棄。トレイメニューからいつでも解除できます。</value></data>
+  <data name="InboxOfferTurnOn" xml:space="preserve"><value>オンにする</value></data>
+  <data name="InboxOfferNotNow" xml:space="preserve"><value>後で</value></data>
 </root>

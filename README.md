@@ -45,7 +45,15 @@ Rest the pointer at the top edge and it glides down. Move away and it's gone.
 | **Drag to the Recycle Bin, or click the ✕** | Let it go. |
 | **Rest the pointer at the top edge** | Bring the line down. |
 | **Move the pointer away** | Tuck it back up. |
+| <kbd>Win</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> | Take a region screenshot. Clothesline hangs it on the line automatically. |
+| <kbd>Win</kbd> + <kbd>PrintScreen</kbd> | Take a full-screen screenshot. Lands in `Pictures\Screenshots`, Clothesline picks it up. |
 | <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>T</kbd> | Show or hide the line. |
+
+Clothesline never takes screenshots itself. It just watches the
+shortcuts Windows already gives you — Win+Shift+S for a region,
+Win+PrintScreen for the whole screen — and the moment a capture
+lands it slides down the line. Same shortcuts. Same muscle memory.
+Just a place for them to hang.
 
 ## Your desktop. Finally clear.
 

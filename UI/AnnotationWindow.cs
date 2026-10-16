@@ -27,8 +27,11 @@ using WpfMessageBox = System.Windows.MessageBox;
 namespace Clothesline.UI;
 
 /// <summary>
-/// Annotation window with freehand, rectangle, arrow, and text tools.
+/// Markup window with freehand, rectangle, arrow, and text tools.
 /// Shapes and text are managed as data models for reliable saving.
+/// Triggered only by pressing and holding a hung card (see Line.cs);
+/// the screenshot capture path no longer routes through here since
+/// the BitBlt pipeline was replaced with the OS Win+Shift+S trigger.
 /// </summary>
 internal sealed class AnnotationWindow : Window
 {

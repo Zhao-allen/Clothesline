@@ -56,33 +56,7 @@ internal sealed class ClipboardWatcher : IDisposable
         _lastCount = count;
         if (data is null) return;
 
-        // Ignore copies that aren't purely an image (text, files, etc.).
-        var formats = data.GetFormats();
-        if (formats.Contains(DataFormats.Text) || formats.Contains(DataFormats.UnicodeText)
-            || formats.Contains(DataFormats.FileDrop) || formats.Contains(DataFormats.Html))
-            return;
-
-        byte[]? png = null;
-        try
-        {
-            if (data.GetDataPresent("PNG"))
-            {
-                if (data.GetData("PNG") is MemoryStream ms)
-                    png = ms.ToArray();
-            }
-            else if (data.GetDataPresent(DataFormats.Bitmap))
-            {
-                if (data.GetData(DataFormats.Bitmap) is System.Drawing.Bitmap bmp)
-                    png = BitmapToPng(bmp);
-            }
-            else if (data.GetDataPresent(DataFormats.Dib))
-            {
-                if (data.GetData(DataFormats.Dib) is MemoryStream dib)
-                    png = DibToPng(dib);
-            }
-        }
-        catch { return; }
-
+        var png = TryExtractImage(data);
         if (png is null || png.Length == 0 || png.Length > 64 * 1024 * 1024) return;
 
         if (_last is { } last && last.png.SequenceEqual(png) && File.Exists(last.path)) return;
@@ -103,6 +77,67 @@ internal sealed class ClipboardWatcher : IDisposable
             _onImage(url);
         }
         catch { }
+    }
+
+    /// <summary>
+    /// Extract a PNG byte array from the clipboard if it currently holds an
+    /// image and nothing else (text, files, html). Returns null otherwise.
+    /// Shared between the polling watcher and one-shot callers (e.g. the
+    /// screenshot shortcut, which triggers Win+Shift+S and waits for the
+    /// result to land here).
+    /// </summary>
+    public static byte[]? TryExtractImage(IDataObject? data)
+    {
+        if (data is null) return null;
+
+        // Ignore copies that aren't purely an image (text, files, etc.).
+        var formats = data.GetFormats();
+        if (formats.Contains(DataFormats.Text) || formats.Contains(DataFormats.UnicodeText)
+            || formats.Contains(DataFormats.FileDrop) || formats.Contains(DataFormats.Html))
+            return null;
+
+        byte[]? png = null;
+        try
+        {
+            if (data.GetDataPresent("PNG"))
+            {
+                if (data.GetData("PNG") is MemoryStream ms)
+                    png = ms.ToArray();
+            }
+            else if (data.GetDataPresent(DataFormats.Bitmap))
+            {
+                if (data.GetData(DataFormats.Bitmap) is System.Drawing.Bitmap bmp)
+                    png = BitmapToPng(bmp);
+            }
+            else if (data.GetDataPresent(DataFormats.Dib))
+            {
+                if (data.GetData(DataFormats.Dib) is MemoryStream dib)
+                    png = DibToPng(dib);
+            }
+        }
+        catch { return null; }
+
+        return png;
+    }
+
+    /// <summary>
+    /// Save a PNG byte array into the Inbox folder with a timestamped name,
+    /// returning the file path. Returns null on IO failure.
+    /// </summary>
+    public static string? SavePng(byte[] png)
+    {
+        if (png.Length == 0 || png.Length > 64 * 1024 * 1024) return null;
+        Inbox.EnsureFolder();
+        var stamp = DateTime.Now.ToString("yyyy-MM-dd 'at' HH.mm.ss");
+        var url = Path.Combine(Inbox.Folder, $"Screenshot {stamp}.png");
+        var n = 2;
+        while (File.Exists(url))
+        {
+            url = Path.Combine(Inbox.Folder, $"Screenshot {stamp} {n}.png");
+            n++;
+        }
+        try { File.WriteAllBytes(url, png); return url; }
+        catch { return null; }
     }
 
     private static byte[] BitmapToPng(System.Drawing.Bitmap bmp)

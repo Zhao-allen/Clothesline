@@ -67,5 +67,10 @@ namespace Clothesline.Resources {
         public static string FolderDialogDescription => ResourceManager.GetString("FolderDialogDescription", resourceCulture);
         public static string Language => ResourceManager.GetString("Language", resourceCulture);
         public static string SystemDefault => ResourceManager.GetString("SystemDefault", resourceCulture);
+        public static string EmptyHint => ResourceManager.GetString("EmptyHint", resourceCulture);
+        public static string InboxOfferTitle => ResourceManager.GetString("InboxOfferTitle", resourceCulture);
+        public static string InboxOfferBody => ResourceManager.GetString("InboxOfferBody", resourceCulture);
+        public static string InboxOfferTurnOn => ResourceManager.GetString("InboxOfferTurnOn", resourceCulture);
+        public static string InboxOfferNotNow => ResourceManager.GetString("InboxOfferNotNow", resourceCulture);
     }
 }

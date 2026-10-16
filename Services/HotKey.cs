@@ -25,6 +25,13 @@ internal sealed class HotKey : IDisposable
         _registered = NativeMethods.RegisterHotKey(_window.Handle, _id, modifiers, vk);
     }
 
+    /// <summary>
+    /// Human-readable shortcut, e.g. "Ctrl+Alt+T". Set by the static
+    /// Register* helpers to whatever actually registered, so the tray
+    /// menu can show the truth instead of a hard-coded string.
+    /// </summary>
+    public string DisplayString { get; set; } = "";
+
     private void OnHotKey(int id)
     {
         if (id == _id) _onPressed();
@@ -44,17 +51,41 @@ internal sealed class HotKey : IDisposable
     {
         uint vk = (uint)KeyInterop.VirtualKeyFromKey(Key.T);
         var hk = new HotKey(NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT, vk, onPressed);
+        if (hk.IsRegistered) hk.DisplayString = "Ctrl+Alt+T";
         return hk.IsRegistered ? hk : null;
     }
 
     /// <summary>
-    /// Register the screenshot shortcut: Win + Alt + S.
+    /// Register the screenshot shortcut. Tries Win+Alt+S first; if that
+    /// fails (Xbox Game Bar, OneNote screen clipping, system policy, ...)
+    /// falls back to Ctrl+Alt+S. If both fail, returns null so the caller
+    /// can warn the user. The returned HotKey's DisplayString reflects
+    /// whichever combination actually took effect.
     /// </summary>
     public static HotKey? RegisterScreenshot(Action onPressed)
     {
         uint vk = (uint)KeyInterop.VirtualKeyFromKey(Key.S);
-        var hk = new HotKey(NativeMethods.MOD_WIN | NativeMethods.MOD_ALT | NativeMethods.MOD_NOREPEAT, vk, onPressed);
-        return hk.IsRegistered ? hk : null;
+
+        var primary = new HotKey(
+            NativeMethods.MOD_WIN | NativeMethods.MOD_ALT | NativeMethods.MOD_NOREPEAT,
+            vk, onPressed);
+        if (primary.IsRegistered)
+        {
+            primary.DisplayString = "Win+Alt+S";
+            return primary;
+        }
+        primary.Dispose();
+
+        var fallback = new HotKey(
+            NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT | NativeMethods.MOD_NOREPEAT,
+            vk, onPressed);
+        if (fallback.IsRegistered)
+        {
+            fallback.DisplayString = "Ctrl+Alt+S";
+            return fallback;
+        }
+        fallback.Dispose();
+        return null;
     }
 
     private sealed class MessageWindow : NativeWindow, IDisposable

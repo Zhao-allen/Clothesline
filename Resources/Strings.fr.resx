@@ -72,9 +72,9 @@
   <data name="TakeDownLeft" xml:space="preserve"><value>Descendre tout ce qui est à gauche</value></data>
   <data name="TakeDownRight" xml:space="preserve"><value>Descendre tout ce qui est à droite</value></data>
   <data name="TakeScreenshot" xml:space="preserve"><value>Capture d'écran</value></data>
-  <data name="ScreenshotMode" xml:space="preserve"><value>Mode de capture</value></data>
-  <data name="EmptyHint" xml:space="preserve"><value>Appuyez sur Win+Alt+S pour capturer</value></data>
-  <data name="ScreenshotModeFull" xml:space="preserve"><value>Plein écran</value></data>
-  <data name="ScreenshotModeRegion" xml:space="preserve"><value>Région</value></data>
-  <data name="DragToSelect" xml:space="preserve"><value>Faites glisser pour sélectionner</value></data>
+  <data name="EmptyHint" xml:space="preserve"><value>Appuyez sur Win+Shift+S pour capturer</value></data>
+  <data name="InboxOfferTitle" xml:space="preserve"><value>Laisser Clothesline gérer vos captures ?</value></data>
+  <data name="InboxOfferBody" xml:space="preserve"><value>Les captures effectuées avec Win+Shift+S ou Win+PrintScreen se suspendront à la ligne aussitôt, sans s'empiler sur le Bureau. Glissez-en une vers un dossier pour la conserver, ou rejetez-la avec la ✕. Désactivable depuis le menu de la barre système.</value></data>
+  <data name="InboxOfferTurnOn" xml:space="preserve"><value>Activer</value></data>
+  <data name="InboxOfferNotNow" xml:space="preserve"><value>Pas maintenant</value></data>
 </root>

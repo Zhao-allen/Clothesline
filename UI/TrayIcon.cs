@@ -68,8 +68,9 @@ internal sealed class TrayIcon : IDisposable
 
         var screenshot = new ToolStripMenuItem(I18n.Get("TakeScreenshot"))
         {
-            ShortcutKeyDisplayString = "Win+Alt+S"
+            ShortcutKeyDisplayString = App.ScreenshotShortcut
         };
+        screenshot.Enabled = !string.IsNullOrEmpty(App.ScreenshotShortcut);
         screenshot.Click += (_, _) => App.Instance.TakeScreenshot();
         menu.Items.Add(screenshot);
 

@@ -22,6 +22,15 @@ internal partial class App : Application
     private HotKey? _screenshotHotKey;
     private bool _isTakingScreenshot;
 
+    /// <summary>
+    /// Human-readable shortcut for the screenshot, or empty if no
+    /// global hotkey could be registered at startup. Surfaced to the
+    /// tray menu so it shows "Win+Alt+S" or "Ctrl+Alt+S" depending on
+    /// which fallback actually took effect - never a stale hard-coded
+    /// string.
+    /// </summary>
+    public static string ScreenshotShortcut { get; private set; } = "";
+
     public static bool OpensFromMenuBar
     {
         get => !Settings.Default.GetBool("menuBarRevealOff");
@@ -63,6 +72,7 @@ internal partial class App : Application
 
         _hotKey = HotKey.RegisterDefault(() => _window.Toggle());
         _screenshotHotKey = HotKey.RegisterScreenshot(TakeScreenshot);
+        ScreenshotShortcut = _screenshotHotKey?.DisplayString ?? "";
 
         _tray = new TrayIcon(_line, _window);
 
@@ -74,6 +84,111 @@ internal partial class App : Application
             Refresh();
             _window.Reveal(peekSeconds: 6);
         }
+
+        // First-run Inbox offer: ask once whether Clothesline should
+        // watch the Screenshots folder / clipboard for new captures.
+        // Mirrors the original Tendedero (macOS) 'offerInbox' flow.
+        if (!Inbox.WasOffered)
+        {
+            Dispatcher.InvokeAsync(async () =>
+            {
+                await Task.Delay(1200); // let the welcome slide settle
+                OfferInbox();
+            });
+        }
+    }
+
+    /// <summary>
+    /// Modal dialog asking once whether the user wants Clothesline to
+    /// auto-hang screenshots. 'Turn on' enables Inbox + clipboard watch
+    /// and saves the flag so we never ask again. 'Not now' just saves
+    /// the flag; the user can toggle from the tray menu later.
+    /// </summary>
+    private void OfferInbox()
+    {
+        Inbox.WasOffered = true;
+
+        // Build a WPF MessageBox-style dialog manually so we control the
+        // button text via I18n (WPF's MessageBox.Show doesn't localize
+        // the Yes/No buttons).
+        var owner = _window;
+        var dialog = new Window
+        {
+            Title = "Clothesline",
+            Owner = owner,
+            WindowStyle = WindowStyle.ToolWindow,
+            ResizeMode = ResizeMode.NoResize,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Width = 460,
+            SizeToContent = SizeToContent.Height,
+            ShowInTaskbar = false,
+            Background = System.Windows.Media.Brushes.White
+        };
+
+        var title = new TextBlock
+        {
+            Text = I18n.Get("InboxOfferTitle"),
+            FontSize = 16,
+            FontWeight = FontWeights.SemiBold,
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(24, 24, 24, 8)
+        };
+        var body = new TextBlock
+        {
+            Text = I18n.Get("InboxOfferBody"),
+            FontSize = 13,
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(24, 0, 24, 20),
+            Foreground = System.Windows.Media.Brushes.DarkGray
+        };
+
+        var turnOn = new System.Windows.Controls.Button
+        {
+            Content = I18n.Get("InboxOfferTurnOn"),
+            Padding = new Thickness(20, 6, 20, 6),
+            Margin = new Thickness(0, 0, 8, 24),
+            Background = System.Windows.Media.Brushes.White,
+            BorderBrush = System.Windows.Media.Brushes.DarkGray
+        };
+        var notNow = new System.Windows.Controls.Button
+        {
+            Content = I18n.Get("InboxOfferNotNow"),
+            Padding = new Thickness(20, 6, 20, 6),
+            Margin = new Thickness(0, 0, 24, 24),
+            Background = System.Windows.Media.Brushes.White,
+            BorderBrush = System.Windows.Media.Brushes.DarkGray
+        };
+
+        var buttons = new System.Windows.Controls.StackPanel
+        {
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            HorizontalAlignment = System.Windows.HorizontalAlignment.Right
+        };
+        buttons.Children.Add(notNow);
+        buttons.Children.Add(turnOn);
+
+        var stack = new System.Windows.Controls.StackPanel();
+        stack.Children.Add(title);
+        stack.Children.Add(body);
+        stack.Children.Add(buttons);
+        dialog.Content = stack;
+
+        turnOn.Click += (_, _) =>
+        {
+            Inbox.IsEnabled = true;
+            ClipboardWatcher.IsEnabled = true;
+            ApplyInboxMode();
+            ApplyClipboardWatch();
+            dialog.DialogResult = true;
+            dialog.Close();
+        };
+        notNow.Click += (_, _) =>
+        {
+            dialog.DialogResult = false;
+            dialog.Close();
+        };
+
+        dialog.ShowDialog();
     }
 
     public void ApplyInboxMode()
@@ -143,14 +258,16 @@ internal partial class App : Application
     }
 
     /// <summary>
-    /// Capture a user-selected region and hang it on the line. Triggered by
-    /// Win+Alt+S or the tray menu.
+    /// Trigger the OS built-in region screenshot shortcut (Win+Shift+S).
+    /// Windows captures the region to the clipboard; we then wait for the
+    /// clipboard image to land, save it as a PNG, and hang it on the line.
+    /// This mirrors the original Tendedero design on macOS: the app never
+    /// takes screenshots itself, it only consumes what the OS produces.
     /// </summary>
     public void TakeScreenshot()
     {
-        // A modal region picker runs a nested message loop, so the global
-        // shortcut can be received again before the first pick finishes.
-        // Ignore those duplicate requests instead of creating stacked pickers.
+        // Re-entrancy guard: the hotkey can fire again before the first
+        // synthetic keystroke finishes.
         if (_isTakingScreenshot) return;
         _isTakingScreenshot = true;
 
@@ -158,21 +275,21 @@ internal partial class App : Application
 
         Dispatcher.InvokeAsync(async () =>
         {
-            await Task.Delay(140); // let the line slide out of view
+            await Task.Delay(120); // let the line slide out of view
 
-            string? path = null;
+            // Snapshot the clipboard sequence BEFORE pressing Win+Shift+S so
+            // we can detect the NEW image that will land on the clipboard
+            // after the user finishes the region pick.
+            uint beforeSeq = ClipboardWatcherNative.GetSequenceNumber();
+
             // Make the line fully transparent so it never appears in the shot.
             double prevOpacity = _window.Opacity;
             _window.Opacity = 0;
+            string? path = null;
             try
             {
-                var screen = LineWindow.ScreenUnderPointer();
-                if (screen is not null)
-                {
-                    var selector = new RegionSelectorWindow(screen);
-                    var rect = selector.Select();
-                    if (rect.HasValue) path = ScreenCapture.CaptureRect(rect.Value);
-                }
+                TriggerWindowsScreenshot();
+                path = await WaitForClipboardImage(beforeSeq, TimeSpan.FromSeconds(60));
             }
             finally
             {
@@ -187,6 +304,66 @@ internal partial class App : Application
                 _window.Reveal(peekSeconds: 3);
             }
         });
+    }
+
+    /// <summary>
+    /// Poll the clipboard for an image that lands AFTER the given baseline
+    /// sequence number. Returns the saved PNG path, or null on timeout.
+    /// Bypasses the user's "Hang copied images" setting because the user
+    /// explicitly invoked the screenshot shortcut.
+    /// </summary>
+    private static async Task<string?> WaitForClipboardImage(uint beforeSeq, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(300);
+
+            uint nowSeq;
+            IDataObject? data;
+            try
+            {
+                nowSeq = ClipboardWatcherNative.GetSequenceNumber();
+                if (nowSeq == beforeSeq) continue;
+                data = Clipboard.GetDataObject();
+            }
+            catch { continue; }
+
+            var png = ClipboardWatcher.TryExtractImage(data);
+            if (png is null || png.Length == 0) continue;
+
+            var path = ClipboardWatcher.SavePng(png);
+            if (path is not null) return path;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Press Win+Shift+S via SendInput. The OS handles the region picker,
+    /// capture, and clipboard copy.
+    /// </summary>
+    private static void TriggerWindowsScreenshot()
+    {
+        // Order: Win down, Shift down, S down, S up, Shift up, Win up.
+        // Use VK_LWIN / VK_LSHIFT so the modifiers are not ambiguous, which
+        // can happen with the generic VK_MENU / VK_SHIFT virtual codes.
+        var inputs = new NativeMethods.INPUT[6];
+        for (int i = 0; i < inputs.Length; i++)
+        {
+            inputs[i].type = NativeMethods.INPUT_KEYBOARD;
+        }
+        inputs[0].u.ki.wVk = NativeMethods.VK_LWIN;
+        inputs[1].u.ki.wVk = NativeMethods.VK_LSHIFT;
+        inputs[2].u.ki.wVk = NativeMethods.VK_S;
+        inputs[3].u.ki.wVk = NativeMethods.VK_S;
+        inputs[3].u.ki.dwFlags = NativeMethods.KEYEVENTF_KEYUP;
+        inputs[4].u.ki.wVk = NativeMethods.VK_LSHIFT;
+        inputs[4].u.ki.dwFlags = NativeMethods.KEYEVENTF_KEYUP;
+        inputs[5].u.ki.wVk = NativeMethods.VK_LWIN;
+        inputs[5].u.ki.dwFlags = NativeMethods.KEYEVENTF_KEYUP;
+
+        NativeMethods.SendInput((uint)inputs.Length, inputs,
+            System.Runtime.InteropServices.Marshal.SizeOf<NativeMethods.INPUT>());
     }
 
     public void Refresh()
