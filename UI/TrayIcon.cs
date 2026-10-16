@@ -227,8 +227,6 @@ internal sealed class TrayIcon : IDisposable
         item.Padding = new Padding(12, 6, 12, 6);
         item.Margin = new Padding(0);
         item.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
-        // For checkable items, give the checkmark glyph enough room.
-        item.CheckBoxLayout = ToolStripItemContentAlignment.MiddleLeft;
     }
 
     /// <summary>
