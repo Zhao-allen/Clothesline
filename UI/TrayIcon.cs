@@ -302,5 +302,6 @@ internal sealed class TrayColorTable : ProfessionalColorTable
     public override System.Drawing.Color CheckBackground => System.Drawing.Color.FromArgb(0, 120, 212);
     public override System.Drawing.Color CheckPressedBackground => System.Drawing.Color.FromArgb(0, 120, 212);
     public override System.Drawing.Color CheckSelectedBackground => System.Drawing.Color.FromArgb(0, 120, 212);
-    public override System.Drawing.Color Separator => System.Drawing.Color.FromArgb(60, 60, 66);
+    public override System.Drawing.Color SeparatorDark => System.Drawing.Color.FromArgb(60, 60, 66);
+    public override System.Drawing.Color SeparatorLight => System.Drawing.Color.FromArgb(60, 60, 66);
 }
