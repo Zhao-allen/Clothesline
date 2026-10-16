@@ -83,7 +83,7 @@ internal sealed class TrayIcon : IDisposable
         {
             BackColor = BgCard,
             ForeColor = FgPrimary,
-            Font = new Font("Segoe UI Variable Display", 10f, FontStyle.Bold),
+            Font = new Font("Segoe UI Variable Display", 10f, System.Drawing.FontStyle.Bold),
             Padding = new Padding(8, 12, 8, 10),
             Margin = new Padding(0, 0, 0, 4),
             Enabled = false
@@ -246,7 +246,7 @@ internal sealed class TrayIcon : IDisposable
         {
             BackColor = BgCard,
             ForeColor = FgMuted,
-            Font = new Font("Segoe UI Variable Display", 8.5f, FontStyle.Bold),
+            Font = new Font("Segoe UI Variable Display", 8.5f, System.Drawing.FontStyle.Bold),
             Padding = new Padding(14, 8, 14, 4),
             Margin = new Padding(0)
         };
