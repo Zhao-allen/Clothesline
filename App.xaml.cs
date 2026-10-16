@@ -19,13 +19,11 @@ internal partial class App : Application
     private List<ScreenshotWatcher> _folderWatchers = new();
     private ClipboardWatcher? _clipboardWatcher;
     private HotKey? _hotKey;
-    private HotKey? _screenshotHotKey;
 
-    /// <summary>
-    /// Human-readable shortcut for opening Windows Snipping Tool, or
-    /// empty if no global hotkey could be registered at startup.
-    /// </summary>
-    public static string ScreenshotShortcut { get; private set; } = "";
+    // v0.1.9: removed _screenshotHotKey and ScreenshotShortcut. The
+    // screenshot flow is back to the user pressing Win+Shift+S themselves.
+    // No global hotkey, no tray 'Take Screenshot' menu item, no ms-screensketch:
+    // URI launch. Just ClipboardWatcher listening for clipboard changes.
 
     public static bool OpensFromMenuBar
     {
@@ -79,14 +77,11 @@ internal partial class App : Application
         }
         ApplyClipboardWatch();
 
-        // Only one global hotkey is left for line visibility: Ctrl+Alt+T.
-        // For screenshots, we register a Ctrl+Alt+S that opens the Windows
-        // Snipping Tool via the ms-screensketch: URI - this bypasses the
-        // keyboard entirely so it works even on systems where Win+Shift+S
-        // has been disabled or intercepted by another app.
+        // Only one global hotkey remains: Ctrl+Alt+T to show/hide the line.
+        // The screenshot shortcut is the OS's own Win+Shift+S: Clothesline
+        // never takes screenshots itself, it just consumes what Windows
+        // produces (mirrors the original Tendedero design on macOS).
         _hotKey = HotKey.RegisterDefault(() => _window.Toggle());
-        _screenshotHotKey = HotKey.RegisterScreenshot(TakeScreenshot);
-        ScreenshotShortcut = _screenshotHotKey?.DisplayString ?? "";
 
         _tray = new TrayIcon(_line, _window);
 
@@ -271,63 +266,6 @@ internal partial class App : Application
         });
     }
 
-    /// <summary>
-    /// Open the Windows Snipping Tool by launching the ms-screensketch:
-    /// URI via ShellExecute. This bypasses the keyboard entirely, so it
-    /// works on systems where Win+Shift+S has been disabled or is being
-    /// intercepted by another app (OneNote screen clipping, Xbox Game
-    /// Bar, system policy, ...). The user still drags to pick a region
-    /// in the OS's own snipping overlay; the result lands on the
-    /// clipboard, where ClipboardWatcher picks it up and hangs it.
-    /// </summary>
-    public void TakeScreenshot()
-    {
-        if (_window.IsRevealed) _window.SetRevealed(false);
-
-        // Try the modern URI first; fall back to the older ms-screenclip:
-        // alias (Win10 1803-era), then to the legacy SnippingTool.exe.
-        // The ?? chain is wrapped in a discard assignment because C#
-        // disallows a bare ?? expression as a statement.
-        _ = TryLaunch("ms-screensketch:")
-            ?? TryLaunch("ms-screenclip:")
-            ?? TryLaunchLegacySnippingTool();
-    }
-
-    private static string? TryLaunch(string uri)
-    {
-        try
-        {
-            var psi = new System.Diagnostics.ProcessStartInfo(uri)
-            {
-                UseShellExecute = true,
-                Verb = "open"
-            };
-            System.Diagnostics.Process.Start(psi);
-            return uri;
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
-    private static string? TryLaunchLegacySnippingTool()
-    {
-        try
-        {
-            var psi = new System.Diagnostics.ProcessStartInfo("snippingtool.exe", "/clip")
-            {
-                UseShellExecute = true
-            };
-            System.Diagnostics.Process.Start(psi);
-            return "snippingtool.exe";
-        }
-        catch
-        {
-            return null;
-        }
-    }
-
     public void Refresh()
     {
         bool blocked = FullScreen.BlocksLineUnderPointer();
@@ -372,7 +310,6 @@ internal partial class App : Application
     public void ShutdownApp()
     {
         _hotKey?.Dispose();
-        _screenshotHotKey?.Dispose();
         _watcher?.Dispose();
         _safetyWatcher?.Dispose();
         foreach (var w in _folderWatchers) w.Dispose();

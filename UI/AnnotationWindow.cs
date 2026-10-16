@@ -36,9 +36,9 @@ namespace Clothesline.UI;
 internal sealed class AnnotationWindow : Window
 {
     private readonly string _path;
-    private readonly BitmapSource _original;
-    private readonly InkCanvas _ink;
-    private readonly Canvas _shapeCanvas;
+    private BitmapSource _original = null!;
+    private readonly InkCanvas _ink = new();
+    private readonly Canvas _shapeCanvas = new();
 
     private enum Tool { Pen, Select, Erase, Rectangle, Arrow, Text }
     private Tool _currentTool = Tool.Pen;
@@ -71,15 +71,57 @@ internal sealed class AnnotationWindow : Window
     public AnnotationWindow(string path)
     {
         _path = path;
-        _original = LoadImage(path);
+        // _original is loaded async in Loaded so the window opens
+        // instantly instead of blocking the UI thread on image decode
+        // (4K screenshots can take 200-500ms to decode synchronously,
+        // which made long-pressing a hung card feel like the app froze).
 
         Title = "标注 – Clothesline";
         WindowStyle = WindowStyle.ToolWindow;
         ResizeMode = ResizeMode.CanResizeWithGrip;
         Background = new SolidColorBrush(Color.FromRgb(30, 30, 30));
+        // Default size; resized to fit the image once it's loaded.
+        Width = 800;
+        Height = 600;
+        WindowStartupLocation = WindowStartupLocation.CenterScreen;
+        ShowInTaskbar = false;
+
+        // Loading placeholder so the user sees something immediately.
+        Content = new System.Windows.Controls.Grid { Background = Brushes.Black };
+
+        Loaded += OnLoaded;
+    }
+
+    private async void OnLoaded(object? sender, RoutedEventArgs e)
+    {
+        if (_original is not null) return; // already built
+
+        // Decode the PNG off the UI thread so the window stays responsive
+        // during the (potentially slow) image load.
+        var loaded = await Task.Run(() =>
+        {
+            try { return LoadImage(_path); }
+            catch { return null; }
+        });
+
+        if (loaded is null)
+        {
+            WpfMessageBox.Show($"无法加载图片：\n{_path}", "Clothesline",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            Close();
+            return;
+        }
+
+        _original = loaded;
+        BuildUi();
+    }
+
+    private void BuildUi()
+    {
+        // Now that we have the image, resize the window to fit it and
+        // construct the actual editor (toolbar + canvas + ink).
         Width = Math.Min(1200, _original.PixelWidth + 60);
         Height = Math.Min(900, _original.PixelHeight + 120);
-        WindowStartupLocation = WindowStartupLocation.CenterScreen;
 
         var grid = new Grid();
         Content = grid;
@@ -113,7 +155,7 @@ internal sealed class AnnotationWindow : Window
         AddColorButton(toolbar, Colors.White);
         AddColorButton(toolbar, Colors.Black);
 
-        var widthLabel = new TextBlock { Text = "粗细", Foreground = Brushes.White, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 4, 0) };
+        var widthLabel = new System.Windows.Controls.TextBlock { Text = "粗细", Foreground = Brushes.White, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0, 4, 0) };
         toolbar.Children.Add(widthLabel);
         var widthBox = new WpfComboBox { Width = 50, SelectedIndex = 1, VerticalAlignment = VerticalAlignment.Center };
         widthBox.Items.Add(2); widthBox.Items.Add(4); widthBox.Items.Add(6); widthBox.Items.Add(8);

@@ -72,7 +72,11 @@ internal sealed class TrayIcon : IDisposable
         {
             Font = new Font("Segoe UI Variable Display", 10f, GraphicsUnit.Point),
             Padding = new Padding(6, 6, 6, 6),
-            ShowImageMargin = false,
+            // ShowImageMargin MUST be true for ToolStripMenuItem.Checked
+            // to render its checkmark. v0.1.8 set this to false and the
+            // checkmarks on 'Handle screenshots' / 'Hang copied images'
+            // became invisible because the entire left column was hidden.
+            ShowImageMargin = true,
             Renderer = new ToolStripProfessionalRenderer(new TrayColorTable()),
             ForeColor = FgPrimary,
             BackColor = BgCard
@@ -91,7 +95,7 @@ internal sealed class TrayIcon : IDisposable
         menu.Items.Add(header);
 
         // Thin separator after header
-        AddSeparator(menu, 1);
+        AddSeparator(menu);
 
         // ── Section: LINE ──
         AddSectionLabel(menu, "LINE");
@@ -99,10 +103,12 @@ internal sealed class TrayIcon : IDisposable
         toggle.ShortcutKeyDisplayString = "Ctrl+Alt+T";
         menu.Items.Add(toggle);
 
-        var screenshot = MakeItem(I18n.Get("TakeScreenshot"), () => App.Instance.TakeScreenshot());
-        screenshot.ShortcutKeyDisplayString = App.ScreenshotShortcut;
-        screenshot.Enabled = !string.IsNullOrEmpty(App.ScreenshotShortcut);
-        menu.Items.Add(screenshot);
+        // v0.1.9: 'Take Screenshot' tray item removed. The screenshot flow
+        // is back to the OS's own Win+Shift+S - Clothesline just watches
+        // the clipboard via ClipboardWatcher. No global hotkey registration,
+        // no ms-screensketch: URI launch (the previous design opened the
+        // Snipping Tool app instead of starting a capture, which the user
+        // found more annoying than just pressing Win+Shift+S themselves).
 
         var clear = MakeItem(I18n.Get("TakeEverythingDown"), () => _line.Clear());
         menu.Items.Add(clear);
@@ -229,7 +235,7 @@ internal sealed class TrayIcon : IDisposable
         return menu;
     }
 
-    private static void AddSeparator(ContextMenuStrip menu, int? _ = null)
+    private static void AddSeparator(ContextMenuStrip menu)
     {
         var sep = new ToolStripSeparator
         {
@@ -276,6 +282,12 @@ internal sealed class TrayIcon : IDisposable
     /// </summary>
     private static void StyleItem(ToolStripMenuItem item)
     {
+        // Explicitly set Font on every item. Sub-menu items live in their
+        // own auto-created ContextMenuStrip whose Font does NOT inherit from
+        // the parent menu in all cases - without this, sub-menus render in
+        // the default Segoe UI 8.25pt while the main menu is Segoe UI
+        // Variable Display 10pt, which looks visibly inconsistent.
+        item.Font = new Font("Segoe UI Variable Display", 10f, GraphicsUnit.Point);
         item.Padding = new Padding(14, 9, 14, 9);
         item.Margin = new Padding(0);
         item.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
@@ -290,7 +302,16 @@ internal sealed class TrayIcon : IDisposable
         if (parent.DropDown is ToolStripDropDownMenu drop)
         {
             drop.Padding = new Padding(6, 6, 6, 6);
-            drop.ShowImageMargin = false;
+            // ShowImageMargin=true so sub-menu checkmarks (e.g. the
+            // selected language radio, the active Keep-on-line count, the
+            // active Size) actually render. v0.1.8 left this false and the
+            // sub-menu selection highlight was invisible.
+            drop.ShowImageMargin = true;
+            drop.Font = new Font("Segoe UI Variable Display", 10f, GraphicsUnit.Point);
+            drop.BackColor = BgCard;
+            drop.ForeColor = FgPrimary;
+            // Apply the same Renderer so the dark palette carries over.
+            drop.Renderer = new ToolStripProfessionalRenderer(new TrayColorTable());
         }
     }
 

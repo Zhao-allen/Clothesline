@@ -76,6 +76,5 @@
   <data name="InboxOfferBody" xml:space="preserve"><value>Win+Shift+S または Win+PrintScreen で撮った画像は即座にラインに並び、デスクトップに溜まりません。フォルダにドラッグすれば保存、✕ をクリックすれば破棄。トレイメニューからいつでも解除できます。</value></data>
   <data name="InboxOfferTurnOn" xml:space="preserve"><value>オンにする</value></data>
   <data name="InboxOfferNotNow" xml:space="preserve"><value>後で</value></data>
-<data name="TakeScreenshot" xml:space="preserve"><value>スクリーンショット</value></data>
   <data name="CheckForUpdates" xml:space="preserve"><value>更新を確認</value></data>
 </root>
