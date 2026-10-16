@@ -37,8 +37,8 @@ internal sealed class AnnotationWindow : Window
 {
     private readonly string _path;
     private BitmapSource _original = null!;
-    private readonly InkCanvas _ink = new();
-    private readonly Canvas _shapeCanvas = new();
+    private InkCanvas _ink = new();
+    private Canvas _shapeCanvas = new();
 
     private enum Tool { Pen, Select, Erase, Rectangle, Arrow, Text }
     private Tool _currentTool = Tool.Pen;
