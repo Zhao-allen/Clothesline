@@ -55,39 +55,6 @@ internal sealed class HotKey : IDisposable
         return hk.IsRegistered ? hk : null;
     }
 
-    /// <summary>
-    /// Register the screenshot shortcut. Tries Win+Alt+S first; if that
-    /// fails (Xbox Game Bar, OneNote screen clipping, system policy, ...)
-    /// falls back to Ctrl+Alt+S. If both fail, returns null so the caller
-    /// can warn the user. The returned HotKey's DisplayString reflects
-    /// whichever combination actually took effect.
-    /// </summary>
-    public static HotKey? RegisterScreenshot(Action onPressed)
-    {
-        uint vk = (uint)KeyInterop.VirtualKeyFromKey(Key.S);
-
-        var primary = new HotKey(
-            NativeMethods.MOD_WIN | NativeMethods.MOD_ALT | NativeMethods.MOD_NOREPEAT,
-            vk, onPressed);
-        if (primary.IsRegistered)
-        {
-            primary.DisplayString = "Win+Alt+S";
-            return primary;
-        }
-        primary.Dispose();
-
-        var fallback = new HotKey(
-            NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT | NativeMethods.MOD_NOREPEAT,
-            vk, onPressed);
-        if (fallback.IsRegistered)
-        {
-            fallback.DisplayString = "Ctrl+Alt+S";
-            return fallback;
-        }
-        fallback.Dispose();
-        return null;
-    }
-
     private sealed class MessageWindow : NativeWindow, IDisposable
     {
         private readonly Action<int> _onHotKey;

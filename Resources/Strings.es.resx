@@ -71,10 +71,10 @@
   <data name="MoveToTrash" xml:space="preserve"><value>Mover a la Papelera</value></data>
   <data name="TakeDownLeft" xml:space="preserve"><value>Quitar todo lo de la izquierda</value></data>
   <data name="TakeDownRight" xml:space="preserve"><value>Quitar todo lo de la derecha</value></data>
-  <data name="TakeScreenshot" xml:space="preserve"><value>Hacer captura</value></data>
   <data name="EmptyHint" xml:space="preserve"><value>Pulsa Win+Shift+S para hacer una captura</value></data>
   <data name="InboxOfferTitle" xml:space="preserve"><value>¿Dejar que Clothesline gestione tus capturas?</value></data>
   <data name="InboxOfferBody" xml:space="preserve"><value>Las capturas que hagas con Win+Shift+S o Win+PrintScreen se colgarán de la línea al instante y no se acumularán en el escritorio. Arrastra una a una carpeta para conservarla o descártala con la ✕. Puedes desactivarlo desde el menú de la bandeja.</value></data>
   <data name="InboxOfferTurnOn" xml:space="preserve"><value>Activar</value></data>
   <data name="InboxOfferNotNow" xml:space="preserve"><value>Ahora no</value></data>
+  <data name="CheckForUpdates" xml:space="preserve"><value>Buscar actualizaciones</value></data>
 </root>

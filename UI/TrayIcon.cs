@@ -55,154 +55,165 @@ internal sealed class TrayIcon : IDisposable
     {
         var menu = new ContextMenuStrip
         {
-            Font = new Font("Segoe UI", 10f),
-            Padding = new Padding(2, 4, 2, 4),
+            Font = new Font("Segoe UI Variable Display", 10f, GraphicsUnit.Point),
+            Padding = new Padding(6, 6, 6, 6),
             ShowImageMargin = false,
             Renderer = new ToolStripProfessionalRenderer(new TrayColorTable()),
-            ForeColor = System.Drawing.Color.FromArgb(230, 230, 230)
+            ForeColor = System.Drawing.Color.FromArgb(235, 235, 235),
+            BackColor = System.Drawing.Color.FromArgb(36, 36, 40)
         };
 
-        var toggle = new ToolStripMenuItem(_window.IsRevealed ? I18n.Get("HideLine") : I18n.Get("ShowLine"));
-        toggle.Click += (_, _) => _window.Toggle();
+        var toggle = MakeItem(_window.IsRevealed ? I18n.Get("HideLine") : I18n.Get("ShowLine"), () => _window.Toggle());
         menu.Items.Add(toggle);
 
-        var screenshot = new ToolStripMenuItem(I18n.Get("TakeScreenshot"))
-        {
-            ShortcutKeyDisplayString = App.ScreenshotShortcut
-        };
-        screenshot.Enabled = !string.IsNullOrEmpty(App.ScreenshotShortcut);
-        screenshot.Click += (_, _) => App.Instance.TakeScreenshot();
-        menu.Items.Add(screenshot);
-
-        var clear = new ToolStripMenuItem(I18n.Get("TakeEverythingDown"));
-        clear.Click += (_, _) => _line.Clear();
+        var clear = MakeItem(I18n.Get("TakeEverythingDown"), () => _line.Clear());
         menu.Items.Add(clear);
 
         menu.Items.Add(new ToolStripSeparator());
 
-        var inbox = new ToolStripMenuItem(I18n.Get("HandleScreenshots")) { Checked = Inbox.IsEnabled };
-        inbox.Click += (_, _) =>
+        var inbox = MakeItem(I18n.Get("HandleScreenshots"), () =>
         {
             Inbox.IsEnabled = !Inbox.IsEnabled;
             App.Instance.ApplyInboxMode();
-        };
+        });
+        inbox.Checked = Inbox.IsEnabled;
         menu.Items.Add(inbox);
 
-        var clipboard = new ToolStripMenuItem(I18n.Get("HangCopiedImages")) { Checked = ClipboardWatcher.IsEnabled };
-        clipboard.Click += (_, _) =>
+        var clipboard = MakeItem(I18n.Get("HangCopiedImages"), () =>
         {
             ClipboardWatcher.IsEnabled = !ClipboardWatcher.IsEnabled;
             App.Instance.ApplyClipboardWatch();
             UpdateIcon();
-        };
+        });
+        clipboard.Checked = ClipboardWatcher.IsEnabled;
         menu.Items.Add(clipboard);
 
         var bringDown = new ToolStripMenuItem(I18n.Get("BringLineDown"));
-        var bringSub = new ToolStripMenuItem(I18n.Get("WhenPointerRestsAtTop")) { Checked = App.OpensFromMenuBar };
-        bringSub.Click += (_, _) => App.OpensFromMenuBar = !App.OpensFromMenuBar;
-        var peekSub = new ToolStripMenuItem(I18n.Get("WhenSomethingNewHangs")) { Checked = App.PeeksAtNew };
-        peekSub.Click += (_, _) => App.PeeksAtNew = !App.PeeksAtNew;
-        var fsSub = new ToolStripMenuItem(I18n.Get("OverFullScreenApps")) { Checked = FullScreen.ShowLineOver };
-        fsSub.Click += (_, _) => { FullScreen.ShowLineOver = !FullScreen.ShowLineOver; App.Instance.Refresh(); };
+        StyleItem(bringDown);
+        var bringSub = MakeItem(I18n.Get("WhenPointerRestsAtTop"), () => App.OpensFromMenuBar = !App.OpensFromMenuBar);
+        bringSub.Checked = App.OpensFromMenuBar;
+        var peekSub = MakeItem(I18n.Get("WhenSomethingNewHangs"), () => App.PeeksAtNew = !App.PeeksAtNew);
+        peekSub.Checked = App.PeeksAtNew;
+        var fsSub = MakeItem(I18n.Get("OverFullScreenApps"), () => { FullScreen.ShowLineOver = !FullScreen.ShowLineOver; App.Instance.Refresh(); });
+        fsSub.Checked = FullScreen.ShowLineOver;
         bringDown.DropDownItems.Add(bringSub);
         bringDown.DropDownItems.Add(peekSub);
         bringDown.DropDownItems.Add(fsSub);
         menu.Items.Add(bringDown);
 
         var folderItem = new ToolStripMenuItem(I18n.Get("AlsoWatchFolders"));
-        var addFolder = new ToolStripMenuItem(I18n.Get("AddFolder"));
-        addFolder.Click += (_, _) => App.Instance.ChooseExtraFolder();
+        StyleItem(folderItem);
+        var addFolder = MakeItem(I18n.Get("AddFolder"), () => App.Instance.ChooseExtraFolder());
         folderItem.DropDownItems.Add(addFolder);
         foreach (var f in App.ExtraFolders)
         {
             var fi = new ToolStripMenuItem(System.IO.Path.GetFileName(f)) { Checked = true };
-            var stop = new ToolStripMenuItem(I18n.Get("StopWatching"));
-            stop.Click += (_, _) => { App.ExtraFolders = App.ExtraFolders.Where(x => x != f).ToList(); App.Instance.RestartWatchers(); };
+            StyleItem(fi);
+            var stop = MakeItem(I18n.Get("StopWatching"), () => { App.ExtraFolders = App.ExtraFolders.Where(x => x != f).ToList(); App.Instance.RestartWatchers(); });
             folderItem.DropDownItems.Add(fi);
             folderItem.DropDownItems.Add(stop);
         }
         menu.Items.Add(folderItem);
 
         var keepItem = new ToolStripMenuItem(I18n.Get("KeepOnLine"));
-        var fit = new ToolStripMenuItem(I18n.Get("AsManyAsFit")) { Checked = Line.KeepOnLine is null };
-        fit.Click += (_, _) => App.Instance.SetKeep(null);
+        StyleItem(keepItem);
+        var fit = MakeItem(I18n.Get("AsManyAsFit"), () => App.Instance.SetKeep(null));
+        fit.Checked = Line.KeepOnLine is null;
         keepItem.DropDownItems.Add(fit);
         foreach (var n in Line.KeepChoices)
         {
-            var k = new ToolStripMenuItem(I18n.Get("PhotosSuffix", n)) { Checked = Line.KeepOnLine == n };
-            int captured = n;
-            k.Click += (_, _) => App.Instance.SetKeep(captured);
+            var k = MakeItem(I18n.Get("PhotosSuffix", n), () => App.Instance.SetKeep(n));
+            k.Checked = Line.KeepOnLine == n;
             keepItem.DropDownItems.Add(k);
         }
         menu.Items.Add(keepItem);
 
         var sizeItem = new ToolStripMenuItem(I18n.Get("Size"));
+        StyleItem(sizeItem);
         foreach (var s in new[] { Layout.SizeKind.Small, Layout.SizeKind.Medium, Layout.SizeKind.Large })
         {
-            var si = new ToolStripMenuItem(Layout.SizeLabel(s)) { Checked = Layout.Size == s };
-            var captured = s;
-            si.Click += (_, _) => App.Instance.SetSize(captured);
+            var si = MakeItem(Layout.SizeLabel(s), () => App.Instance.SetSize(s));
+            si.Checked = Layout.Size == s;
             sizeItem.DropDownItems.Add(si);
         }
         menu.Items.Add(sizeItem);
 
         var langItem = new ToolStripMenuItem(I18n.Get("Language"));
-        var sysItem = new ToolStripMenuItem(I18n.Get("SystemDefault")) { Checked = string.IsNullOrWhiteSpace(I18n.OverrideName) };
-        sysItem.Click += (_, _) => { I18n.OverrideName = ""; };
+        StyleItem(langItem);
+        var sysItem = MakeItem(I18n.Get("SystemDefault"), () => I18n.OverrideName = "");
+        sysItem.Checked = string.IsNullOrWhiteSpace(I18n.OverrideName);
         langItem.DropDownItems.Add(sysItem);
         foreach (var ci in I18n.Supported)
         {
-            var li = new ToolStripMenuItem(ci.NativeName) { Checked = I18n.OverrideName == ci.Name };
-            var captured = ci.Name;
-            li.Click += (_, _) => { I18n.OverrideName = captured; };
+            var li = MakeItem(ci.NativeName, () => I18n.OverrideName = ci.Name);
+            li.Checked = I18n.OverrideName == ci.Name;
             langItem.DropDownItems.Add(li);
         }
         menu.Items.Add(langItem);
 
         menu.Items.Add(new ToolStripSeparator());
 
-        var openFolder = new ToolStripMenuItem(I18n.Get("OpenScreenshotsFolder"));
-        openFolder.Click += (_, _) =>
+        var openFolder = MakeItem(I18n.Get("OpenScreenshotsFolder"), () =>
         {
             var folder = Inbox.IsEnabled ? Inbox.Folder : Inbox.ScreenshotsFolder;
             try { System.Diagnostics.Process.Start("explorer.exe", folder); } catch { }
-        };
+        });
         menu.Items.Add(openFolder);
 
-        var sound = new ToolStripMenuItem(I18n.Get("Sounds")) { Checked = Sound.SoundOn };
-        sound.Click += (_, _) => { Sound.SoundOn = !Sound.SoundOn; };
+        var sound = MakeItem(I18n.Get("Sounds"), () => Sound.SoundOn = !Sound.SoundOn);
+        sound.Checked = Sound.SoundOn;
         menu.Items.Add(sound);
 
-        var startup = new ToolStripMenuItem(I18n.Get("OpenAtLogin")) { Checked = StartupManager.IsEnabled };
-        startup.Click += (_, _) => App.Instance.ToggleStartup();
+        var startup = MakeItem(I18n.Get("OpenAtLogin"), () => App.Instance.ToggleStartup());
+        startup.Checked = StartupManager.IsEnabled;
         menu.Items.Add(startup);
 
         menu.Items.Add(new ToolStripSeparator());
 
-        var update = new ToolStripMenuItem("检查更新");
-        update.Click += (_, _) =>
+        var update = MakeItem(I18n.Get("CheckForUpdates"), () =>
         {
             try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://github.com/Zhao-allen/Clothesline/releases") { UseShellExecute = true }); }
             catch { }
-        };
+        });
         menu.Items.Add(update);
 
-        var quit = new ToolStripMenuItem(I18n.Get("Quit"));
-        quit.Click += (_, _) => App.Instance.ShutdownApp();
+        var quit = MakeItem(I18n.Get("Quit"), () => App.Instance.ShutdownApp());
         menu.Items.Add(quit);
 
         menu.Opening += (_, _) => RefreshMenu(menu);
         return menu;
     }
 
+    private static ToolStripMenuItem MakeItem(string text, Action action)
+    {
+        var item = new ToolStripMenuItem(text);
+        StyleItem(item);
+        item.Click += (_, _) => action();
+        return item;
+    }
+
+    /// <summary>
+    /// Apply the modern padding / sizing to a top-level or sub menu item so
+    /// every entry has consistent visual weight instead of the cramped
+    /// default 4-px WinForms look.
+    /// </summary>
+    private static void StyleItem(ToolStripMenuItem item)
+    {
+        item.Padding = new Padding(12, 6, 12, 6);
+        item.Margin = new Padding(0);
+        item.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+    }
+
     private void RefreshMenu(ContextMenuStrip menu)
     {
-        if (menu.Items.Count < 7) return;
+        // Indices: 0 toggle, 1 clear, 2 sep, 3 inbox, 4 clipboard, 5 bringDown,
+        // 6 folderItem, 7 keepItem, 8 sizeItem, 9 langItem, 10 sep, 11 openFolder,
+        // 12 sound, 13 startup, 14 sep, 15 update, 16 quit
+        if (menu.Items.Count < 5) return;
         ((ToolStripMenuItem)menu.Items[0]).Text = _window.IsRevealed ? I18n.Get("HideLine") : I18n.Get("ShowLine");
-        // 0 toggle, 1 screenshot, 2 clear, 3 separator, 4 inbox, 5 clipboard
-        ((ToolStripMenuItem)menu.Items[2]).Enabled = _line.LiveCount > 0;
-        ((ToolStripMenuItem)menu.Items[4]).Checked = Inbox.IsEnabled;
-        ((ToolStripMenuItem)menu.Items[5]).Checked = ClipboardWatcher.IsEnabled;
+        ((ToolStripMenuItem)menu.Items[1]).Enabled = _line.LiveCount > 0;
+        ((ToolStripMenuItem)menu.Items[3]).Checked = Inbox.IsEnabled;
+        ((ToolStripMenuItem)menu.Items[4]).Checked = ClipboardWatcher.IsEnabled;
         foreach (var item in menu.Items.OfType<ToolStripMenuItem>())
         {
             if (item.Text == I18n.Get("Sounds")) item.Checked = Sound.SoundOn;
@@ -275,13 +286,21 @@ internal sealed class TrayIcon : IDisposable
     }
 }
 
-/// <summary>Slightly softer professional renderer for the tray menu.</summary>
+/// <summary>
+/// Modern dark tray theme: warm-cool neutral background, subtle hover,
+/// Windows accent blue (#0078D4) for checkmarks and selection.
+/// </summary>
 internal sealed class TrayColorTable : ProfessionalColorTable
 {
-    public override System.Drawing.Color MenuItemSelected => System.Drawing.Color.FromArgb(50, 50, 55);
-    public override System.Drawing.Color MenuItemBorder => System.Drawing.Color.FromArgb(180, 200, 230);
-    public override System.Drawing.Color MenuBorder => System.Drawing.Color.FromArgb(200, 200, 200);
-    public override System.Drawing.Color ToolStripDropDownBackground => System.Drawing.Color.FromArgb(32, 32, 36);
-    public override System.Drawing.Color ImageMarginGradientBegin => System.Drawing.Color.FromArgb(245, 245, 248);
-    public override System.Drawing.Color ImageMarginGradientEnd => System.Drawing.Color.FromArgb(245, 245, 248);
+    public override System.Drawing.Color MenuItemSelected => System.Drawing.Color.FromArgb(58, 58, 64);
+    public override System.Drawing.Color MenuItemBorder => System.Drawing.Color.FromArgb(0, 120, 212);
+    public override System.Drawing.Color MenuBorder => System.Drawing.Color.FromArgb(20, 20, 22);
+    public override System.Drawing.Color ToolStripDropDownBackground => System.Drawing.Color.FromArgb(36, 36, 40);
+    public override System.Drawing.Color ImageMarginGradientBegin => System.Drawing.Color.FromArgb(36, 36, 40);
+    public override System.Drawing.Color ImageMarginGradientMiddle => System.Drawing.Color.FromArgb(36, 36, 40);
+    public override System.Drawing.Color ImageMarginGradientEnd => System.Drawing.Color.FromArgb(36, 36, 40);
+    public override System.Drawing.Color CheckBackground => System.Drawing.Color.FromArgb(0, 120, 212);
+    public override System.Drawing.Color CheckPressedBackground => System.Drawing.Color.FromArgb(0, 120, 212);
+    public override System.Drawing.Color CheckSelectedBackground => System.Drawing.Color.FromArgb(0, 120, 212);
+    public override System.Drawing.Color Separator => System.Drawing.Color.FromArgb(60, 60, 66);
 }

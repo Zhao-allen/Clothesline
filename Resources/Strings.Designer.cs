@@ -72,5 +72,6 @@ namespace Clothesline.Resources {
         public static string InboxOfferBody => ResourceManager.GetString("InboxOfferBody", resourceCulture);
         public static string InboxOfferTurnOn => ResourceManager.GetString("InboxOfferTurnOn", resourceCulture);
         public static string InboxOfferNotNow => ResourceManager.GetString("InboxOfferNotNow", resourceCulture);
+        public static string CheckForUpdates => ResourceManager.GetString("CheckForUpdates", resourceCulture);
     }
 }

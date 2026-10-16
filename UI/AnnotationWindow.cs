@@ -207,10 +207,14 @@ internal sealed class AnnotationWindow : Window
     {
         if (_currentTool is not (Tool.Rectangle or Tool.Arrow or Tool.Text)) return;
         _shapeStart = e.GetPosition(_shapeCanvas);
-        _shapeCanvas.CaptureMouse();
 
         if (_currentTool == Tool.Text)
         {
+            // For Text we must NOT call CaptureMouse: the canvas would
+            // swallow the next click on a toolbar button (e.g. switching
+            // to Rectangle, or Save/Cancel), making it impossible to
+            // leave the text tool. The TextBox commits itself via
+            // LostFocus when the user clicks anywhere else.
             var tb = new WpfTextBox
             {
                 Background = Brushes.Transparent,
@@ -227,9 +231,19 @@ internal sealed class AnnotationWindow : Window
             _shapeCanvas.Children.Add(tb);
             tb.Focus();
             tb.LostFocus += (_, _) => CommitWpfTextBox(tb);
+            // Cancel text edit on Escape so the user is never stuck.
+            tb.KeyDown += (_, ev) =>
+            {
+                if (ev.Key == Key.Escape)
+                {
+                    _shapeCanvas.Children.Remove(tb);
+                }
+            };
             e.Handled = true;
             return;
         }
+
+        _shapeCanvas.CaptureMouse();
 
         _previewShape = _currentTool == Tool.Rectangle
             ? new WpfRectangle { Stroke = new SolidColorBrush(_currentColor), StrokeThickness = _strokeWidth, Fill = Brushes.Transparent }

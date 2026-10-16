@@ -71,10 +71,10 @@
   <data name="MoveToTrash" xml:space="preserve"><value>移到回收站</value></data>
   <data name="TakeDownLeft" xml:space="preserve"><value>取下左侧所有</value></data>
   <data name="TakeDownRight" xml:space="preserve"><value>取下右侧所有</value></data>
-  <data name="TakeScreenshot" xml:space="preserve"><value>截图</value></data>
   <data name="EmptyHint" xml:space="preserve"><value>按 Win+Shift+S 截图</value></data>
   <data name="InboxOfferTitle" xml:space="preserve"><value>让 Clothesline 接管你的截图？</value></data>
   <data name="InboxOfferBody" xml:space="preserve"><value>你用 Win+Shift+S 或 Win+PrintScreen 截的图会立刻挂到晾衣绳上，不再堆在桌面。拖到文件夹就保留，点 ✕ 就丢弃。随时可在托盘菜单关闭。</value></data>
   <data name="InboxOfferTurnOn" xml:space="preserve"><value>开启</value></data>
   <data name="InboxOfferNotNow" xml:space="preserve"><value>暂不</value></data>
+  <data name="CheckForUpdates" xml:space="preserve"><value>检查更新</value></data>
 </root>
