@@ -58,17 +58,17 @@ internal partial class App : Application
 
         ApplyInboxMode();
 
-        // On first run we silently turn on clipboard watching so that the
-        // user's very first Win+Shift+S immediately hangs on the line, with
-        // no menu diving required. The user can turn this off from the tray
-        // menu's "Hang copied images" item.
-        if (!Settings.Default.GetBool("clipboardChosen"))
+        // Always make sure clipboard watching is on, unless the user has
+        // explicitly turned it off via the tray menu. The previous logic
+        // (gated on a one-shot `clipboardChosen` flag) silently left
+        // ClipboardWatcher disabled when the user had toggled it off in a
+        // prior version, which made Win+Shift+S produce no hang on the
+        // line. Now we read the explicit `clipboardUserDisabled` flag that
+        // is only ever set by the tray menu's "Hang copied images" click
+        // handler.
+        if (!Settings.Default.GetBool("clipboardUserDisabled"))
         {
-            Settings.Default.SetBool("clipboardChosen", true);
-            if (!ClipboardWatcher.IsEnabled)
-            {
-                ClipboardWatcher.IsEnabled = true;
-            }
+            ClipboardWatcher.IsEnabled = true;
         }
         ApplyClipboardWatch();
 

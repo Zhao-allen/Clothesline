@@ -71,25 +71,42 @@ internal sealed class TrayIcon : IDisposable
 
         menu.Items.Add(new ToolStripSeparator());
 
-        var inbox = MakeItem(I18n.Get("HandleScreenshots"), () =>
+        // 'Handle screenshots' and 'Hang copied images' are toggle items:
+        // unlike MakeItem (which doesn't touch Checked), we need the
+        // checkmark to flip the moment the user clicks, before the menu
+        // closes. The captured `inbox` / `clipboard` locals let us update
+        // the live ToolStripMenuItem.Checked directly from the handler.
+        var inbox = new ToolStripMenuItem(I18n.Get("HandleScreenshots"));
+        StyleItem(inbox);
+        inbox.Checked = Inbox.IsEnabled;
+        inbox.Click += (_, _) =>
         {
             Inbox.IsEnabled = !Inbox.IsEnabled;
             App.Instance.ApplyInboxMode();
-        });
-        inbox.Checked = Inbox.IsEnabled;
+            inbox.Checked = Inbox.IsEnabled;
+        };
         menu.Items.Add(inbox);
 
-        var clipboard = MakeItem(I18n.Get("HangCopiedImages"), () =>
+        var clipboard = new ToolStripMenuItem(I18n.Get("HangCopiedImages"));
+        StyleItem(clipboard);
+        clipboard.Checked = ClipboardWatcher.IsEnabled;
+        clipboard.Click += (_, _) =>
         {
             ClipboardWatcher.IsEnabled = !ClipboardWatcher.IsEnabled;
+            // Persist the user's explicit choice so App.OnStartup doesn't
+            // override it on the next launch. `clipboardUserDisabled` is
+            // the only thing that prevents the auto-enable-every-startup
+            // logic from re-enabling.
+            Settings.Default.SetBool("clipboardUserDisabled", !ClipboardWatcher.IsEnabled);
             App.Instance.ApplyClipboardWatch();
             UpdateIcon();
-        });
-        clipboard.Checked = ClipboardWatcher.IsEnabled;
+            clipboard.Checked = ClipboardWatcher.IsEnabled;
+        };
         menu.Items.Add(clipboard);
 
         var bringDown = new ToolStripMenuItem(I18n.Get("BringLineDown"));
         StyleItem(bringDown);
+        StyleDropDown(bringDown);
         var bringSub = MakeItem(I18n.Get("WhenPointerRestsAtTop"), () => App.OpensFromMenuBar = !App.OpensFromMenuBar);
         bringSub.Checked = App.OpensFromMenuBar;
         var peekSub = MakeItem(I18n.Get("WhenSomethingNewHangs"), () => App.PeeksAtNew = !App.PeeksAtNew);
@@ -103,6 +120,7 @@ internal sealed class TrayIcon : IDisposable
 
         var folderItem = new ToolStripMenuItem(I18n.Get("AlsoWatchFolders"));
         StyleItem(folderItem);
+        StyleDropDown(folderItem);
         var addFolder = MakeItem(I18n.Get("AddFolder"), () => App.Instance.ChooseExtraFolder());
         folderItem.DropDownItems.Add(addFolder);
         foreach (var f in App.ExtraFolders)
@@ -117,6 +135,7 @@ internal sealed class TrayIcon : IDisposable
 
         var keepItem = new ToolStripMenuItem(I18n.Get("KeepOnLine"));
         StyleItem(keepItem);
+        StyleDropDown(keepItem);
         var fit = MakeItem(I18n.Get("AsManyAsFit"), () => App.Instance.SetKeep(null));
         fit.Checked = Line.KeepOnLine is null;
         keepItem.DropDownItems.Add(fit);
@@ -130,6 +149,7 @@ internal sealed class TrayIcon : IDisposable
 
         var sizeItem = new ToolStripMenuItem(I18n.Get("Size"));
         StyleItem(sizeItem);
+        StyleDropDown(sizeItem);
         foreach (var s in new[] { Layout.SizeKind.Small, Layout.SizeKind.Medium, Layout.SizeKind.Large })
         {
             var si = MakeItem(Layout.SizeLabel(s), () => App.Instance.SetSize(s));
@@ -140,6 +160,7 @@ internal sealed class TrayIcon : IDisposable
 
         var langItem = new ToolStripMenuItem(I18n.Get("Language"));
         StyleItem(langItem);
+        StyleDropDown(langItem);
         var sysItem = MakeItem(I18n.Get("SystemDefault"), () => I18n.OverrideName = "");
         sysItem.Checked = string.IsNullOrWhiteSpace(I18n.OverrideName);
         langItem.DropDownItems.Add(sysItem);
@@ -162,6 +183,10 @@ internal sealed class TrayIcon : IDisposable
 
         var sound = MakeItem(I18n.Get("Sounds"), () => Sound.SoundOn = !Sound.SoundOn);
         sound.Checked = Sound.SoundOn;
+        // The Sounds / OpenAtLogin items are toggles too, but their Checked
+        // state is refreshed on every menu open by RefreshMenu (see below),
+        // so we don't need to update them in their click handlers. The
+        // user will see the new checkmark when they reopen the menu.
         menu.Items.Add(sound);
 
         var startup = MakeItem(I18n.Get("OpenAtLogin"), () => App.Instance.ToggleStartup());
@@ -202,6 +227,23 @@ internal sealed class TrayIcon : IDisposable
         item.Padding = new Padding(12, 6, 12, 6);
         item.Margin = new Padding(0);
         item.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+        // For checkable items, give the checkmark glyph enough room.
+        item.CheckBoxLayout = ToolStripItemContentAlignment.MiddleLeft;
+    }
+
+    /// <summary>
+    /// Apply the same dark background and padding to a parent item's
+    /// drop-down panel as the root menu. Without this, submenus render with
+    /// the cramped default WinForms look (tight padding, default border),
+    /// which looks inconsistent with the modernized parent menu.
+    /// </summary>
+    private static void StyleDropDown(ToolStripMenuItem parent)
+    {
+        if (parent.DropDown is ToolStripDropDownMenu drop)
+        {
+            drop.Padding = new Padding(6, 6, 6, 6);
+            drop.ShowImageMargin = false;
+        }
     }
 
     private void RefreshMenu(ContextMenuStrip menu)

@@ -1,9 +1,9 @@
 ; Clothesline installer script (Inno Setup 6)
-; Compile: ISCC.exe /DAppVersion=0.1.5 Clothesline.iss
+; Compile: ISCC.exe /DAppVersion=0.1.6 Clothesline.iss
 ; Per-user install (no admin required) to %LOCALAPPDATA%\Programs\Clothesline.
 
 #ifndef AppVersion
-  #define AppVersion "0.1.5"
+  #define AppVersion "0.1.6"
 #endif
 
 [Setup]
