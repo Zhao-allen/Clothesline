@@ -505,8 +505,30 @@ internal sealed class AnnotationWindow : Window
 
             var encoder = new PngBitmapEncoder();
             encoder.Frames.Add(BitmapFrame.Create(rtb));
-            using var fs = File.Create(_path);
-            encoder.Save(fs);
+
+            // Render PNG into memory first so we only touch the disk for
+            // the final write - no half-written files even on exception.
+            byte[] pngBytes;
+            using (var ms = new System.IO.MemoryStream())
+            {
+                encoder.Save(ms);
+                pngBytes = ms.ToArray();
+            }
+
+            // Try the happy path: atomic replace of the original file.
+            // If the original is locked (Explorer preview pane, thumbnail
+            // cache, another viewer) we fall back to a new sibling file
+            // named "<original>-annotated.png" instead of erroring out.
+            string? savedPath = TryWriteAtomic(_path, pngBytes)
+                ?? TryWriteAtomic(GetAnnotatedSiblingPath(_path), pngBytes);
+
+            if (savedPath is null)
+            {
+                WpfMessageBox.Show(
+                    $"保存失败：原文件可能被占用，且备用路径也写不进去。\n路径：{_path}",
+                    "Clothesline", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
 
             Close();
         }
@@ -514,5 +536,61 @@ internal sealed class AnnotationWindow : Window
         {
             WpfMessageBox.Show($"保存失败:\n{ex.Message}", "Clothesline", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
+    }
+
+    /// <summary>
+    /// Write bytes to the target path. Returns the path on success, or
+    /// null if writing failed (file locked, permission denied, etc).
+    /// Strategy: write to a sibling .tmp file, then atomically replace
+    /// the target. This avoids truncating the original before we know
+    /// the new bytes are good, and sidesteps most file-lock scenarios.
+    /// </summary>
+    private static string? TryWriteAtomic(string path, byte[] bytes)
+    {
+        string tmp = path + ".tmp";
+        try
+        {
+            var dir = System.IO.Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(dir) && !System.IO.Directory.Exists(dir))
+                System.IO.Directory.CreateDirectory(dir);
+
+            // Write+flush the temp file fully.
+            using (var fs = new System.IO.FileStream(tmp,
+                System.IO.FileMode.Create, System.IO.FileAccess.Write,
+                System.IO.FileShare.None))
+            {
+                fs.Write(bytes, 0, bytes.Length);
+                fs.Flush(true);
+            }
+
+            // Atomic replace. .NET 9's File.Move has an overload with
+            // overwrite=true that does an atomic rename on Windows.
+            // If the target is locked we'll get IOException and fall
+            // back to the caller's plan B.
+            if (System.IO.File.Exists(path))
+                System.IO.File.Move(tmp, path, overwrite: true);
+            else
+                System.IO.File.Move(tmp, path);
+            return path;
+        }
+        catch
+        {
+            // Clean up the orphan temp file if we left one.
+            try { if (System.IO.File.Exists(tmp)) System.IO.File.Delete(tmp); } catch { }
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Build a sibling path like "Foo.png" -> "Foo-annotated.png" so
+    /// the user can save their edited version even when the original
+    /// file is locked by Explorer's preview pane.
+    /// </summary>
+    private static string GetAnnotatedSiblingPath(string path)
+    {
+        var dir = System.IO.Path.GetDirectoryName(path) ?? "";
+        var name = System.IO.Path.GetFileNameWithoutExtension(path);
+        var ext = System.IO.Path.GetExtension(path);
+        return System.IO.Path.Combine(dir, $"{name}-annotated{ext}");
     }
 }

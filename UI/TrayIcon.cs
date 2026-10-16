@@ -66,6 +66,13 @@ internal sealed class TrayIcon : IDisposable
         var toggle = MakeItem(_window.IsRevealed ? I18n.Get("HideLine") : I18n.Get("ShowLine"), () => _window.Toggle());
         menu.Items.Add(toggle);
 
+        var screenshot = new ToolStripMenuItem(I18n.Get("TakeScreenshot"));
+        StyleItem(screenshot);
+        screenshot.ShortcutKeyDisplayString = App.ScreenshotShortcut;
+        screenshot.Enabled = !string.IsNullOrEmpty(App.ScreenshotShortcut);
+        screenshot.Click += (_, _) => App.Instance.TakeScreenshot();
+        menu.Items.Add(screenshot);
+
         var clear = MakeItem(I18n.Get("TakeEverythingDown"), () => _line.Clear());
         menu.Items.Add(clear);
 
@@ -246,14 +253,14 @@ internal sealed class TrayIcon : IDisposable
 
     private void RefreshMenu(ContextMenuStrip menu)
     {
-        // Indices: 0 toggle, 1 clear, 2 sep, 3 inbox, 4 clipboard, 5 bringDown,
-        // 6 folderItem, 7 keepItem, 8 sizeItem, 9 langItem, 10 sep, 11 openFolder,
-        // 12 sound, 13 startup, 14 sep, 15 update, 16 quit
-        if (menu.Items.Count < 5) return;
+        // Indices: 0 toggle, 1 screenshot, 2 clear, 3 sep, 4 inbox, 5 clipboard, 6 bringDown,
+        // 7 folderItem, 8 keepItem, 9 sizeItem, 10 langItem, 11 sep, 12 openFolder,
+        // 13 sound, 14 startup, 15 sep, 16 update, 17 quit
+        if (menu.Items.Count < 6) return;
         ((ToolStripMenuItem)menu.Items[0]).Text = _window.IsRevealed ? I18n.Get("HideLine") : I18n.Get("ShowLine");
-        ((ToolStripMenuItem)menu.Items[1]).Enabled = _line.LiveCount > 0;
-        ((ToolStripMenuItem)menu.Items[3]).Checked = Inbox.IsEnabled;
-        ((ToolStripMenuItem)menu.Items[4]).Checked = ClipboardWatcher.IsEnabled;
+        ((ToolStripMenuItem)menu.Items[2]).Enabled = _line.LiveCount > 0;
+        ((ToolStripMenuItem)menu.Items[4]).Checked = Inbox.IsEnabled;
+        ((ToolStripMenuItem)menu.Items[5]).Checked = ClipboardWatcher.IsEnabled;
         foreach (var item in menu.Items.OfType<ToolStripMenuItem>())
         {
             if (item.Text == I18n.Get("Sounds")) item.Checked = Sound.SoundOn;

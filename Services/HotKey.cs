@@ -55,6 +55,24 @@ internal sealed class HotKey : IDisposable
         return hk.IsRegistered ? hk : null;
     }
 
+    /// <summary>
+    /// Register the screenshot shortcut as Ctrl+Alt+S. We avoid Win+Alt+S
+    /// (and Win+Shift+S) because they conflict with the OS snipping
+    /// shortcut and Xbox Game Bar on many systems. Ctrl+Alt combos have
+    /// fewer conflicts. The shortcut opens Windows Snipping Tool via the
+    /// ms-screensketch: URI (see App.TakeScreenshot) - it does NOT inject
+    /// synthetic keystrokes.
+    /// </summary>
+    public static HotKey? RegisterScreenshot(Action onPressed)
+    {
+        uint vk = (uint)KeyInterop.VirtualKeyFromKey(Key.S);
+        var hk = new HotKey(
+            NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT | NativeMethods.MOD_NOREPEAT,
+            vk, onPressed);
+        if (hk.IsRegistered) hk.DisplayString = "Ctrl+Alt+S";
+        return hk.IsRegistered ? hk : null;
+    }
+
     private sealed class MessageWindow : NativeWindow, IDisposable
     {
         private readonly Action<int> _onHotKey;

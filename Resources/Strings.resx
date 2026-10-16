@@ -76,5 +76,6 @@
   <data name="InboxOfferBody" xml:space="preserve"><value>Screenshots will hang on the line the instant you take them with Win+Shift+S or Win+PrintScreen, and will not pile up on your Desktop. Drag one to a folder to keep it, or discard it with the ✕. You can turn this off from the tray menu.</value></data>
   <data name="InboxOfferTurnOn" xml:space="preserve"><value>Turn on</value></data>
   <data name="InboxOfferNotNow" xml:space="preserve"><value>Not now</value></data>
+<data name="TakeScreenshot" xml:space="preserve"><value>Take Screenshot</value></data>
   <data name="CheckForUpdates" xml:space="preserve"><value>Check for updates</value></data>
 </root>
