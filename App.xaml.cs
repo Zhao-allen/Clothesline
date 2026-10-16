@@ -286,7 +286,9 @@ internal partial class App : Application
 
         // Try the modern URI first; fall back to the older ms-screenclip:
         // alias (Win10 1803-era), then to the legacy SnippingTool.exe.
-        TryLaunch("ms-screensketch:")
+        // The ?? chain is wrapped in a discard assignment because C#
+        // disallows a bare ?? expression as a statement.
+        _ = TryLaunch("ms-screensketch:")
             ?? TryLaunch("ms-screenclip:")
             ?? TryLaunchLegacySnippingTool();
     }
