@@ -77,4 +77,46 @@
   <data name="InboxOfferTurnOn" xml:space="preserve"><value>Turn on</value></data>
   <data name="InboxOfferNotNow" xml:space="preserve"><value>Not now</value></data>
   <data name="CheckForUpdates" xml:space="preserve"><value>Check for updates</value></data>
+  <data name="SectionLine" xml:space="preserve"><value>LINE</value></data>
+  <data name="SectionCapture" xml:space="preserve"><value>CAPTURE</value></data>
+  <data name="SectionBehavior" xml:space="preserve"><value>BEHAVIOR</value></data>
+  <data name="SectionApp" xml:space="preserve"><value>APP</value></data>
+  <data name="TakeScreenshot" xml:space="preserve"><value>Take a screenshot</value></data>
+  <data name="ClearLineHint" xml:space="preserve"><value>Empty the line</value></data>
+  <data name="OnLineCount" xml:space="preserve"><value>{0} on the line</value></data>
+  <data name="WatchingClipboard" xml:space="preserve"><value>Watching the clipboard</value></data>
+  <data name="ClipboardOff" xml:space="preserve"><value>Clipboard watch is off</value></data>
+  <data name="ValueNone" xml:space="preserve"><value>None</value></data>
+  <data name="ItemsOn" xml:space="preserve"><value>{0} on</value></data>
+  <data name="ShowAll" xml:space="preserve"><value>All</value></data>
+  <data name="AnnotateTitle" xml:space="preserve"><value>Annotate</value></data>
+  <data name="Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="ToolPen" xml:space="preserve"><value>Pen</value></data>
+  <data name="ToolRectangle" xml:space="preserve"><value>Rectangle</value></data>
+  <data name="ToolArrow" xml:space="preserve"><value>Arrow</value></data>
+  <data name="ToolText" xml:space="preserve"><value>Text</value></data>
+  <data name="ToolSelect" xml:space="preserve"><value>Select</value></data>
+  <data name="ToolEraser" xml:space="preserve"><value>Eraser</value></data>
+  <data name="Undo" xml:space="preserve"><value>Undo</value></data>
+  <data name="Redo" xml:space="preserve"><value>Redo</value></data>
+  <data name="ClearAnnotations" xml:space="preserve"><value>Clear all</value></data>
+  <data name="MoreColors" xml:space="preserve"><value>More colours</value></data>
+  <data name="StrokeThin" xml:space="preserve"><value>Thin</value></data>
+  <data name="StrokeMedium" xml:space="preserve"><value>Medium</value></data>
+  <data name="StrokeThick" xml:space="preserve"><value>Thick</value></data>
+  <data name="FitToWindow" xml:space="preserve"><value>Fit</value></data>
+  <data name="ZoomIn" xml:space="preserve"><value>Zoom in</value></data>
+  <data name="ZoomOut" xml:space="preserve"><value>Zoom out</value></data>
+  <data name="HoldSpaceToPan" xml:space="preserve"><value>Hold Space to pan</value></data>
+  <data name="SaveBlockedTitle" xml:space="preserve"><value>Could not overwrite the original</value></data>
+  <data name="SaveBlockedBody" xml:space="preserve"><value>Another program is holding the file open:
+{0}
+
+Save as a copy instead? Choose No to stay in the editor and try again later.</value></data>
+  <data name="SaveFailedTitle" xml:space="preserve"><value>Could not save</value></data>
+  <data name="SaveFailedBody" xml:space="preserve"><value>Neither the original nor the copy could be written:
+{0}</value></data>
+  <data name="LoadFailedBody" xml:space="preserve"><value>Could not load the image: {0}</value></data>
+  <data name="SaveErrorBody" xml:space="preserve"><value>Could not save: {0}</value></data>
 </root>

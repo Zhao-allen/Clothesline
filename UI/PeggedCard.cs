@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Effects;
@@ -29,6 +30,14 @@ internal sealed class PeggedCard : UserControl, IDisposable
 {
     public static bool IsDragging;
 
+    /// <summary>
+    /// The card menu currently on screen, if any. A ContextMenu is its own
+    /// popup window, so exactly one can be open at a time and it has to be
+    /// reachable from outside the card (see <see cref="IsMenuOpen"/> and
+    /// <see cref="CloseOpenMenu"/>).
+    /// </summary>
+    private static ContextMenu? _openMenu;
+
     private readonly PeggedItem _item;
     private readonly Line _line;
 
@@ -47,8 +56,12 @@ internal sealed class PeggedCard : UserControl, IDisposable
     private bool _startedDrag;
     private bool _didLongPress;
     private DispatcherTimer? _holdTimer;
+    private DispatcherTimer? _menuAutoClose;
     private bool _hovering;
     private bool _disposed;
+
+    /// <summary>This card's menu while it is open, so <see cref="Dispose"/> can close it.</summary>
+    private ContextMenu? _menu;
 
     private const double HoldDuration = 0.45;
 
@@ -309,6 +322,13 @@ internal sealed class PeggedCard : UserControl, IDisposable
         Opacity = fade;
     }
 
+    /// <summary>
+    /// Re-read the item's thumbnail. Called after the annotation window rewrote
+    /// the file in place: Image.Source is assigned once in BuildCard and
+    /// PeggedItem raises no change notification, so nothing would update.
+    /// </summary>
+    public void RefreshPhoto() => _photo.Source = _item.Thumb;
+
     private void Arrive()
     {
         if (_item.Flying) return;
@@ -473,46 +493,177 @@ internal sealed class PeggedCard : UserControl, IDisposable
         ShowContextMenu();
     }
 
-    private void ShowContextMenu()
+    // MARK: context menu
+
+    /// <summary>
+    /// True while a card's right-click menu is open. The rope's mouse tracker
+    /// consults this.
+    ///
+    /// Why it has to exist: the menu is a separate popup window, so the moment
+    /// the cursor moves off the card and onto the menu it leaves the rope's
+    /// top band. Without this the tracker saw "not inside, not busy" and
+    /// retracted the line after <c>RetractDelay</c>, which took the menu with
+    /// it - the "mouse off the picture and the menu disappears" bug.
+    ///
+    /// It is derived from <see cref="ContextMenu.IsOpen"/> rather than stored
+    /// as a boolean, so a missed event cannot strand the line open.
+    /// </summary>
+    public static bool IsMenuOpen => _openMenu?.IsOpen == true;
+
+    /// <summary>
+    /// Closes whatever card menu is open. Called when the line is hidden by
+    /// the hot key or the menu-bar toggle: the popup does not travel with the
+    /// rope, so it would otherwise be left floating over the desktop with no
+    /// line under it.
+    /// </summary>
+    public static void CloseOpenMenu()
     {
-        var menu = new ContextMenu();
-        var inInbox = _line.IsInInbox(_item.Id);
-
-        AddItem(menu, I18n.Get("Copy"), () => _line.Copy(_item.Id));
-        AddItem(menu, I18n.Get("Open"), () => _line.Open(_item.Id));
-        if (!_item.IsRecording)
-            AddItem(menu, I18n.Get("Edit"), () => _line.Markup(_item.Id));
-        AddItem(menu, I18n.Get("ShowInExplorer"), () => _line.Reveal(_item.Id));
-        if (inInbox)
-            AddItem(menu, I18n.Get("SaveToDesktop"), () => _line.SaveToDesktop(_item.Id));
-
-        menu.Items.Add(new Separator());
-        if (inInbox)
-            AddItem(menu, I18n.Get("Discard"), () => _line.Discard(_item.Id));
-        else
-        {
-            AddItem(menu, I18n.Get("TakeDown"), () => _line.Discard(_item.Id));
-            AddItem(menu, I18n.Get("MoveToTrash"), () => _line.Trash(_item.Id));
-        }
-
-        var left = AddItem(menu, I18n.Get("TakeDownLeft"),
-            () => _line.TakeDown(_item.Id, true));
-        left.IsEnabled = _line.Neighbours(_item.Id, true).Count > 0;
-        var right = AddItem(menu, I18n.Get("TakeDownRight"),
-            () => _line.TakeDown(_item.Id, false));
-        right.IsEnabled = _line.Neighbours(_item.Id, false).Count > 0;
-
-        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint;
-        menu.IsOpen = true;
+        var menu = _openMenu;
+        _openMenu = null;
+        if (menu is { IsOpen: true }) menu.IsOpen = false;
     }
 
-    private static MenuItem AddItem(ContextMenu menu, string header, Action action)
+    private void ShowContextMenu()
     {
-        var item = new MenuItem { Header = header };
+        var menu = BuildContextMenu(_item, _line);
+        _menu = menu;
+
+        // Closed fires for every way a ContextMenu can go away - Esc, a click
+        // outside, picking a row, the window closing, or IsOpen set to false -
+        // so clearing the reference here is what stops IsMenuOpen latching on
+        // and leaving a rope that can never retract.
+        menu.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_openMenu, menu)) _openMenu = null;
+            if (ReferenceEquals(_menu, menu)) _menu = null;
+            _menuAutoClose?.Stop();
+            _menuAutoClose = null;
+        };
+
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint;
+        OpenTracked(menu);
+        StartMenuAutoClose(menu);
+    }
+
+    /// <summary>
+    /// Closes the card menu once the pointer has left the picture and is not
+    /// on the menu either.
+    ///
+    /// A ContextMenu is a separate popup window, so the card's own
+    /// MouseLeave never fires while one is open - the popup takes the mouse
+    /// for itself. Watching for the event would therefore never see the
+    /// departure, which is why this polls instead.
+    ///
+    /// The two places that count as "still here" are the card and the menu:
+    /// travelling from the picture onto a row must not close anything, or the
+    /// menu would be unusable. Anything else - the desktop, another window -
+    /// means the pointer has gone, and a menu nobody is looking at should not
+    /// sit there waiting for an outside click.
+    /// </summary>
+    private void StartMenuAutoClose(ContextMenu menu)
+    {
+        _menuAutoClose?.Stop();
+        _menuAutoClose = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(150)
+        };
+        _menuAutoClose.Tick += (_, _) =>
+        {
+            if (menu.IsOpen != true)
+            {
+                _menuAutoClose?.Stop();
+                _menuAutoClose = null;
+                return;
+            }
+
+            // IsMouseOver on a popup reports the popup itself, so moving onto
+            // a row reads true even though the pointer has physically left the
+            // card.
+            if (IsMouseOver || menu.IsMouseOver) return;
+
+            menu.IsOpen = false;
+            _menuAutoClose?.Stop();
+            _menuAutoClose = null;
+        };
+        _menuAutoClose.Start();
+    }
+
+    /// <summary>
+    /// Opens a card menu and records it as the one that is open, which is what
+    /// <see cref="IsMenuOpen"/> reports.
+    ///
+    /// Static and internal so the off-screen preview can exercise this exact
+    /// state machine - false before, true while open, false again once closed -
+    /// without a GUI. The caller sets <c>Placement</c>; the app uses the
+    /// pointer, the preview uses a fixed screen point.
+    /// </summary>
+    internal static void OpenTracked(ContextMenu menu)
+    {
+        // Open first, record second. Opening this menu closes any other card's
+        // menu, and that menu's Closed handler runs during this assignment; if
+        // the field were set first the handler would clear it right back out.
+        menu.IsOpen = true;
+        _openMenu = menu;
+    }
+
+    /// <summary>
+    /// Builds the card's right-click menu. Static and internal so the
+    /// off-screen preview in <see cref="UiPreview"/> renders the menu the user
+    /// actually gets, labels and enabled states included.
+    ///
+    /// The rows, their order and their enabled rules are unchanged from the
+    /// original menu. Only the chrome is new: every row is dressed from
+    /// <see cref="CardMenuTheme"/>, so the card menu reads as part of the same
+    /// dark system as the tray menu instead of as a stock white WPF menu.
+    /// </summary>
+    internal static ContextMenu BuildContextMenu(PeggedItem item, Line line)
+    {
+        var menu = new ContextMenu { Style = CardMenuTheme.MenuStyle };
+        var inInbox = line.IsInInbox(item.Id);
+
+        AddItem(menu, I18n.Get("Copy"), () => line.Copy(item.Id));
+        AddItem(menu, I18n.Get("Open"), () => line.Open(item.Id));
+        if (!item.IsRecording)
+            AddItem(menu, I18n.Get("Edit"), () => line.Markup(item.Id));
+        AddItem(menu, I18n.Get("ShowInExplorer"), () => line.Reveal(item.Id));
+        if (inInbox)
+            AddItem(menu, I18n.Get("SaveToDesktop"), () => line.SaveToDesktop(item.Id));
+
+        AddSeparator(menu);
+        if (inInbox)
+        {
+            // In the inbox, Discard recycles the file, so it is the
+            // destructive row here.
+            AddItem(menu, I18n.Get("Discard"), () => line.Discard(item.Id), danger: true);
+        }
+        else
+        {
+            AddItem(menu, I18n.Get("TakeDown"), () => line.Discard(item.Id));
+            AddItem(menu, I18n.Get("MoveToTrash"), () => line.Trash(item.Id), danger: true);
+        }
+
+        var left = AddItem(menu, I18n.Get("TakeDownLeft"), () => line.TakeDown(item.Id, true));
+        left.IsEnabled = line.Neighbours(item.Id, true).Count > 0;
+        var right = AddItem(menu, I18n.Get("TakeDownRight"), () => line.TakeDown(item.Id, false));
+        right.IsEnabled = line.Neighbours(item.Id, false).Count > 0;
+
+        return menu;
+    }
+
+    private static MenuItem AddItem(ContextMenu menu, string header, Action action, bool danger = false)
+    {
+        var item = new MenuItem
+        {
+            Header = header,
+            Style = danger ? CardMenuTheme.DangerItemStyle : CardMenuTheme.MenuItemStyle
+        };
         item.Click += (_, _) => action();
         menu.Items.Add(item);
         return item;
     }
+
+    private static void AddSeparator(ContextMenu menu)
+        => menu.Items.Add(new Separator { Style = CardMenuTheme.MenuSeparatorStyle });
 
     public void Dispose()
     {
@@ -520,5 +671,159 @@ internal sealed class PeggedCard : UserControl, IDisposable
         _disposed = true;
         _line.PropertyChanged -= Line_PropertyChanged;
         _holdTimer?.Stop();
+        // A card can be pruned from the line while its menu is open. The popup
+        // is not parented to the card, so it would survive the removal and sit
+        // over the desktop; close it with the card.
+        if (_menu is { IsOpen: true }) _menu.IsOpen = false;
+        _menu = null;
+
+        // The auto-close poller outlives the menu it belongs to, so stop it
+        // here too - a card that goes away with a menu open would otherwise
+        // leave the timer ticking against a menu nobody owns.
+        _menuAutoClose?.Stop();
+        _menuAutoClose = null;
     }
+}
+
+/// <summary>
+/// The dark chrome for WPF menus, and the one place the card's right-click
+/// menu gets its look from.
+///
+/// Colours are read from <see cref="TrayPalette"/> and never restated here.
+/// The tray menu (WinForms) and the card menu (WPF) are one design system;
+/// the tray table is the copy the running tray icon is built from, so it is
+/// the source of truth and this class is only a type adapter on top of it.
+/// Nothing can drift, because there is only one set of values.
+///
+/// (AnnotationWindow.cs still carries its own private copy of the same
+/// values. It is outside this change's file scope and should be repointed at
+/// TrayPalette in a follow-up - that copy is the last duplicate.)
+///
+/// The two menu stacks cannot share an implementation: a WPF ContextMenu is
+/// templated XAML, a WinForms ToolStripDropDown is owner-drawn with
+/// GDI+. Only the values are shared.
+///
+/// Metrics, taken from the tray menu so a row reads the same height and
+/// weight wherever it appears:
+///   34px row   10pt (13.33px) Segoe UI Variable Display, 7px above/below
+///   12px text inset from the menu edge (4px highlight inset + 8px padding)
+///   4px radius on the hover highlight, 8px on the menu shell
+///   1px #3D3D3D hairline for both the shell border and separators
+///   #8A8A8A for a disabled row, #FF99A4 for a destructive one
+/// </summary>
+public static class CardMenuTheme
+{
+    private const string Xaml = @"
+<ResourceDictionary
+    xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'
+    xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'>
+
+  <!-- Shell. 8px radius and a 1px hairline: the Win11 dark silhouette. The
+       6px transparent ring is there so the drop shadow has room to draw
+       instead of being clipped at the popup edge. -->
+  <Style x:Key='CardMenu' TargetType='ContextMenu'>
+    <Setter Property='Background' Value='#2B2B2B'/>
+    <Setter Property='Foreground' Value='#FFFFFF'/>
+    <Setter Property='FontFamily' Value='Segoe UI Variable Display, Segoe UI'/>
+    <Setter Property='FontSize' Value='13.33'/>
+    <Setter Property='SnapsToDevicePixels' Value='True'/>
+    <Setter Property='UseLayoutRounding' Value='True'/>
+    <Setter Property='HasDropShadow' Value='True'/>
+    <Setter Property='Template'>
+      <Setter.Value>
+        <ControlTemplate TargetType='ContextMenu'>
+          <Border Margin='6' Padding='0,5,0,5'
+                  Background='#2B2B2B'
+                  BorderBrush='#3D3D3D'
+                  BorderThickness='1'
+                  CornerRadius='8'
+                  SnapsToDevicePixels='True'>
+            <Border.Effect>
+              <DropShadowEffect Color='#000000' Opacity='0.45' BlurRadius='14'
+                                ShadowDepth='3' Direction='270'/>
+            </Border.Effect>
+            <ItemsPresenter/>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Row. 13.33px text plus 7px above and below lands on the tray menu's
+       34px row, and MinHeight keeps the click target above 32px. -->
+  <Style x:Key='CardRow' TargetType='MenuItem'>
+    <Setter Property='Foreground' Value='#FFFFFF'/>
+    <Setter Property='FontFamily' Value='Segoe UI Variable Display, Segoe UI'/>
+    <Setter Property='FontSize' Value='13.33'/>
+    <Setter Property='SnapsToDevicePixels' Value='True'/>
+    <Setter Property='Template'>
+      <Setter.Value>
+        <ControlTemplate TargetType='MenuItem'>
+          <Border x:Name='Bd'
+                  Margin='4,1,4,1'
+                  Padding='8,7,8,7'
+                  MinHeight='32'
+                  CornerRadius='4'
+                  Background='Transparent'
+                  SnapsToDevicePixels='True'
+                  TextElement.Foreground='{TemplateBinding Foreground}'>
+            <ContentPresenter ContentSource='Header'
+                              RecognizesAccessKey='False'
+                              VerticalAlignment='Center'
+                              TextElement.Foreground='{TemplateBinding Foreground}'/>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property='IsHighlighted' Value='True'>
+              <Setter TargetName='Bd' Property='Background' Value='#3C3C3C'/>
+            </Trigger>
+            <Trigger Property='IsEnabled' Value='False'>
+              <Setter Property='Foreground' Value='#8A8A8A'/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- Destructive row: identical metrics, danger ink. A trigger in the base
+       template still wins over this setter, so a disabled danger row greys
+       out instead of staying pink. -->
+  <Style x:Key='CardRowDanger' TargetType='MenuItem' BasedOn='{StaticResource CardRow}'>
+    <Setter Property='Foreground' Value='#FF99A4'/>
+  </Style>
+
+  <!-- Separator. 8px side inset, the same as the tray menu's. -->
+  <Style x:Key='CardSeparator' TargetType='Separator'>
+    <Setter Property='Template'>
+      <Setter.Value>
+        <ControlTemplate TargetType='Separator'>
+          <Border Height='1' Margin='8,4,8,4'
+                  Background='#3D3D3D'
+                  SnapsToDevicePixels='True'/>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+</ResourceDictionary>";
+
+    static CardMenuTheme()
+    {
+        var dict = (ResourceDictionary)XamlReader.Parse(Xaml);
+        MenuStyle = (Style)dict["CardMenu"];
+        MenuItemStyle = (Style)dict["CardRow"];
+        DangerItemStyle = (Style)dict["CardRowDanger"];
+        MenuSeparatorStyle = (Style)dict["CardSeparator"];
+    }
+
+    /// <summary>Shell style for the <see cref="ContextMenu"/> itself.</summary>
+    public static Style MenuStyle { get; }
+
+    /// <summary>Row style for an ordinary entry.</summary>
+    public static Style MenuItemStyle { get; }
+
+    /// <summary>Row style for an entry that destroys or recycles the file.</summary>
+    public static Style DangerItemStyle { get; }
+
+    /// <summary>Style for a <see cref="Separator"/> row.</summary>
+    public static Style MenuSeparatorStyle { get; }
 }

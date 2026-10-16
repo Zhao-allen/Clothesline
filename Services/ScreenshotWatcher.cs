@@ -63,8 +63,9 @@ internal sealed class ScreenshotWatcher : IDisposable
             // Adopt everything already there.
             foreach (var f in ListFiles()) _known.Add(f);
             _watcher.EnableRaisingEvents = true;
+            Diag.Write("watch", $"watching {Folder} ({_known.Count} pre-existing)");
         }
-        catch { /* folder not accessible */ }
+        catch (Exception ex) { Diag.Error("watch", ex); }
     }
 
     private List<string> ListFiles()
@@ -84,6 +85,13 @@ internal sealed class ScreenshotWatcher : IDisposable
 
     private static bool IsCandidate(string path)
     {
+        // "<name>-annotated.png" is what the annotation window writes when it
+        // cannot replace the original in place. That is an edit of something
+        // already on the line, not a new capture, so it must never hang again.
+        if (Path.GetFileNameWithoutExtension(path)
+                .EndsWith("-annotated", StringComparison.OrdinalIgnoreCase))
+            return false;
+
         var ext = Path.GetExtension(path);
         return ImageExtensions.Contains(ext) || RecordingExtensions.Contains(ext);
     }
@@ -102,19 +110,33 @@ internal sealed class ScreenshotWatcher : IDisposable
             try
             {
                 if (File.GetCreationTime(f) >= _launchDate)
+                {
+                    Diag.Write("watch", $"new file -> {Path.GetFileName(f)}");
                     _onNew(f);
+                }
             }
-            catch { }
+            catch (Exception ex) { Diag.Error("watch", ex); }
         }
 
         // Removed files: in known but not now.
         bool changed = false;
         foreach (var old in _known)
-            if (!current.Contains(old)) { changed = true; break; }
+        {
+            if (current.Contains(old)) continue;
+            changed = true;
+            Diag.Write("watch", $"vanished -> {Path.GetFileName(old)}");
+        }
 
         _known.Clear();
         foreach (var f in files) _known.Add(f);
-        if (changed) _onChange();
+        if (changed)
+        {
+            // Line.Prune marshals to the UI thread and re-raises anything the
+            // UI throws. This callback runs on a timer thread with no handler,
+            // so an exception here would take the whole process down.
+            try { _onChange(); }
+            catch (Exception ex) { Diag.Error("watch", ex); }
+        }
     }
 
     public void PruneKnown(Predicate<string> stillExists)

@@ -77,4 +77,46 @@
   <data name="InboxOfferTurnOn" xml:space="preserve"><value>オンにする</value></data>
   <data name="InboxOfferNotNow" xml:space="preserve"><value>後で</value></data>
   <data name="CheckForUpdates" xml:space="preserve"><value>更新を確認</value></data>
+  <data name="SectionLine" xml:space="preserve"><value>物干し</value></data>
+  <data name="SectionCapture" xml:space="preserve"><value>取り込み</value></data>
+  <data name="SectionBehavior" xml:space="preserve"><value>動作</value></data>
+  <data name="SectionApp" xml:space="preserve"><value>アプリ</value></data>
+  <data name="TakeScreenshot" xml:space="preserve"><value>スクリーンショットを撮る</value></data>
+  <data name="ClearLineHint" xml:space="preserve"><value>ラインを空にする</value></data>
+  <data name="OnLineCount" xml:space="preserve"><value>ライン上 {0} 枚</value></data>
+  <data name="WatchingClipboard" xml:space="preserve"><value>クリップボードを監視中</value></data>
+  <data name="ClipboardOff" xml:space="preserve"><value>監視はオフです</value></data>
+  <data name="ValueNone" xml:space="preserve"><value>なし</value></data>
+  <data name="ItemsOn" xml:space="preserve"><value>{0} 件オン</value></data>
+  <data name="ShowAll" xml:space="preserve"><value>すべて</value></data>
+  <data name="AnnotateTitle" xml:space="preserve"><value>注釈</value></data>
+  <data name="Save" xml:space="preserve"><value>保存</value></data>
+  <data name="Cancel" xml:space="preserve"><value>キャンセル</value></data>
+  <data name="ToolPen" xml:space="preserve"><value>ペン</value></data>
+  <data name="ToolRectangle" xml:space="preserve"><value>矩形</value></data>
+  <data name="ToolArrow" xml:space="preserve"><value>矢印</value></data>
+  <data name="ToolText" xml:space="preserve"><value>テキスト</value></data>
+  <data name="ToolSelect" xml:space="preserve"><value>選択</value></data>
+  <data name="ToolEraser" xml:space="preserve"><value>消しゴム</value></data>
+  <data name="Undo" xml:space="preserve"><value>元に戻す</value></data>
+  <data name="Redo" xml:space="preserve"><value>やり直す</value></data>
+  <data name="ClearAnnotations" xml:space="preserve"><value>すべて消去</value></data>
+  <data name="MoreColors" xml:space="preserve"><value>その他の色</value></data>
+  <data name="StrokeThin" xml:space="preserve"><value>細</value></data>
+  <data name="StrokeMedium" xml:space="preserve"><value>中</value></data>
+  <data name="StrokeThick" xml:space="preserve"><value>太</value></data>
+  <data name="FitToWindow" xml:space="preserve"><value>ウィンドウに合わせる</value></data>
+  <data name="ZoomIn" xml:space="preserve"><value>拡大</value></data>
+  <data name="ZoomOut" xml:space="preserve"><value>縮小</value></data>
+  <data name="HoldSpaceToPan" xml:space="preserve"><value>スペースキーで移動</value></data>
+  <data name="SaveBlockedTitle" xml:space="preserve"><value>元の画像を上書きできません</value></data>
+  <data name="SaveBlockedBody" xml:space="preserve"><value>別のプログラムがファイルを開いています:
+{0}
+
+コピーとして保存しますか？「いいえ」で編集画面に戻り、後でもう一度試せます。</value></data>
+  <data name="SaveFailedTitle" xml:space="preserve"><value>保存できません</value></data>
+  <data name="SaveFailedBody" xml:space="preserve"><value>元のファイルもコピーも書き込めません:
+{0}</value></data>
+  <data name="LoadFailedBody" xml:space="preserve"><value>画像を読み込めませんでした: {0}</value></data>
+  <data name="SaveErrorBody" xml:space="preserve"><value>保存できませんでした: {0}</value></data>
 </root>

@@ -60,6 +60,7 @@ internal partial class LineWindow : Window
             _line.Items.CollectionChanged += Items_CollectionChanged;
             _line.PropertyChanged += Line_PropertyChanged;
             _line.Fall += OnFall;
+            _line.ThumbChanged += OnThumbChanged;
             foreach (var item in _line.Items) AddCard(item);
             LayoutItems();
         };
@@ -223,6 +224,16 @@ internal partial class LineWindow : Window
         if (_cards.TryGetValue(item.Id, out var card)) card.Fall();
     }
 
+    /// <summary>
+    /// The file behind a card was rewritten (the annotation window saving over
+    /// the original). The card holds its own Image.Source, so it has to be
+    /// handed the fresh thumbnail explicitly.
+    /// </summary>
+    private void OnThumbChanged(Guid id)
+    {
+        if (_cards.TryGetValue(id, out var card)) card.RefreshPhoto();
+    }
+
     private void AddCard(PeggedItem item)
     {
         var card = new PeggedCard(item, _line);
@@ -322,6 +333,11 @@ internal partial class LineWindow : Window
         }
         else
         {
+            // Hide is only reached here by the hot key, the menu-bar toggle or
+            // Dismiss - the mouse tracker refuses to retract while a menu is
+            // open. A card menu does not travel with the rope, so it would be
+            // left floating over the desktop; close it as the line goes away.
+            PeggedCard.CloseOpenMenu();
             AnimateSlide(-(Layout.PanelHeight + 12), TimeSpan.FromMilliseconds(220));
             Pinned = false;
             _peekUntil = DateTime.MinValue;
@@ -360,13 +376,24 @@ internal partial class LineWindow : Window
         }
     }
 
+    /// <summary>
+    /// True while a freshly captured card is being shown off, i.e. the peek
+    /// window armed by <see cref="Reveal"/> has not run out yet.
+    /// </summary>
+    public bool IsPeeking => DateTime.Now < _peekUntil;
+
     public void ComeDown(Screen? screen = null)
     {
         PlaceOnScreen(screen);
         UpdateCapacity();
         _wanted = true;
-        RequestRefresh?.Invoke();
+        // Show the window *before* asking for a refresh. Reveal() bails out on
+        // a window that is not present, and Refresh() can dismiss it (see the
+        // full-screen note there), which used to leave a fresh capture hanging
+        // on a line that never came down.
+        Present();
         if (App.PeeksAtNew) Reveal(peekSeconds: 2.5);
+        RequestRefresh?.Invoke();
     }
 
     public void ItemsChanged()
@@ -439,7 +466,13 @@ internal partial class LineWindow : Window
         bool inside = cursorY >= zoneTop && cursorY <= zoneBottom + 20;
         if (inside && Pinned) Pinned = false;
 
-        bool busy = Pinned || PeggedCard.IsDragging || _line.PressedId is not null || now < _peekUntil;
+        // A card's context menu is its own popup window, so the cursor leaves
+        // the top band the instant it moves onto the menu. Without
+        // PeggedCard.IsMenuOpen in here the tracker read that as "not inside,
+        // not busy" and retracted the line after RetractDelay, which took the
+        // menu with it.
+        bool busy = Pinned || PeggedCard.IsDragging || _line.PressedId is not null
+                    || PeggedCard.IsMenuOpen || now < _peekUntil;
         if (inside || busy)
         {
             _awaySince = null;

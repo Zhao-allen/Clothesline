@@ -51,6 +51,29 @@ internal partial class App : Application
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
         I18n.LoadOverride();
 
+        // Catch-all logging, installed before anything else can throw. A crash
+        // on a background thread used to leave no trace at all - the window
+        // simply disappeared and the only evidence was a stack in an event
+        // viewer nobody reads. We still let the exception kill the app (we do
+        // NOT set args.Handled), we just record the path first.
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        {
+            if (args.ExceptionObject is Exception ex) Diag.Fatal("crash", ex);
+            else Diag.Write("crash", $"non-CLR exception: {args.ExceptionObject}");
+        };
+        DispatcherUnhandledException += (_, args) => Diag.Fatal("crash", args.Exception);
+        TaskScheduler.UnobservedTaskException += (_, args) => Diag.Fatal("task", args.Exception);
+
+        Diag.Session($"v{TrayIcon.AppVersion} args=[{string.Join(" ", e.Args)}]");
+
+        // Diagnostic entry point: render a code-built surface to a PNG and
+        // exit. See UI/UiPreview.cs.
+        if (UiPreview.TryHandle(e.Args))
+        {
+            Shutdown();
+            return;
+        }
+
         _line = new Line();
         _window = new LineWindow(_line);
         _window.RequestRefresh += Refresh;
@@ -84,6 +107,9 @@ internal partial class App : Application
         _hotKey = HotKey.RegisterDefault(() => _window.Toggle());
 
         _tray = new TrayIcon(_line, _window);
+
+        Diag.Write("app", $"ready - live={_line.LiveCount} clipboard={ClipboardWatcher.IsEnabled} " +
+                          $"inbox={Inbox.IsEnabled} hotkey={(_hotKey is null ? "NONE" : _hotKey.DisplayString)}");
 
         // First-run welcome: reveal the line briefly so the user finds it.
         if (!Settings.Default.GetBool("welcomed"))
@@ -258,6 +284,7 @@ internal partial class App : Application
 
     private void HangCapture(string path)
     {
+        Diag.Write("app", $"capture arrived -> {Path.GetFileName(path)}");
         Dispatcher.Invoke(() =>
         {
             var screen = LineWindow.ScreenUnderPointer();
@@ -269,7 +296,13 @@ internal partial class App : Application
     public void Refresh()
     {
         bool blocked = FullScreen.BlocksLineUnderPointer();
-        if (_window.Wanted && !blocked) _window.Present();
+        // A full-screen foreground window must not swallow a capture that just
+        // landed. The Snipping Tool's own capture overlay covers the whole
+        // screen for the moment after Win+Shift+S, which would otherwise
+        // Dismiss() the line and turn the peek in ComeDown() into a no-op on a
+        // hidden window - the capture hung, but the line never came down.
+        bool showingNewCapture = _window.IsPeeking;
+        if (_window.Wanted && (!blocked || showingNewCapture)) _window.Present();
         else _window.Dismiss();
         if (_window.Wanted) _window.StartMouseTracking();
         else _window.StopMouseTracking();
@@ -309,6 +342,7 @@ internal partial class App : Application
 
     public void ShutdownApp()
     {
+        Diag.Write("app", "shutdown requested from tray");
         _hotKey?.Dispose();
         _watcher?.Dispose();
         _safetyWatcher?.Dispose();

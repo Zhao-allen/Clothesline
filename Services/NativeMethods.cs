@@ -115,7 +115,15 @@ internal static class NativeMethods
     }
 
     // System tray / shell
-    [DllImport("shell32.dll")]
+    //
+    // CharSet MUST be Unicode. SHFILEOPSTRUCT marshals pFrom as UTF-16; without
+    // this the runtime defaults to CharSet.Ansi, appends the "A" suffix, and
+    // binds the ANSI export SHFileOperationA - which then reads that wide
+    // string one byte at a time, looks for a file called "p", fails, and gets
+    // its return code thrown away. Net effect: deleting a screenshot took the
+    // card off the line but left the file on disk.
+    // Measured with the control experiment in _probe/trashprobe.
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
     public static extern int SHFileOperation(ref SHFILEOPSTRUCT lpFileOp);
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -139,12 +147,35 @@ internal static class NativeMethods
     [DllImport("user32.dll")]
     public static extern bool SetForegroundWindow(IntPtr hWnd);
 
+    // Icon handles.
+    //
+    // Bitmap.GetHicon() hands back an HICON the caller owns: GDI+ allocates it
+    // and nothing releases it. Icon.FromHandle() does NOT take ownership, so
+    // the handle has to be destroyed by hand once a clone that owns its own
+    // copy exists. Without this the tray icon leaks a GDI object on every
+    // UpdateIcon - which runs on every clipboard-watch toggle and every
+    // language change, so it is a slow drip rather than a one-off.
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern bool DestroyIcon(IntPtr hIcon);
+
     [DllImport("user32.dll")]
     public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
     public const int SW_RESTORE = 9;
 
     [DllImport("kernel32.dll")]
     public static extern IntPtr GetConsoleWindow();
+
+    // GDI object accounting. Used by the icon-handle probe to show, as a
+    // number, that an HICON obtained from Bitmap.GetHicon() is never freed
+    // unless DestroyIcon is called on it.
+    [DllImport("kernel32.dll")]
+    public static extern IntPtr GetCurrentProcess();
+
+    [DllImport("user32.dll")]
+    public static extern uint GetGuiResources(IntPtr hProcess, uint uiFlags);
+
+    public const uint GR_GDIOBJECTS = 0;
+    public const uint GR_USEROBJECTS = 1;
 
     // For per-monitor DPI
     [DllImport("shcore.dll")]

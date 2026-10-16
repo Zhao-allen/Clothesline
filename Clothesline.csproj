@@ -12,6 +12,9 @@
     <ApplicationIcon>Resources\Clothesline.ico</ApplicationIcon>
     <RootNamespace>Clothesline</RootNamespace>
     <AssemblyName>Clothesline</AssemblyName>
+    <!-- Without this the assembly version defaults to 1.0.0 and the tray
+         menu header shows "v1.0.0". Kept in step with the release tag. -->
+    <Version>0.1.9</Version>
     <SatelliteResourceLanguages>en;es;zh;ja;fr</SatelliteResourceLanguages>
   </PropertyGroup>
 

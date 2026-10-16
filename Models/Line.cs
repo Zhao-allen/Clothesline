@@ -22,6 +22,14 @@ internal sealed class Line : INotifyPropertyChanged
     public event Action<PeggedItem>? Fall;
     public event Action? ItemsChanged;
 
+    /// <summary>
+    /// Raised after a card's thumbnail has been replaced - e.g. the annotation
+    /// window rewrote the file in place. PeggedItem is not observable and
+    /// PeggedCard assigns Image.Source once, so the card has to be told
+    /// explicitly or it keeps showing the pre-edit picture.
+    /// </summary>
+    public event Action<Guid>? ThumbChanged;
+
     private int _visibleCount = 8;
     public int VisibleCount
     {
@@ -104,13 +112,21 @@ internal sealed class Line : INotifyPropertyChanged
 
     public Guid? Hang(string url, bool quietly = false, bool flying = false)
     {
-        if (Items.Any(i => i.Url == url && !i.Falling)) return null;
+        if (Items.Any(i => i.Url == url && !i.Falling))
+        {
+            Diag.Write("line", $"hang skipped, already on the line: {Path.GetFileName(url)}");
+            return null;
+        }
         var thumb = Thumbnail.Make(url, (int)(320 * Layout.SizeScale));
         if (thumb is null)
         {
             if (Media.IsRecording(url))
                 thumb = VideoPlaceholder();
-            else return null;
+            else
+            {
+                Diag.Write("line", $"hang FAILED, no thumbnail: {Path.GetFileName(url)}");
+                return null;
+            }
         }
         var item = new PeggedItem(url, thumb) { Flying = flying };
         Items.Add(item);
@@ -122,6 +138,7 @@ internal sealed class Line : INotifyPropertyChanged
         }
         Save();
         if (!quietly) Sound.PlayHang();
+        Diag.Write("line", $"hung {Path.GetFileName(url)} ({thumb.PixelWidth}x{thumb.PixelHeight}), live={LiveCount}");
         return item.Id;
     }
 
@@ -143,10 +160,49 @@ internal sealed class Line : INotifyPropertyChanged
         if (i >= 0) Items[i].Flying = false;
     }
 
+    /// <summary>
+    /// Runs <paramref name="action"/> on the UI thread, waiting for it if the
+    /// caller is somewhere else. Returns false when the caller had to be
+    /// marshalled (so the original call site can just return).
+    ///
+    /// Needed because <see cref="Prune"/> is invoked from
+    /// ScreenshotWatcher's timer thread. Dropping an item raises
+    /// <see cref="Fall"/>, which the card turns into a WPF animation, and WPF
+    /// refuses to start an animation from a non-UI thread - the app died with
+    /// an unhandled InvalidOperationException the moment a screenshot was
+    /// deleted outside Clothesline.
+    /// </summary>
+    private static bool RunOnUiThread(Action action)
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is null || dispatcher.CheckAccess()) return true;
+        try
+        {
+            dispatcher.Invoke(action);
+        }
+        catch (TaskCanceledException)
+        {
+            // Dispatcher is shutting down; nothing useful left to do.
+        }
+        catch (Exception ex)
+        {
+            // The action itself threw. Invoke rethrows it on this thread, so
+            // without this the exception would escape into whichever background
+            // caller landed here - the folder watcher's timer callback has no
+            // handler of its own, and an unhandled exception on a thread-pool
+            // thread terminates the process. Log it and report failure instead.
+            Diag.Error("ui", ex);
+        }
+        return false;
+    }
+
     public void Drop(Guid id, bool quietly = false)
     {
+        if (!RunOnUiThread(() => Drop(id, quietly))) return;
+
         var item = Items.FirstOrDefault(i => i.Id == id);
         if (item is null || item.Falling) return;
+        Diag.Write("line", $"drop {Path.GetFileName(item.Url)}");
         Fall?.Invoke(item);
         item.Falling = true;
         Save();
@@ -185,11 +241,21 @@ internal sealed class Line : INotifyPropertyChanged
         }
     }
 
+    /// <summary>
+    /// Takes down anything whose file has vanished. Called from the folder
+    /// watcher, i.e. from a timer thread, so it hops to the UI thread first.
+    /// </summary>
     public void Prune()
     {
+        if (!RunOnUiThread(Prune)) return;
+
         foreach (var item in Items.Where(i => !i.Falling).ToList())
         {
-            if (!File.Exists(item.Url)) Drop(item.Id, quietly: true);
+            if (!File.Exists(item.Url))
+            {
+                Diag.Write("line", $"prune: file gone, taking down {Path.GetFileName(item.Url)}");
+                Drop(item.Id, quietly: true);
+            }
         }
     }
 
@@ -208,6 +274,10 @@ internal sealed class Line : INotifyPropertyChanged
                 if (png is not null) data.SetData("PNG", new MemoryStream(png));
             }
             data.SetFileDropList(new StringCollection { item.Url });
+            // Stamp the copy so ClipboardWatcher leaves it alone. The file drop
+            // used to do that job, but a Win+Shift+S capture arrives with a
+            // file drop of its own, so the marker has to be explicit now.
+            data.SetData(ClipboardWatcher.OwnCopyFormat, new MemoryStream(new byte[] { 1 }));
             Clipboard.SetDataObject(data, true);
         }
         catch { Sound.Beep(); return; }
@@ -234,19 +304,53 @@ internal sealed class Line : INotifyPropertyChanged
         if (item is null) return false;
         try
         {
+            // The file can disappear between the menu opening and the click
+            // landing - deleted in Explorer, or recycled by another instance.
+            // Note that beforehand, or the existence check below reads a file
+            // that was already gone as "SHFileOperation removed it".
+            bool existedBefore = File.Exists(item.Url);
+
             var sh = new NativeMethods.SHFILEOPSTRUCT
             {
                 wFunc = NativeMethods.FO_DELETE,
                 pFrom = item.Url + "\0\0",
                 fFlags = NativeMethods.FOF_ALLOWUNDO | NativeMethods.FOF_NOCONFIRMATION | NativeMethods.FOF_SILENT
             };
-            NativeMethods.SHFileOperation(ref sh);
+            int code = NativeMethods.SHFileOperation(ref sh);
+
+            // Do NOT trust the return code. On Windows 11 this deprecated API
+            // reports ERROR_FILE_NOT_FOUND (2) even when the file genuinely did
+            // reach the Recycle Bin, so code == 0 is not a success signal and
+            // code != 0 is not a failure one. The probe in _probe/trashprobe
+            // gets 2 for a successful delete and 2 for a failed one alike. The
+            // only reliable answer is to look at the filesystem.
+            if (File.Exists(item.Url))
+            {
+                Diag.Write("trash", $"SHFileOperation did not remove the file " +
+                                    $"(code {code}, aborted={sh.fAnyOperationsAborted}): " +
+                                    $"{Path.GetFileName(item.Url)}");
+                if (!quietly) Sound.Beep();
+                return false;
+            }
+
+            if (!existedBefore)
+            {
+                // Nothing was recycled, so this is not a success - but the
+                // card is still showing a file that is no longer there, so it
+                // comes down either way.
+                Diag.Write("trash", $"nothing to recycle, already gone: {Path.GetFileName(item.Url)}");
+                Drop(id, quietly: true);
+                return false;
+            }
+
+            Diag.Write("trash", $"recycled {Path.GetFileName(item.Url)} (code {code})");
             if (SoundOn && !quietly) Sound.PlayPop();
             Drop(id, quietly: true);
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            Diag.Fatal("trash", ex);
             if (!quietly) Sound.Beep();
             return false;
         }
@@ -262,7 +366,9 @@ internal sealed class Line : INotifyPropertyChanged
 
     public void Discard(Guid id, bool quietly = false)
     {
-        if (IsInInbox(id)) Trash(id, quietly: quietly);
+        bool inbox = IsInInbox(id);
+        Diag.Write("line", $"discard -> {(inbox ? "recycle bin" : "plain drop, not in inbox")}");
+        if (inbox) Trash(id, quietly: quietly);
         else Drop(id, quietly: quietly);
     }
 
@@ -287,6 +393,7 @@ internal sealed class Line : INotifyPropertyChanged
     private void LetGo(Guid id)
     {
         if (IsInInbox(id) && Trash(id, quietly: true)) return;
+        Diag.Write("line", "let go -> plain drop, recycling did not happen");
         Drop(id, quietly: true);
     }
 
@@ -326,8 +433,23 @@ internal sealed class Line : INotifyPropertyChanged
         {
             var win = new AnnotationWindow(item.Url);
             win.ShowDialog();
-            // Reload thumbnail after possible edit
-            ReloadThumbnail(item.Url);
+
+            var saved = win.SavedPath;
+            if (saved is null) return;   // closed without saving
+
+            if (string.Equals(saved, item.Url, StringComparison.OrdinalIgnoreCase))
+            {
+                // The normal path: the file behind the card was rewritten, so
+                // re-read it and tell the card to repaint.
+                ReloadThumbnail(item.Url);
+            }
+            else
+            {
+                // The user explicitly chose "save as a copy" because the
+                // original was locked. That copy is a new picture, so it goes
+                // on the line as its own card.
+                Hang(saved);
+            }
         }
         catch { Sound.Beep(); }
     }
@@ -337,7 +459,9 @@ internal sealed class Line : INotifyPropertyChanged
         var i = Items.FirstIndex(it => it.Url == url && !it.Falling);
         if (i < 0) return;
         var thumb = Thumbnail.Make(url, (int)(320 * Layout.SizeScale));
-        if (thumb is not null) Items[i].Thumb = thumb;
+        if (thumb is null) return;
+        Items[i].Thumb = thumb;
+        ThumbChanged?.Invoke(Items[i].Id);
     }
 
     public void Reveal(Guid id)

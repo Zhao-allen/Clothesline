@@ -77,4 +77,46 @@
   <data name="InboxOfferTurnOn" xml:space="preserve"><value>Activer</value></data>
   <data name="InboxOfferNotNow" xml:space="preserve"><value>Pas maintenant</value></data>
   <data name="CheckForUpdates" xml:space="preserve"><value>Rechercher des mises à jour</value></data>
+  <data name="SectionLine" xml:space="preserve"><value>CORDE</value></data>
+  <data name="SectionCapture" xml:space="preserve"><value>CAPTURE</value></data>
+  <data name="SectionBehavior" xml:space="preserve"><value>COMPORTEMENT</value></data>
+  <data name="SectionApp" xml:space="preserve"><value>APP</value></data>
+  <data name="TakeScreenshot" xml:space="preserve"><value>Prendre une capture</value></data>
+  <data name="ClearLineHint" xml:space="preserve"><value>Vider la corde</value></data>
+  <data name="OnLineCount" xml:space="preserve"><value>{0} sur la corde</value></data>
+  <data name="WatchingClipboard" xml:space="preserve"><value>Surveillance du presse-papiers</value></data>
+  <data name="ClipboardOff" xml:space="preserve"><value>Surveillance désactivée</value></data>
+  <data name="ValueNone" xml:space="preserve"><value>Aucun</value></data>
+  <data name="ItemsOn" xml:space="preserve"><value>{0} activés</value></data>
+  <data name="ShowAll" xml:space="preserve"><value>Tout</value></data>
+  <data name="AnnotateTitle" xml:space="preserve"><value>Annoter</value></data>
+  <data name="Save" xml:space="preserve"><value>Enregistrer</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Annuler</value></data>
+  <data name="ToolPen" xml:space="preserve"><value>Stylo</value></data>
+  <data name="ToolRectangle" xml:space="preserve"><value>Rectangle</value></data>
+  <data name="ToolArrow" xml:space="preserve"><value>Flèche</value></data>
+  <data name="ToolText" xml:space="preserve"><value>Texte</value></data>
+  <data name="ToolSelect" xml:space="preserve"><value>Sélection</value></data>
+  <data name="ToolEraser" xml:space="preserve"><value>Gomme</value></data>
+  <data name="Undo" xml:space="preserve"><value>Annuler</value></data>
+  <data name="Redo" xml:space="preserve"><value>Rétablir</value></data>
+  <data name="ClearAnnotations" xml:space="preserve"><value>Tout effacer</value></data>
+  <data name="MoreColors" xml:space="preserve"><value>Autres couleurs</value></data>
+  <data name="StrokeThin" xml:space="preserve"><value>Fin</value></data>
+  <data name="StrokeMedium" xml:space="preserve"><value>Moyen</value></data>
+  <data name="StrokeThick" xml:space="preserve"><value>Épais</value></data>
+  <data name="FitToWindow" xml:space="preserve"><value>Ajuster</value></data>
+  <data name="ZoomIn" xml:space="preserve"><value>Zoom avant</value></data>
+  <data name="ZoomOut" xml:space="preserve"><value>Zoom arrière</value></data>
+  <data name="HoldSpaceToPan" xml:space="preserve"><value>Maintenir Espace pour déplacer</value></data>
+  <data name="SaveBlockedTitle" xml:space="preserve"><value>Impossible d'écraser l'original</value></data>
+  <data name="SaveBlockedBody" xml:space="preserve"><value>Un autre programme utilise ce fichier :
+{0}
+
+Enregistrer une copie ? Choisissez Non pour rester dans l'éditeur et réessayer plus tard.</value></data>
+  <data name="SaveFailedTitle" xml:space="preserve"><value>Échec de l'enregistrement</value></data>
+  <data name="SaveFailedBody" xml:space="preserve"><value>Ni l'original ni la copie n'ont pu être écrits :
+{0}</value></data>
+  <data name="LoadFailedBody" xml:space="preserve"><value>Impossible de charger l'image : {0}</value></data>
+  <data name="SaveErrorBody" xml:space="preserve"><value>Impossible d'enregistrer : {0}</value></data>
 </root>

@@ -27,22 +27,29 @@ internal static class Thumbnail
         if (Media.IsRecording(path)) return null;
         try
         {
-            var decoder = BitmapDecoder.Create(
-                new Uri(path),
-                BitmapCreateOptions.DelayCreation,
-                BitmapCacheOption.OnLoad);
+            // Read through a stream we own and close it again, then copy the
+            // pixels into a WriteableBitmap.
+            //
+            // Two reasons this is not the obvious "decode the Uri" version:
+            //  * A TransformedBitmap is lazy. Wrapped around a decoder opened
+            //    with DelayCreation it keeps that decoder - and therefore the
+            //    file - alive for as long as the card is on the line. That is
+            //    what stopped the annotation window from replacing the original
+            //    and pushed it onto the "<name>-annotated.png" fallback.
+            //  * Decoding a Uri goes through WPF's decoder cache, so re-reading
+            //    a file we just overwrote could hand back the stale image.
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.Read,
+                FileShare.ReadWrite | FileShare.Delete);
+            var decoder = BitmapDecoder.Create(stream,
+                BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
             var frame = decoder.Frames[0];
             double scale = Math.Min(1.0, (double)maxPixels / Math.Max(frame.PixelWidth, frame.PixelHeight));
-            if (scale >= 1.0)
-            {
-                var bmp = new WriteableBitmap(frame);
-                bmp.Freeze();
-                return bmp;
-            }
-            var transformed = new TransformedBitmap(frame,
-                new ScaleTransform(scale, scale));
-            transformed.Freeze();
-            return transformed;
+            BitmapSource scaled = scale >= 1.0
+                ? frame
+                : new TransformedBitmap(frame, new ScaleTransform(scale, scale));
+            var eager = new WriteableBitmap(scaled);
+            eager.Freeze();
+            return eager;
         }
         catch
         {

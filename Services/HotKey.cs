@@ -34,7 +34,10 @@ internal sealed class HotKey : IDisposable
 
     private void OnHotKey(int id)
     {
-        if (id == _id) _onPressed();
+        if (id != _id) return;
+        Diag.Write("hotkey", $"fired ({DisplayString})");
+        try { _onPressed(); }
+        catch (Exception ex) { Diag.Fatal("hotkey", ex); }
     }
 
     public bool IsRegistered => _registered;
@@ -52,6 +55,9 @@ internal sealed class HotKey : IDisposable
         uint vk = (uint)KeyInterop.VirtualKeyFromKey(Key.T);
         var hk = new HotKey(NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT, vk, onPressed);
         if (hk.IsRegistered) hk.DisplayString = "Ctrl+Alt+T";
+        Diag.Write("hotkey", hk.IsRegistered
+            ? "registered Ctrl+Alt+T"
+            : "FAILED to register Ctrl+Alt+T - another app already owns it");
         return hk.IsRegistered ? hk : null;
     }
 
