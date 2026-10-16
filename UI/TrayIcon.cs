@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Globalization;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Media;
@@ -10,8 +11,9 @@ using Clothesline.Services;
 namespace Clothesline.UI;
 
 /// <summary>
-/// System tray icon with the full Clothesline menu. Mirrors the macOS status
-/// item menu in <c>AppDelegate</c>.
+/// System tray icon with the full Clothesline menu.
+/// v0.1.8 redesign: Windows 11 dark theme, section labels, accent-blue
+/// checkmarks, app header strip, 9x14 padding, single #4CC2FF accent.
 /// </summary>
 internal sealed class TrayIcon : IDisposable
 {
@@ -19,6 +21,16 @@ internal sealed class TrayIcon : IDisposable
     private readonly Line _line;
     private readonly LineWindow _window;
     private bool _disposed;
+
+    // ── Win11 dark palette (matches the design mockup) ──
+    private static readonly System.Drawing.Color BgCard      = System.Drawing.Color.FromArgb(43, 43, 43);     // #2B2B2B
+    private static readonly System.Drawing.Color BgHover     = System.Drawing.Color.FromArgb(60, 60, 60);     // hover pill
+    private static readonly System.Drawing.Color BgActive    = System.Drawing.Color.FromArgb(50, 0, 120, 212);  // 20% blue tint
+    private static readonly System.Drawing.Color FgPrimary   = System.Drawing.Color.FromArgb(255, 255, 255);
+    private static readonly System.Drawing.Color FgSecondary = System.Drawing.Color.FromArgb(200, 200, 200);
+    private static readonly System.Drawing.Color FgMuted     = System.Drawing.Color.FromArgb(138, 138, 138);
+    private static readonly System.Drawing.Color Accent      = System.Drawing.Color.FromArgb(76, 194, 255);   // #4CC2FF
+    private static readonly System.Drawing.Color BgSep       = System.Drawing.Color.FromArgb(60, 60, 60);
 
     public TrayIcon(Line line, LineWindow window)
     {
@@ -51,6 +63,9 @@ internal sealed class TrayIcon : IDisposable
         UpdateIcon();
     }
 
+    private static string AppVersion =>
+        Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.1.8";
+
     private ContextMenuStrip BuildMenu()
     {
         var menu = new ContextMenuStrip
@@ -59,30 +74,42 @@ internal sealed class TrayIcon : IDisposable
             Padding = new Padding(6, 6, 6, 6),
             ShowImageMargin = false,
             Renderer = new ToolStripProfessionalRenderer(new TrayColorTable()),
-            ForeColor = System.Drawing.Color.FromArgb(235, 235, 235),
-            BackColor = System.Drawing.Color.FromArgb(36, 36, 40)
+            ForeColor = FgPrimary,
+            BackColor = BgCard
         };
 
+        // ── App header strip ──
+        var header = new ToolStripLabel($"  Clothesline   v{AppVersion}")
+        {
+            BackColor = BgCard,
+            ForeColor = FgPrimary,
+            Font = new Font("Segoe UI Variable Display", 10f, FontStyle.Bold),
+            Padding = new Padding(8, 12, 8, 10),
+            Margin = new Padding(0, 0, 0, 4),
+            Enabled = false
+        };
+        menu.Items.Add(header);
+
+        // Thin separator after header
+        AddSeparator(menu, 1);
+
+        // ── Section: LINE ──
+        AddSectionLabel(menu, "LINE");
         var toggle = MakeItem(_window.IsRevealed ? I18n.Get("HideLine") : I18n.Get("ShowLine"), () => _window.Toggle());
+        toggle.ShortcutKeyDisplayString = "Ctrl+Alt+T";
         menu.Items.Add(toggle);
 
-        var screenshot = new ToolStripMenuItem(I18n.Get("TakeScreenshot"));
-        StyleItem(screenshot);
+        var screenshot = MakeItem(I18n.Get("TakeScreenshot"), () => App.Instance.TakeScreenshot());
         screenshot.ShortcutKeyDisplayString = App.ScreenshotShortcut;
         screenshot.Enabled = !string.IsNullOrEmpty(App.ScreenshotShortcut);
-        screenshot.Click += (_, _) => App.Instance.TakeScreenshot();
         menu.Items.Add(screenshot);
 
         var clear = MakeItem(I18n.Get("TakeEverythingDown"), () => _line.Clear());
         menu.Items.Add(clear);
 
-        menu.Items.Add(new ToolStripSeparator());
-
-        // 'Handle screenshots' and 'Hang copied images' are toggle items:
-        // unlike MakeItem (which doesn't touch Checked), we need the
-        // checkmark to flip the moment the user clicks, before the menu
-        // closes. The captured `inbox` / `clipboard` locals let us update
-        // the live ToolStripMenuItem.Checked directly from the handler.
+        AddSeparator(menu);
+        // ── Section: CAPTURE ──
+        AddSectionLabel(menu, "CAPTURE");
         var inbox = new ToolStripMenuItem(I18n.Get("HandleScreenshots"));
         StyleItem(inbox);
         inbox.Checked = Inbox.IsEnabled;
@@ -100,10 +127,6 @@ internal sealed class TrayIcon : IDisposable
         clipboard.Click += (_, _) =>
         {
             ClipboardWatcher.IsEnabled = !ClipboardWatcher.IsEnabled;
-            // Persist the user's explicit choice so App.OnStartup doesn't
-            // override it on the next launch. `clipboardUserDisabled` is
-            // the only thing that prevents the auto-enable-every-startup
-            // logic from re-enabling.
             Settings.Default.SetBool("clipboardUserDisabled", !ClipboardWatcher.IsEnabled);
             App.Instance.ApplyClipboardWatch();
             UpdateIcon();
@@ -111,9 +134,11 @@ internal sealed class TrayIcon : IDisposable
         };
         menu.Items.Add(clipboard);
 
-        var bringDown = new ToolStripMenuItem(I18n.Get("BringLineDown"));
-        StyleItem(bringDown);
-        StyleDropDown(bringDown);
+        AddSeparator(menu);
+        // ── Section: BEHAVIOR ──
+        AddSectionLabel(menu, "BEHAVIOR");
+
+        var bringDown = MakeParentItem(I18n.Get("BringLineDown"));
         var bringSub = MakeItem(I18n.Get("WhenPointerRestsAtTop"), () => App.OpensFromMenuBar = !App.OpensFromMenuBar);
         bringSub.Checked = App.OpensFromMenuBar;
         var peekSub = MakeItem(I18n.Get("WhenSomethingNewHangs"), () => App.PeeksAtNew = !App.PeeksAtNew);
@@ -125,9 +150,7 @@ internal sealed class TrayIcon : IDisposable
         bringDown.DropDownItems.Add(fsSub);
         menu.Items.Add(bringDown);
 
-        var folderItem = new ToolStripMenuItem(I18n.Get("AlsoWatchFolders"));
-        StyleItem(folderItem);
-        StyleDropDown(folderItem);
+        var folderItem = MakeParentItem(I18n.Get("AlsoWatchFolders"));
         var addFolder = MakeItem(I18n.Get("AddFolder"), () => App.Instance.ChooseExtraFolder());
         folderItem.DropDownItems.Add(addFolder);
         foreach (var f in App.ExtraFolders)
@@ -140,9 +163,7 @@ internal sealed class TrayIcon : IDisposable
         }
         menu.Items.Add(folderItem);
 
-        var keepItem = new ToolStripMenuItem(I18n.Get("KeepOnLine"));
-        StyleItem(keepItem);
-        StyleDropDown(keepItem);
+        var keepItem = MakeParentItem(I18n.Get("KeepOnLine"));
         var fit = MakeItem(I18n.Get("AsManyAsFit"), () => App.Instance.SetKeep(null));
         fit.Checked = Line.KeepOnLine is null;
         keepItem.DropDownItems.Add(fit);
@@ -154,9 +175,7 @@ internal sealed class TrayIcon : IDisposable
         }
         menu.Items.Add(keepItem);
 
-        var sizeItem = new ToolStripMenuItem(I18n.Get("Size"));
-        StyleItem(sizeItem);
-        StyleDropDown(sizeItem);
+        var sizeItem = MakeParentItem(I18n.Get("Size"));
         foreach (var s in new[] { Layout.SizeKind.Small, Layout.SizeKind.Medium, Layout.SizeKind.Large })
         {
             var si = MakeItem(Layout.SizeLabel(s), () => App.Instance.SetSize(s));
@@ -165,9 +184,7 @@ internal sealed class TrayIcon : IDisposable
         }
         menu.Items.Add(sizeItem);
 
-        var langItem = new ToolStripMenuItem(I18n.Get("Language"));
-        StyleItem(langItem);
-        StyleDropDown(langItem);
+        var langItem = MakeParentItem(I18n.Get("Language"));
         var sysItem = MakeItem(I18n.Get("SystemDefault"), () => I18n.OverrideName = "");
         sysItem.Checked = string.IsNullOrWhiteSpace(I18n.OverrideName);
         langItem.DropDownItems.Add(sysItem);
@@ -179,8 +196,9 @@ internal sealed class TrayIcon : IDisposable
         }
         menu.Items.Add(langItem);
 
-        menu.Items.Add(new ToolStripSeparator());
-
+        AddSeparator(menu);
+        // ── Section: APP ──
+        AddSectionLabel(menu, "APP");
         var openFolder = MakeItem(I18n.Get("OpenScreenshotsFolder"), () =>
         {
             var folder = Inbox.IsEnabled ? Inbox.Folder : Inbox.ScreenshotsFolder;
@@ -190,18 +208,13 @@ internal sealed class TrayIcon : IDisposable
 
         var sound = MakeItem(I18n.Get("Sounds"), () => Sound.SoundOn = !Sound.SoundOn);
         sound.Checked = Sound.SoundOn;
-        // The Sounds / OpenAtLogin items are toggles too, but their Checked
-        // state is refreshed on every menu open by RefreshMenu (see below),
-        // so we don't need to update them in their click handlers. The
-        // user will see the new checkmark when they reopen the menu.
         menu.Items.Add(sound);
 
         var startup = MakeItem(I18n.Get("OpenAtLogin"), () => App.Instance.ToggleStartup());
         startup.Checked = StartupManager.IsEnabled;
         menu.Items.Add(startup);
 
-        menu.Items.Add(new ToolStripSeparator());
-
+        AddSeparator(menu);
         var update = MakeItem(I18n.Get("CheckForUpdates"), () =>
         {
             try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("https://github.com/Zhao-allen/Clothesline/releases") { UseShellExecute = true }); }
@@ -216,6 +229,30 @@ internal sealed class TrayIcon : IDisposable
         return menu;
     }
 
+    private static void AddSeparator(ContextMenuStrip menu, int? _ = null)
+    {
+        var sep = new ToolStripSeparator
+        {
+            BackColor = BgSep,
+            ForeColor = BgSep,
+            Margin = new Padding(8, 4, 8, 4)
+        };
+        menu.Items.Add(sep);
+    }
+
+    private static void AddSectionLabel(ContextMenuStrip menu, string text)
+    {
+        var label = new ToolStripLabel(text)
+        {
+            BackColor = BgCard,
+            ForeColor = FgMuted,
+            Font = new Font("Segoe UI Variable Display", 8.5f, FontStyle.Bold),
+            Padding = new Padding(14, 8, 14, 4),
+            Margin = new Padding(0)
+        };
+        menu.Items.Add(label);
+    }
+
     private static ToolStripMenuItem MakeItem(string text, Action action)
     {
         var item = new ToolStripMenuItem(text);
@@ -224,23 +261,29 @@ internal sealed class TrayIcon : IDisposable
         return item;
     }
 
+    private static ToolStripMenuItem MakeParentItem(string text)
+    {
+        var item = new ToolStripMenuItem(text);
+        StyleItem(item);
+        StyleDropDown(item);
+        return item;
+    }
+
     /// <summary>
-    /// Apply the modern padding / sizing to a top-level or sub menu item so
-    /// every entry has consistent visual weight instead of the cramped
-    /// default 4-px WinForms look.
+    /// Modern Win11-style padding per item: 9px vertical, 14px horizontal.
+    /// Right-aligned shortcut column is achieved by WinForms default
+    /// ShortcutKeyDisplayString rendering (text-align: right).
     /// </summary>
     private static void StyleItem(ToolStripMenuItem item)
     {
-        item.Padding = new Padding(12, 6, 12, 6);
+        item.Padding = new Padding(14, 9, 14, 9);
         item.Margin = new Padding(0);
         item.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
     }
 
     /// <summary>
     /// Apply the same dark background and padding to a parent item's
-    /// drop-down panel as the root menu. Without this, submenus render with
-    /// the cramped default WinForms look (tight padding, default border),
-    /// which looks inconsistent with the modernized parent menu.
+    /// drop-down panel as the root menu.
     /// </summary>
     private static void StyleDropDown(ToolStripMenuItem parent)
     {
@@ -251,20 +294,49 @@ internal sealed class TrayIcon : IDisposable
         }
     }
 
+    /// <summary>
+    /// Walk the menu items by Text content instead of hardcoded indices.
+    /// This is robust against layout changes (adding/removing section
+    /// labels or separators). The ToolStripMenuItem.Text comparisons
+    /// work because I18n.Get returns the same string each call within
+    /// a culture, and we compare against the same key right after.
+    /// </summary>
     private void RefreshMenu(ContextMenuStrip menu)
     {
-        // Indices: 0 toggle, 1 screenshot, 2 clear, 3 sep, 4 inbox, 5 clipboard, 6 bringDown,
-        // 7 folderItem, 8 keepItem, 9 sizeItem, 10 langItem, 11 sep, 12 openFolder,
-        // 13 sound, 14 startup, 15 sep, 16 update, 17 quit
-        if (menu.Items.Count < 6) return;
-        ((ToolStripMenuItem)menu.Items[0]).Text = _window.IsRevealed ? I18n.Get("HideLine") : I18n.Get("ShowLine");
-        ((ToolStripMenuItem)menu.Items[2]).Enabled = _line.LiveCount > 0;
-        ((ToolStripMenuItem)menu.Items[4]).Checked = Inbox.IsEnabled;
-        ((ToolStripMenuItem)menu.Items[5]).Checked = ClipboardWatcher.IsEnabled;
+        string hideLine = I18n.Get("HideLine");
+        string showLine = I18n.Get("ShowLine");
+        string takeEverything = I18n.Get("TakeEverythingDown");
+        string handleScreenshots = I18n.Get("HandleScreenshots");
+        string hangCopied = I18n.Get("HangCopiedImages");
+        string sounds = I18n.Get("Sounds");
+        string openAtLogin = I18n.Get("OpenAtLogin");
+
         foreach (var item in menu.Items.OfType<ToolStripMenuItem>())
         {
-            if (item.Text == I18n.Get("Sounds")) item.Checked = Sound.SoundOn;
-            if (item.Text == I18n.Get("OpenAtLogin")) item.Checked = StartupManager.IsEnabled;
+            if (item.Text == hideLine || item.Text == showLine)
+            {
+                item.Text = _window.IsRevealed ? hideLine : showLine;
+            }
+            else if (item.Text == takeEverything)
+            {
+                item.Enabled = _line.LiveCount > 0;
+            }
+            else if (item.Text == handleScreenshots)
+            {
+                item.Checked = Inbox.IsEnabled;
+            }
+            else if (item.Text == hangCopied)
+            {
+                item.Checked = ClipboardWatcher.IsEnabled;
+            }
+            else if (item.Text == sounds)
+            {
+                item.Checked = Sound.SoundOn;
+            }
+            else if (item.Text == openAtLogin)
+            {
+                item.Checked = StartupManager.IsEnabled;
+            }
         }
     }
 
@@ -288,20 +360,16 @@ internal sealed class TrayIcon : IDisposable
             }
             dc.DrawGeometry(null, ropePen, ropeGeo);
 
-            // Clothespin
             var pinColor = filled ? Color.FromRgb(70, 70, 70) : Color.FromRgb(150, 150, 150);
             dc.DrawRoundedRectangle(new SolidColorBrush(pinColor), null,
                 new Rect(29, 14, 6, 12), 1, 1);
 
-            // Photo card
             var cardColor = filled ? Color.FromRgb(100, 80, 200) : Color.FromRgb(180, 180, 180);
             dc.DrawRoundedRectangle(new SolidColorBrush(cardColor),
                 new System.Windows.Media.Pen(Brushes.White, 1.5),
                 new Rect(20, 26, 24, 28), 4, 4);
-            // Photo inner
             dc.DrawRectangle(new SolidColorBrush(System.Windows.Media.Color.FromArgb(180, 255, 255, 255)), null,
                 new Rect(24, 30, 16, 14));
-            // A little "mountain" in the photo
             var mountain = new StreamGeometry();
             using (var mctx = mountain.Open())
             {
@@ -334,21 +402,25 @@ internal sealed class TrayIcon : IDisposable
 }
 
 /// <summary>
-/// Modern dark tray theme: warm-cool neutral background, subtle hover,
-/// Windows accent blue (#0078D4) for checkmarks and selection.
+/// Windows 11 dark theme palette. Hover is a subtle gray pill,
+/// selection uses a blue tint with a 1px accent ring. Checkmarks
+/// in Win11 system accent blue (#4CC2FF) for high contrast.
 /// </summary>
 internal sealed class TrayColorTable : ProfessionalColorTable
 {
-    public override System.Drawing.Color MenuItemSelected => System.Drawing.Color.FromArgb(58, 58, 64);
-    public override System.Drawing.Color MenuItemBorder => System.Drawing.Color.FromArgb(0, 120, 212);
-    public override System.Drawing.Color MenuBorder => System.Drawing.Color.FromArgb(20, 20, 22);
-    public override System.Drawing.Color ToolStripDropDownBackground => System.Drawing.Color.FromArgb(36, 36, 40);
-    public override System.Drawing.Color ImageMarginGradientBegin => System.Drawing.Color.FromArgb(36, 36, 40);
-    public override System.Drawing.Color ImageMarginGradientMiddle => System.Drawing.Color.FromArgb(36, 36, 40);
-    public override System.Drawing.Color ImageMarginGradientEnd => System.Drawing.Color.FromArgb(36, 36, 40);
-    public override System.Drawing.Color CheckBackground => System.Drawing.Color.FromArgb(0, 120, 212);
-    public override System.Drawing.Color CheckPressedBackground => System.Drawing.Color.FromArgb(0, 120, 212);
-    public override System.Drawing.Color CheckSelectedBackground => System.Drawing.Color.FromArgb(0, 120, 212);
-    public override System.Drawing.Color SeparatorDark => System.Drawing.Color.FromArgb(60, 60, 66);
-    public override System.Drawing.Color SeparatorLight => System.Drawing.Color.FromArgb(60, 60, 66);
+    public override System.Drawing.Color MenuItemSelected => System.Drawing.Color.FromArgb(60, 60, 60);
+    public override System.Drawing.Color MenuItemSelectedGradientBegin => System.Drawing.Color.FromArgb(60, 60, 60);
+    public override System.Drawing.Color MenuItemSelectedGradientEnd => System.Drawing.Color.FromArgb(60, 60, 60);
+    public override System.Drawing.Color MenuItemBorder => System.Drawing.Color.FromArgb(76, 194, 255);
+    public override System.Drawing.Color MenuBorder => System.Drawing.Color.FromArgb(20, 20, 20);
+    public override System.Drawing.Color ToolStripDropDownBackground => System.Drawing.Color.FromArgb(43, 43, 43);
+    public override System.Drawing.Color ImageMarginGradientBegin => System.Drawing.Color.FromArgb(43, 43, 43);
+    public override System.Drawing.Color ImageMarginGradientMiddle => System.Drawing.Color.FromArgb(43, 43, 43);
+    public override System.Drawing.Color ImageMarginGradientEnd => System.Drawing.Color.FromArgb(43, 43, 43);
+    public override System.Drawing.Color CheckBackground => System.Drawing.Color.FromArgb(76, 194, 255);
+    public override System.Drawing.Color CheckPressedBackground => System.Drawing.Color.FromArgb(76, 194, 255);
+    public override System.Drawing.Color CheckSelectedBackground => System.Drawing.Color.FromArgb(76, 194, 255);
+    public override System.Drawing.Color SeparatorDark => System.Drawing.Color.FromArgb(60, 60, 60);
+    public override System.Drawing.Color SeparatorLight => System.Drawing.Color.FromArgb(60, 60, 60);
+    public override System.Drawing.Color MenuItemText => System.Drawing.Color.FromArgb(255, 255, 255);
 }
