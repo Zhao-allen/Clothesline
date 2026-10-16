@@ -196,11 +196,12 @@ internal sealed class TrayIcon : IDisposable
 
     private void RefreshMenu(ContextMenuStrip menu)
     {
+        if (menu.Items.Count < 7) return;
         ((ToolStripMenuItem)menu.Items[0]).Text = _window.IsRevealed ? I18n.Get("HideLine") : I18n.Get("ShowLine");
-        // 0 toggle, 1 screenshot, 2 mode, 3 clear, 4 separator, 5 inbox, 6 clipboard
-        ((ToolStripMenuItem)menu.Items[3]).Enabled = _line.LiveCount > 0;
-        ((ToolStripMenuItem)menu.Items[5]).Checked = Inbox.IsEnabled;
-        ((ToolStripMenuItem)menu.Items[6]).Checked = ClipboardWatcher.IsEnabled;
+        // 0 toggle, 1 screenshot, 2 clear, 3 separator, 4 inbox, 5 clipboard
+        ((ToolStripMenuItem)menu.Items[2]).Enabled = _line.LiveCount > 0;
+        ((ToolStripMenuItem)menu.Items[4]).Checked = Inbox.IsEnabled;
+        ((ToolStripMenuItem)menu.Items[5]).Checked = ClipboardWatcher.IsEnabled;
         foreach (var item in menu.Items.OfType<ToolStripMenuItem>())
         {
             if (item.Text == I18n.Get("Sounds")) item.Checked = Sound.SoundOn;
