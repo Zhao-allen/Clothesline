@@ -125,7 +125,7 @@ internal partial class App : Application
             Background = System.Windows.Media.Brushes.White
         };
 
-        var title = new TextBlock
+        var title = new System.Windows.Controls.TextBlock
         {
             Text = I18n.Get("InboxOfferTitle"),
             FontSize = 16,
@@ -133,7 +133,7 @@ internal partial class App : Application
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(24, 24, 24, 8)
         };
-        var body = new TextBlock
+        var body = new System.Windows.Controls.TextBlock
         {
             Text = I18n.Get("InboxOfferBody"),
             FontSize = 13,

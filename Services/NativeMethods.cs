@@ -158,9 +158,9 @@ internal static class NativeMethods
     public static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
 
     public const int INPUT_KEYBOARD = 1;
-    public const uint VK_LWIN = 0x5B;
-    public const uint VK_LSHIFT = 0xA0;
-    public const uint VK_S = 0x53;
+    public const ushort VK_LWIN = 0x5B;
+    public const ushort VK_LSHIFT = 0xA0;
+    public const ushort VK_S = 0x53;
     public const uint KEYEVENTF_KEYUP = 0x0002;
 
     [StructLayout(LayoutKind.Sequential)]
