@@ -77,5 +77,9 @@ namespace Clothesline.Resources {
         public static string DonationTitle => ResourceManager.GetString("DonationTitle", resourceCulture);
         public static string DonationBody => ResourceManager.GetString("DonationBody", resourceCulture);
         public static string DonationReplaceHint => ResourceManager.GetString("DonationReplaceHint", resourceCulture);
+        public static string DonationSubtitle => ResourceManager.GetString("DonationSubtitle", resourceCulture);
+        public static string DonationWeChat => ResourceManager.GetString("DonationWeChat", resourceCulture);
+        public static string DonationAlipay => ResourceManager.GetString("DonationAlipay", resourceCulture);
+        public static string DonationFooter => ResourceManager.GetString("DonationFooter", resourceCulture);
     }
 }

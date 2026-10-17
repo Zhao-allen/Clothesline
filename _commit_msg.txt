@@ -1,0 +1,38 @@
+feat(donation): rebuild the support window to the 11-qr mockups
+
+The window I landed earlier was guessed from a share link that never
+resolved; the real mockups turned up under ui-redesign/ and it was wrong in
+almost every dimension. Rebuilt against them.
+
+What changed:
+- One placeholder code -> the real WeChat and Alipay codes side by side,
+  from ui-redesign (560x560, watermark-free), on equal 260x300 plates.
+- 340 wide -> 700; radius 18 -> 24.
+- Dark-only -> light and dark, following AppTheme.IsDark.
+- Single shadow -> three layers (far, near, top inset highlight) with 28 DIP
+  of margin so the 64px blur is not clipped.
+- Title 17 left-aligned -> 19 ExtraBold centred; the divider is gone; the
+  footer reads "thanks for the support" with a red heart.
+
+New:
+- UI/DonationTheme.cs - both palettes side by side so they cannot drift.
+  Card opacity is raised to 0.92/0.90 over the mockup's 0.66/0.55: those
+  values assume backdrop-filter, which WPF cannot do behind an
+  AllowsTransparency window, and at 0.55 the dark card averages to mid-grey
+  on a light desktop and its text drops to about 2:1 contrast.
+- Services/AppTheme.cs - ThemeMode (System/Light/Dark) persisted to the
+  "theme" setting, resolving System via the AppsUseLightTheme registry value
+  the installer already reads.
+
+Fixes found while rebuilding:
+- Clicking close also started a drag: the handler matched on Border, and the
+  button is one. It is now tagged and skipped.
+- Reopening from the tray stacked copies; now single-instance via
+  ShowOrRaise().
+- Drag accumulated per-frame deltas and drifted; now absolute from the
+  origin.
+- Esc did not close; Deactivated does not dismiss. Both added.
+
+i18n: DonationSubtitle / DonationWeChat / DonationAlipay / DonationFooter
+added to all five tables; DonationTitle reworded to match the heading.
+The tray row is now amber, per the mockups.

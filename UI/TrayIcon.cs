@@ -53,6 +53,9 @@ internal static class TrayPalette
     public static readonly GColor Stroke      = GColor.FromArgb(61, 61, 61);    // #3D3D3D
     public static readonly GColor Danger      = GColor.FromArgb(255, 153, 164);
     public static readonly GColor KnobDark    = GColor.FromArgb(11, 42, 61);
+    /// <summary>Amber, for the "Buy me a coffee" row - the one row the menu
+    /// warm up, so it reads as an invitation rather than another setting.</summary>
+    public static readonly GColor Coffee      = GColor.FromArgb(251, 191, 36);
 }
 
 /// <summary>
@@ -426,11 +429,10 @@ internal sealed class TrayIcon : IDisposable
         }, IcoRefresh);
         menu.Items.Add(update);
 
-        var coffee = MakeItem(I18n.Get("BuyMeACoffee"), () =>
-        {
-            var win = new DonationWindow();
-            win.Show();
-        }, IcoCoffee);
+        // Opens the codes directly, with no sub-menu: the mockups dropped the
+        // two-step WeChat/Alipay picker (10-sub7 is marked obsolete there).
+        var coffee = MakeItem(I18n.Get("BuyMeACoffee"), () => DonationWindow.ShowOrRaise(), IcoCoffee);
+        coffee.ForeColor = TrayPalette.Coffee;
         menu.Items.Add(coffee);
 
         AddSeparator(menu);

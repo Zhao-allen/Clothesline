@@ -64,10 +64,16 @@
            DonationWindow.LoadQrImage works when running from the build
            output, and so the file is visible/editable for a user dropping in
            their own code. -->
-    <Resource Include="Resources\donation_qr.png" />
-    <Content Include="Resources\donation_qr.png">
+    <Resource Include="Resources\donation_qr_wechat.png" />
+    <Content Include="Resources\donation_qr_wechat.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <TargetPath>Resources\donation_qr.png</TargetPath>
+      <TargetPath>Resources\donation_qr_wechat.png</TargetPath>
+    </Content>
+
+    <Resource Include="Resources\donation_qr_alipay.png" />
+    <Content Include="Resources\donation_qr_alipay.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Resources\donation_qr_alipay.png</TargetPath>
     </Content>
   </ItemGroup>
 
