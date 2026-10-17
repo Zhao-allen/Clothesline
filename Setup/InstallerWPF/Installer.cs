@@ -14,7 +14,15 @@ internal static class Installer
 {
     public const string AppName = "Clothesline";
     public const string ExeName = "Clothesline.exe";
-    public const string Version = "0.3.0";
+
+    /// <summary>
+    /// Read from the assembly rather than spelled out here, so the window
+    /// title and the uninstall registry entry cannot fall behind the
+    /// &lt;Version&gt; in the csproj. It was hardcoded once and kept showing
+    /// 0.3.0 after the project had moved on.
+    /// </summary>
+    public static string Version =>
+        Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "0.0.0";
 
     /// <summary>
     /// Per-user by default: no UAC prompt, works for every account on the
