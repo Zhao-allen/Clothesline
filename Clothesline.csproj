@@ -23,6 +23,7 @@
          project by build.ps1 and the release workflow. The default **/*.cs
          glob would otherwise pull its WinForms sources into this WPF app. -->
     <Compile Remove="Setup/**/*.cs" />
+    <Page Remove="Setup/**/*.xaml" />
   </ItemGroup>
 
   <ItemGroup>

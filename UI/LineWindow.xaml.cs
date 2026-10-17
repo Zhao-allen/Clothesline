@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using System.Windows.Forms;
@@ -61,6 +62,7 @@ internal partial class LineWindow : Window
             _line.PropertyChanged += Line_PropertyChanged;
             _line.Fall += OnFall;
             _line.ThumbChanged += OnThumbChanged;
+            _line.Landed += OnLanded;
             foreach (var item in _line.Items) AddCard(item);
             LayoutItems();
         };
@@ -170,7 +172,7 @@ internal partial class LineWindow : Window
         UpdateRope();
     }
 
-    private static double GetDpiForScreen(Screen screen)
+    internal static double GetDpiForScreen(Screen screen)
     {
         try
         {
@@ -221,14 +223,30 @@ internal partial class LineWindow : Window
 
     private void OnFall(PeggedItem item)
     {
-        if (_cards.TryGetValue(item.Id, out var card)) card.Fall();
+        if (!_cards.TryGetValue(item.Id, out var card)) return;
+
+        int index = _line.Items.ToList().FindIndex(i => i.Id == item.Id);
+        if (index < 0) return;
+
+        double w = ActualWidth > 0 ? ActualWidth : Width;
+        double x = Layout.X(index, _line.Items.Count, w, _line.VisibleCount, _line.Scroll);
+        double ropeY = Layout.RopeY(x, w);
+        double cardH = Layout.PanelHeight - ropeY;
+        var from = new Rect(x - Layout.CardWidth / 2, ropeY - Layout.PinAbove, Layout.CardWidth, cardH);
+
+        card.Opacity = 0;
+
+        var screen = ScreenUnderPointer() ?? System.Windows.Forms.Screen.PrimaryScreen;
+        if (screen is not null)
+        {
+            FlightOverlay.Ensure(screen).StartFall(item, from, (BitmapSource)item.Thumb, () => { });
+        }
     }
 
-    /// <summary>
-    /// The file behind a card was rewritten (the annotation window saving over
-    /// the original). The card holds its own Image.Source, so it has to be
-    /// handed the fresh thumbnail explicitly.
-    /// </summary>
+    private void OnLanded(Guid id)
+    {
+        if (_cards.TryGetValue(id, out var card)) card.Land();
+    }
     private void OnThumbChanged(Guid id)
     {
         if (_cards.TryGetValue(id, out var card)) card.RefreshPhoto();
@@ -311,16 +329,16 @@ internal partial class LineWindow : Window
         });
     }
 
-    public void Reveal(bool pinned = false, double peekSeconds = 0)
+    public void Reveal(bool pinned = false, double peekSeconds = 0, bool animate = true)
     {
         if (!IsPresent) return;
         if (pinned) Pinned = true;
         if (peekSeconds > 0) _peekUntil = DateTime.Now.AddSeconds(peekSeconds);
         _awaySince = null;
-        SetRevealed(true);
+        SetRevealed(true, animate);
     }
 
-    public void SetRevealed(bool on)
+    public void SetRevealed(bool on, bool animate = true)
     {
         if (on == IsRevealed) return;
         IsRevealed = on;
@@ -329,7 +347,10 @@ internal partial class LineWindow : Window
         {
             _line.Scroll = 0;
             Show();
-            AnimateSlide(0, TimeSpan.FromMilliseconds(420));
+            if (animate)
+                AnimateSlide(0, TimeSpan.FromMilliseconds(420));
+            else
+                SlideTransform.Y = 0;
         }
         else
         {
@@ -392,7 +413,7 @@ internal partial class LineWindow : Window
         // full-screen note there), which used to leave a fresh capture hanging
         // on a line that never came down.
         Present();
-        if (App.PeeksAtNew) Reveal(peekSeconds: 2.5);
+        if (App.PeeksAtNew) Reveal(peekSeconds: 2.5, animate: false);
         RequestRefresh?.Invoke();
     }
 
@@ -472,7 +493,8 @@ internal partial class LineWindow : Window
         // not busy" and retracted the line after RetractDelay, which took the
         // menu with it.
         bool busy = Pinned || PeggedCard.IsDragging || _line.PressedId is not null
-                    || PeggedCard.IsMenuOpen || now < _peekUntil;
+                    || PeggedCard.IsMenuOpen || now < _peekUntil
+                    || (FlightOverlay.Instance?.IsAnimating == true);
         if (inside || busy)
         {
             _awaySince = null;

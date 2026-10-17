@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Forms;
+using System.Windows.Media.Imaging;
 using Clothesline.Models;
 using Clothesline.Services;
 using Clothesline.UI;
@@ -19,6 +20,9 @@ internal partial class App : Application
     private List<ScreenshotWatcher> _folderWatchers = new();
     private ClipboardWatcher? _clipboardWatcher;
     private HotKey? _hotKey;
+    private System.Windows.Threading.DispatcherTimer? _cursorSampler;
+    private (int x, int y, DateTime t) _cursorSample;
+    private int _flightsInProgress;
 
     // v0.1.9: removed _screenshotHotKey and ScreenshotShortcut. The
     // screenshot flow is back to the user pressing Win+Shift+S themselves.
@@ -107,6 +111,15 @@ internal partial class App : Application
         _hotKey = HotKey.RegisterDefault(() => _window.Toggle());
 
         _tray = new TrayIcon(_line, _window);
+
+        // Cursor sampler for capture-flight origin (Tier 2 positioning).
+        _cursorSampler = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
+        _cursorSampler.Tick += (_, _) =>
+        {
+            if (NativeMethods.GetCursorPos(out var p))
+                _cursorSample = (p.X, p.Y, DateTime.Now);
+        };
+        _cursorSampler.Start();
 
         Diag.Write("app", $"ready - live={_line.LiveCount} clipboard={ClipboardWatcher.IsEnabled} " +
                           $"inbox={Inbox.IsEnabled} hotkey={(_hotKey is null ? "NONE" : _hotKey.DisplayString)}");
@@ -308,8 +321,70 @@ internal partial class App : Application
         {
             var screen = LineWindow.ScreenUnderPointer();
             _window.ComeDown(screen);
-            _line.Hang(path);
+
+            bool fly = _flightsInProgress < 2;
+            var id = _line.Hang(path, flying: fly);
+
+            if (fly && id is not null)
+            {
+                _flightsInProgress++;
+                StartFlight(id.Value, path, screen);
+            }
         });
+    }
+
+    private void StartFlight(Guid id, string path, Screen screen)
+    {
+        int count = _line.Items.Count;
+        int index = _line.Items.ToList().FindIndex(i => i.Id == id);
+        if (index < 0) { _flightsInProgress--; return; }
+
+        double w = _window.Width;
+        double x = Layout.X(index, count, w, _line.VisibleCount, _line.Scroll);
+        double ropeY = Layout.RopeY(x, w);
+        double cardH = Layout.PanelHeight - ropeY;
+        var to = new Rect(x - Layout.CardWidth / 2, ropeY - Layout.PinAbove, Layout.CardWidth, cardH);
+
+        var photo = Thumbnail.Make(path, int.MaxValue);
+        if (photo is null) { _flightsInProgress--; return; }
+
+        var from = ComputeFromRect(photo, screen, to);
+        var item = _line.Items.First(i => i.Id == id);
+
+        FlightOverlay.Ensure(screen).StartFlight(item, from, to, photo, () =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                _line.Land(id);
+                _flightsInProgress--;
+            });
+        });
+    }
+
+    private Rect ComputeFromRect(BitmapSource photo, Screen screen, Rect to)
+    {
+        var bounds = screen.Bounds;
+        double scale = LineWindow.GetDpiForScreen(screen) / 96.0;
+        double screenW = bounds.Width / scale;
+        double screenH = bounds.Height / scale;
+        double imgW = photo.PixelWidth / scale;
+        double imgH = photo.PixelHeight / scale;
+
+        // Tier 1 — full-screen match
+        if (Math.Abs(imgW - screenW) / screenW < 0.01 && Math.Abs(imgH - screenH) / screenH < 0.01)
+            return new Rect(0, 0, screenW, screenH);
+
+        // Tier 2 — cursor anchor (bottom-right pinned to cursor)
+        var (cx, cy, t) = _cursorSample;
+        if ((DateTime.Now - t).TotalMilliseconds < 700)
+        {
+            double left = Math.Max(0, cx / scale - imgW);
+            double top = Math.Max(0, cy / scale - imgH);
+            return new Rect(left, top, imgW, imgH);
+        }
+
+        // Tier 3 — screen centre
+        return new Rect(screenW / 2 - imgW / 2, screenH / 2 - imgH / 2, imgW, imgH);
     }
 
     public void Refresh()

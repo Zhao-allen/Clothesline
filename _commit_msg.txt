@@ -1,0 +1,38 @@
+feat(anim): capture flight + fall overlay + tilt + instant reveal
+
+Animation overhaul addressing "unnatural hanging animation":
+
+1. **Restore静止倾角 Tilt ±2.5°** (PeggedItem.Tilt was computed but never applied)
+   - Arrive(): initial swing = Tilt + 16°, settles to Tilt
+   - Nudge(): swing around Tilt (out = Tilt + deg, back = Tilt)
+   - Fall(): rotation from Tilt to Tilt·8 + 20 (was fixed 0→40°)
+   - Breeze(): unchanged, calls Nudge which now uses Tilt
+
+2. **Capture path instantly reveals** — no 420ms slide during capture
+   - SetRevealed(bool on, bool animate = true)
+   - ComeDown() → Reveal(peekSeconds: 2.5, animate: false)
+   - SlideTransform.Y = 0 immediately; 420ms slide reserved for Toggle()
+
+3. **CaptureFlight full-screen overlay** (mirrors original NSPanel)
+   - New UI/FlightOverlay.cs: borderless transparent topmost window
+   - FlightDriver: CompositionTarget.Rendering + Stopwatch, 120Hz
+   - Single k = easeInOutCubic(raw) drives position, size, radius, inset, rotation
+   - Arc: y = lerp(from.top, to.top, k) − sin(π·k)·30
+   - ChromeEase: chrome = 0 for first 44.4%, then smoothstep→1
+   - Photo scaling converges to resting card size at k=1 (clean cross-fade)
+   - Tiered take-off: full-screen match → cursor anchor → screen center
+   - Cursor sampler: 100ms DispatcherTimer for fresh cursor position
+   - Concurrency limit: 2 flights max; overflow falls back to local drop
+   - Land() → real card opacity 0→1 (160ms easeOut) + Nudge(2.2)
+
+4. **Fall uses full-screen overlay** — fixes "light edge ghost" from 210px window clip
+   - Real card instantly hidden (opacity = 0)
+   - Overlay draws complete card (glass + photo + clip, chrome = 1)
+   - 550ms, PowerEase Power=3 EaseIn, drop 520 DIP
+   - Rotation: Tilt → Tilt·8 + 20, opacity = 1 − e
+
+5. **Mouse tracker busy flag** includes FlightOverlay.IsAnimating
+   - Prevents line retracting mid-flight when PeeksAtNew is off
+
+Files: UI/PeggedCard.cs, UI/LineWindow.xaml.cs, Models/Line.cs,
+       App.xaml.cs, Services/NativeMethods.cs, UI/FlightOverlay.cs (new)

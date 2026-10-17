@@ -21,6 +21,7 @@ internal sealed class Line : INotifyPropertyChanged
 
     public event Action<PeggedItem>? Fall;
     public event Action? ItemsChanged;
+    public event Action<Guid>? Landed;
 
     /// <summary>
     /// Raised after a card's thumbnail has been replaced - e.g. the annotation
@@ -157,7 +158,11 @@ internal sealed class Line : INotifyPropertyChanged
     public void Land(Guid id)
     {
         var i = Items.FirstIndex(it => it.Id == id);
-        if (i >= 0) Items[i].Flying = false;
+        if (i >= 0)
+        {
+            Items[i].Flying = false;
+            Landed?.Invoke(id);
+        }
     }
 
     /// <summary>

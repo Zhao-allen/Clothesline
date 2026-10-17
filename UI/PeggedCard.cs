@@ -331,18 +331,28 @@ internal sealed class PeggedCard : UserControl, IDisposable
 
     private void Arrive()
     {
-        if (_item.Flying) return;
+        if (_item.Flying) { Opacity = 0; return; }
         _arrival.Y = -46;
-        _swing.Angle = 16;
+        _swing.Angle = 16 + _item.Tilt;
         var drop = new DoubleAnimation(0, TimeSpan.FromMilliseconds(420))
         {
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
         };
         _arrival.BeginAnimation(TranslateTransform.YProperty, drop);
-        SwingTo(0, TimeSpan.FromMilliseconds(600));
+        SwingTo(_item.Tilt, TimeSpan.FromMilliseconds(600));
     }
 
-    public void Land() => Nudge(2.2);
+    public void Land()
+    {
+        Opacity = 0;
+        var fade = new DoubleAnimation(1, TimeSpan.FromMilliseconds(160))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
+            FillBehavior = FillBehavior.Stop
+        };
+        BeginAnimation(OpacityProperty, fade);
+        Nudge(2.2);
+    }
 
     /// <summary>
     /// The card lets go of the line: it swings, accelerates downward and
@@ -360,7 +370,7 @@ internal sealed class PeggedCard : UserControl, IDisposable
         };
         _arrival.BeginAnimation(TranslateTransform.YProperty, dropAnim);
 
-        var swingAnim = new DoubleAnimation(40, duration)
+        var swingAnim = new DoubleAnimation(_item.Tilt * 8 + 20, duration)
         {
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
         };
@@ -382,12 +392,12 @@ internal sealed class PeggedCard : UserControl, IDisposable
 
     private void Nudge(double degrees)
     {
-        var outAnim = new DoubleAnimation(degrees, TimeSpan.FromMilliseconds(300))
+        var outAnim = new DoubleAnimation(_item.Tilt + degrees, TimeSpan.FromMilliseconds(300))
         {
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
         };
         _swing.BeginAnimation(RotateTransform.AngleProperty, outAnim);
-        Task.Delay(300).ContinueWith(_ => Dispatcher.Invoke(() => SwingTo(0, TimeSpan.FromMilliseconds(500))));
+        Task.Delay(300).ContinueWith(_ => Dispatcher.Invoke(() => SwingTo(_item.Tilt, TimeSpan.FromMilliseconds(500))));
     }
 
     private void SwingTo(double degrees, TimeSpan duration)
