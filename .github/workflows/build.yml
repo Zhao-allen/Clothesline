@@ -84,12 +84,12 @@ jobs:
         shell: pwsh
         run: |
           dotnet run --project Setup/MakePayload -- publish Setup\payload.zip
-          Move-Item Setup\payload.zip Setup\Installer\payload.zip -Force
+          Move-Item Setup\payload.zip Setup\InstallerWPF\payload.zip -Force
 
       - name: Build setup installer (single-file, payload embedded)
         shell: pwsh
         run: |
-          dotnet publish Setup\Installer\Installer.csproj `
+          dotnet publish Setup\InstallerWPF\InstallerWPF.csproj `
             -c Release -r ${{ env.RUNTIME }} --self-contained true `
             -p:PublishSingleFile=true -o Setup\out
           Move-Item Setup\out\Clothesline-Setup.exe Clothesline-Setup.exe -Force
