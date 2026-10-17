@@ -162,6 +162,7 @@ internal sealed class TrayTheme
         : GColor.FromArgb(255, 0xCB, 0xD5, 0xE1));    // #cbd5e1
 
     public Brush AccentBrush => Frozen(Accent);
+    public Brush DangerBrush => Frozen(Danger);
     public Brush CoffeeBrush => Frozen(CoffeeBg);
     public Brush CoffeeTextBrush => Frozen(CoffeeFg);
     public Brush CoffeeIconBrush => Frozen(CoffeeFg);
@@ -329,7 +330,18 @@ internal sealed class TrayIcon : IDisposable
         // the user picks one from the Theme sub-menu) the menu has to be
         // rebuilt to repaint. Without this the choice would not take effect
         // until the next launch.
-        AppTheme.Changed += Rebuild;
+        AppTheme.Changed += OnThemeChanged;
+    }
+
+    /// <summary>
+    /// Rebuilds the menu and refreshes the card menu's styles. The card menu
+    /// caches its XAML per theme, so without this it would keep painting the
+    /// old palette until the next launch.
+    /// </summary>
+    private void OnThemeChanged()
+    {
+        CardMenuTheme.Refresh();
+        Rebuild();
     }
 
     public void UpdateIcon()
@@ -1013,7 +1025,7 @@ internal sealed class TrayIcon : IDisposable
         I18n.Changed -= Rebuild;
         // Same for the theme: a static event holding a dead TrayIcon would
         // keep the icon alive and repaint a menu nobody shows.
-        AppTheme.Changed -= Rebuild;
+        AppTheme.Changed -= OnThemeChanged;
         // Capture the icon before disposing the NotifyIcon: NotifyIcon does
         // not own its Icon, so the HICON behind it would leak otherwise.
         var icon = _icon.Icon;

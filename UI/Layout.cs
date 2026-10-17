@@ -7,6 +7,13 @@ internal static class Layout
 {
     public enum SizeKind { Small, Medium, Large }
 
+    /// <summary>
+    /// Every size, in the order the menu should list them. Enum.GetValues
+    /// would work but returns them in declaration order silently, and the
+    /// menu's order is a design decision, not an accident of the declaration.
+    /// </summary>
+    public static SizeKind[] AllSizes { get; } = { SizeKind.Small, SizeKind.Medium, SizeKind.Large };
+
     public static SizeKind Size
     {
         get

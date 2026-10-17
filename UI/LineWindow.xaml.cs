@@ -340,7 +340,24 @@ internal partial class LineWindow : Window
 
     public void SetRevealed(bool on, bool animate = true)
     {
-        if (on == IsRevealed) return;
+        // The early-out used to be `if (on == IsRevealed) return;`, which is
+        // wrong: IsRevealed and IsPresent are separate facts, and a window can
+        // be flagged revealed while not on screen - Dismiss() sets
+        // IsPresent=false but leaves the flag alone, and the mouse tracker
+        // retracts without clearing it either.
+        //
+        // So asking to reveal an already-revealed window has to fall through
+        // and make sure it is actually present. Skipping that left captures
+        // hanging on a line nobody could see: the card was added (the log says
+        // "hung ... live=N"), ComeDown() called Present() then Reveal(), and
+        // Reveal() returned immediately on the flag without ever calling
+        // Show().
+        if (on == IsRevealed)
+        {
+            if (on) Present();      // revealed but possibly not on screen
+            return;
+        }
+
         IsRevealed = on;
         _line.Revealed = on;
         if (on)
@@ -448,13 +465,27 @@ internal partial class LineWindow : Window
     private const double RevealDelay = 0.25;
     private const double RetractDelay = 0.5;
 
+    /// <summary>
+    /// How far below the top edge the pointer still counts as "at the menu
+    /// bar", in physical pixels.
+    ///
+    /// Was 2. That is one DIP at 96dpi and less at any scaling, so on a
+    /// 150% display the band was barely a pixel tall and the line often would
+    /// not come down at all - it looked like the hover trigger was broken
+    /// when it was really a target too small to hit. The original Tendedero
+    /// reveals as soon as the pointer enters the top couple of rows of the
+    /// screen; 8 physical pixels is close to that and still far enough down
+    /// that ordinary work near the top of a window does not trip it.
+    /// </summary>
+    private const int MenuBarBand = 8;
+
     private void Tick()
     {
         if (!NativeMethods.GetCursorPos(out var cursor)) return;
         var now = DateTime.Now;
 
         var screen = Screen.AllScreens.FirstOrDefault(s => s.Bounds.Contains(cursor.X, cursor.Y));
-        bool inTopBand = screen is not null && cursor.Y <= screen.Bounds.Top + 2;
+        bool inTopBand = screen is not null && cursor.Y <= screen.Bounds.Top + MenuBarBand;
 
         if (!inTopBand) _menuBarSuppressed = false;
 

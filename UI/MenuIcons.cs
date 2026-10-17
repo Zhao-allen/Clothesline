@@ -1,4 +1,9 @@
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
+
+// Both UseWPF and UseWindowsForms are on, so Brush exists in System.Drawing
+// too. Every glyph here is stroked by WPF.
+using Brush = System.Windows.Media.Brush;
 
 namespace Clothesline.UI;
 
@@ -78,6 +83,25 @@ internal static class MenuIcons
     public static readonly Entry Chevron = new(
         "M9 6l6 6-6 6", "chevron");
 
+    public static readonly Entry Check = new(
+        "M20 6 9 17 4 12", "check");
+
+    public static readonly Entry Pen = new(
+        "M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+        + "M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z", "pen");
+
+    public static readonly Entry Search = new(
+        "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z", "search");
+
+    public static readonly Entry Desktop = new(
+        "M2 3h20v14H2zM8 21h8M12 17v4", "desktop");
+
+    public static readonly Entry ChevronLeft = new(
+        "M15 18 9 12 15 6", "chevron-left");
+
+    public static readonly Entry ChevronRight = new(
+        "M9 18 15 12 9 6", "chevron-right");
+
     public static readonly Entry ExternalLink = new(
         "M7 17L17 7M9 7h8v8", "external");
 
@@ -87,6 +111,50 @@ internal static class MenuIcons
         try
         {
             return Geometry.Parse(entry.Data);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The glyph as an <see cref="ImageSource"/>, for surfaces that want a
+    /// bitmap rather than a geometry - a MenuItem.Icon, which takes an
+    /// ImageSource and nothing else.
+    ///
+    /// Rendered at 2x and handed over at that size: WPF scales an ImageSource
+    /// down cleanly, but it cannot recover detail that was never drawn, and a
+    /// 1.9px stroke rasterised at 16px comes out as grey mush.
+    /// </summary>
+    public static ImageSource? Render(Entry entry, Brush stroke, int size = 16)
+    {
+        try
+        {
+            const int supersample = 2;
+            int canvas = size * supersample;
+
+            var visual = new DrawingVisual();
+            using (var dc = visual.RenderOpen())
+            {
+                double s = (canvas - 2 * supersample) / 24.0;
+                dc.PushTransform(new ScaleTransform(s, s));
+                dc.PushTransform(new TranslateTransform(supersample, supersample));
+                var pen = new System.Windows.Media.Pen(stroke, 1.9 * supersample)
+                {
+                    StartLineCap = PenLineCap.Round,
+                    EndLineCap = PenLineCap.Round,
+                    LineJoin = PenLineJoin.Round,
+                };
+                dc.DrawGeometry(null, pen, Wpf(entry)!);
+                dc.Pop();
+                dc.Pop();
+            }
+
+            var rtb = new RenderTargetBitmap(canvas, canvas, 96, 96, PixelFormats.Pbgra32);
+            rtb.Render(visual);
+            rtb.Freeze();   // shared across every row that uses this glyph
+            return rtb;
         }
         catch
         {

@@ -12,6 +12,7 @@ using Clothesline.Services;
 // in two namespaces. Everything here is WPF.
 using Image = System.Windows.Controls.Image;
 using Brush = System.Windows.Media.Brush;
+using WColor = System.Windows.Media.Color;
 using Orientation = System.Windows.Controls.Orientation;
 using Popup = System.Windows.Controls.Primitives.Popup;
 using PopupAnimation = System.Windows.Controls.Primitives.PopupAnimation;
@@ -51,6 +52,14 @@ internal sealed class TrayMenuWpf : IDisposable
     private readonly Popup _popup;
     private Border? _card;
     private bool _disposed;
+
+    /// <summary>
+    /// Sub-menus currently open, so <see cref="Close"/> can take them down
+    /// with the main menu. A Popup is its own top-level window: closing the
+    /// parent does nothing to it, and an orphaned cascade would sit over the
+    /// desktop with no way to dismiss it.
+    /// </summary>
+    private readonly List<Popup> _openSubs = new();
 
     // Mockup metrics (ui-redesign/02-main). All in DIP.
     private const double MenuWidth = 340;
@@ -99,7 +108,18 @@ internal sealed class TrayMenuWpf : IDisposable
         _card?.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
     }
 
-    public void Close() => _popup.IsOpen = false;
+    /// <summary>
+    /// Closes the menu and every sub-menu it opened. Copying the list before
+    /// iterating: each popup's Closed handler removes itself from
+    /// <see cref="_openSubs"/>, which would otherwise mutate the collection
+    /// mid-loop.
+    /// </summary>
+    public void Close()
+    {
+        foreach (var sub in _openSubs.ToArray()) sub.IsOpen = false;
+        _openSubs.Clear();
+        _popup.IsOpen = false;
+    }
 
     public bool IsOpen => _popup.IsOpen;
 
@@ -126,12 +146,12 @@ internal sealed class TrayMenuWpf : IDisposable
         var t = TrayTheme.Current;
         var old = _card;
 
+        // The old card's rows own the open sub-menus. Closing them first stops
+        // a cascade from a stale menu outliving the menu that opened it.
+        Close();
+
         _card = BuildCard(t);
         _popup.Child = _card;
-
-        // Swap after assigning the new child so the menu is never in a state
-        // with no content, which would flash an empty popup on open.
-        old?.BeginAnimation(UIElement.OpacityProperty, null);
     }
 
     private Border BuildCard(TrayTheme t)
@@ -382,9 +402,14 @@ internal sealed class TrayMenuWpf : IDisposable
     /// One menu row: icon, label, optional trailing value, optional chevron.
     /// This is the single place a row's chrome is defined, so every row in
     /// every section is identical apart from its content.
+    ///
+    /// A row with <paramref name="items"/> opens a sub-menu: the chevron is
+    /// drawn by the same <see cref="RowContent"/> and the click handler swaps
+    /// the chevron for a nested popup beside this row.
     /// </summary>
     private Border Row(TrayTheme t, MenuIcons.Entry icon, string label,
-                       string? value = null, bool hasSubMenu = false,
+                       string? value = null,
+                       Func<IEnumerable<SubItem>>? items = null,
                        bool isToggle = false, bool toggleOn = false,
                        Action? click = null, bool coffee = false)
     {
@@ -394,9 +419,69 @@ internal sealed class TrayMenuWpf : IDisposable
             Margin = new Thickness(4, 0, 4, RowGap),
             CornerRadius = new CornerRadius(RowRadius),
             Background = coffee ? t.CoffeeBrush : Brushes.Transparent,
-            Cursor = click is null ? null : Cursors.Hand,
-            Child = RowContent(t, icon, label, value, hasSubMenu, isToggle, toggleOn, coffee),
+            Cursor = click is not null || items is not null ? Cursors.Hand : null,
+            Child = RowContent(t, icon, label, value, items is not null, isToggle, toggleOn, coffee),
         };
+
+        if (items is not null)
+        {
+            // The sub-menu is a popup of its own, positioned against this row
+            // and closed with it. Keeping it a separate popup (rather than an
+            // expanding panel) is what lets it overlap the menu edge the way
+            // the mockups' cascades do.
+            var sub = new Popup
+            {
+                AllowsTransparency = true,
+                PopupAnimation = PopupAnimation.None,
+                StaysOpen = false,
+                Placement = PlacementMode.Right,
+                Focusable = false,
+                Child = SubCard(t, items),
+            };
+
+            // Every open sub-menu is registered so Close() can take them all
+            // down together. Without this, dismissing the main menu left the
+            // cascade floating over the desktop with nothing to close it.
+            _openSubs.Add(sub);
+            sub.Closed += (_, _) => _openSubs.Remove(sub);
+
+            row.MouseLeftButtonUp += (_, e) =>
+            {
+                e.Handled = true;
+                sub.PlacementTarget = row;
+
+                // Clicking the row again closes what it opened - the toggle
+                // behaviour every cascading menu has.
+                bool wasOpen = sub.IsOpen;
+                foreach (var other in _openSubs)
+                    if (!ReferenceEquals(other, sub)) other.IsOpen = false;
+
+                sub.IsOpen = !wasOpen;
+            };
+            row.MouseEnter += (_, _) =>
+            {
+                row.Background = coffee ? t.CoffeeBrush : t.RowHoverBrush;
+                // Opening on hover rather than on click is what the mockups
+                // and every native menu do, and it means the pointer never has
+                // to find a target smaller than the row it is already on.
+                sub.PlacementTarget = row;
+                sub.IsOpen = true;
+                foreach (var other in _openSubs)
+                    if (!ReferenceEquals(other, sub)) other.IsOpen = false;
+            };
+            row.MouseLeave += (_, _) =>
+            {
+                row.Background = coffee ? t.CoffeeBrush : Brushes.Transparent;
+
+                // Deliberately NOT closing here. The sub-menu sits to the
+                // right of this row, so the pointer has to leave the row to
+                // reach it - closing on leave made the menu impossible to
+                // use, because it shut the instant you moved toward it.
+                // Closing is handled by StaysOpen=false (a click elsewhere)
+                // and by Close() taking every registered sub down with it.
+            };
+            return row;
+        }
 
         if (click is not null)
         {
@@ -409,6 +494,99 @@ internal sealed class TrayMenuWpf : IDisposable
             row.MouseEnter += (_, _) => row.Background = coffee ? t.CoffeeBrush : t.RowHoverBrush;
             row.MouseLeave += (_, _) => row.Background = coffee ? t.CoffeeBrush : Brushes.Transparent;
         }
+
+        return row;
+    }
+
+    /// <summary>One entry inside a sub-menu: a label, a tick, and what it does.</summary>
+    internal readonly record struct SubItem(string Label, bool IsOn, Action Choose, bool Danger = false);
+
+    /// <summary>
+    /// The card a sub-menu lives in: the same glass as the main menu, sized to
+    /// its content, with one row per <see cref="SubItem"/>. Tick marks are
+    /// drawn rather than taken from a control template, to match the row
+    /// heights above.
+    /// </summary>
+    private Border SubCard(TrayTheme t, Func<IEnumerable<SubItem>> items)
+    {
+        var card = new Border
+        {
+            MinWidth = 160,
+            CornerRadius = new CornerRadius(16),
+            Background = t.CardBrush,
+            BorderBrush = t.CardBorderBrush,
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(8),
+            Margin = new Thickness(8),
+            Effect = new DropShadowEffect
+            {
+                Color = t.IsDarkShadow ? Colors.Black : WColor.FromRgb(0x0F, 0x17, 0x2A),
+                Opacity = t.IsDarkShadow ? 0.55 : 0.22,
+                BlurRadius = 36,
+                ShadowDepth = 8,
+                Direction = 270,
+            },
+        };
+
+        var stack = new StackPanel();
+        foreach (var item in items())
+        {
+            stack.Children.Add(SubRow(t, item));
+        }
+        card.Child = stack;
+        return card;
+    }
+
+    private Border SubRow(TrayTheme t, SubItem item)
+    {
+        var row = new Border
+        {
+            Height = 34,
+            CornerRadius = new CornerRadius(RowRadius),
+            Background = Brushes.Transparent,
+            Cursor = Cursors.Hand,
+            Padding = new Thickness(10, 0, 10, 0),
+        };
+
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(18) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+        // Tick: a short stroked check, shown only on the selected entry. Same
+        // glyph the WinForms menu painted, so the two read alike.
+        grid.Children.Add(new System.Windows.Shapes.Path
+        {
+            Data = MenuIcons.Wpf(MenuIcons.Check),
+            Stroke = t.AccentBrush,
+            StrokeThickness = 2.6,
+            Width = 11, Height = 11,
+            Stretch = Stretch.Uniform,
+            VerticalAlignment = VA.Center,
+            Visibility = item.IsOn ? Visibility.Visible : Visibility.Hidden,
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            StrokeLineJoin = PenLineJoin.Round,
+        });
+
+        grid.Children.Add(new TextBlock
+        {
+            Text = item.Label,
+            FontSize = 12.5,
+            Foreground = item.Danger ? t.DangerBrush : t.RowTextBrush,
+            VerticalAlignment = VA.Center,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+        });
+        Grid.SetColumn(grid.Children[^1], 1);
+
+        row.Child = grid;
+        row.MouseEnter += (_, _) => row.Background = t.RowHoverBrush;
+        row.MouseLeave += (_, _) => row.Background = Brushes.Transparent;
+        row.MouseLeftButtonUp += (_, e) =>
+        {
+            e.Handled = true;
+            item.Choose();
+            Close();
+        };
 
         return row;
     }
@@ -568,22 +746,93 @@ internal sealed class TrayMenuWpf : IDisposable
         var s = new StackPanel();
         s.Children.Add(SectionTitle(t, I18n.Get("SectionBehavior")));
 
+        // Every row below carries a sub-menu. Each is a lambda rather than a
+        // built list because the tick marks and the values have to be read at
+        // the moment the menu opens - a list built once would show whatever
+        // was true when the app started.
         s.Children.Add(Row(t, MenuIcons.Behavior, I18n.Get("BringLineDown"),
                            value: I18n.Get("ItemsOn", CountOn(App.OpensFromMenuBar, App.PeeksAtNew, FullScreen.ShowLineOver)),
-                           hasSubMenu: true));
+                           items: () => new[]
+                           {
+                               new SubItem(I18n.Get("WhenPointerRestsAtTop"), App.OpensFromMenuBar,
+                                           () => App.OpensFromMenuBar = !App.OpensFromMenuBar),
+                               new SubItem(I18n.Get("WhenSomethingNewHangs"), App.PeeksAtNew,
+                                           () => App.PeeksAtNew = !App.PeeksAtNew),
+                               new SubItem(I18n.Get("OverFullScreenApps"), FullScreen.ShowLineOver,
+                                           () => { FullScreen.ShowLineOver = !FullScreen.ShowLineOver; App.Instance.Refresh(); }),
+                           }));
         s.Children.Add(Row(t, MenuIcons.Folder, I18n.Get("AlsoWatchFolders"),
-                           value: DescribeWatched(), hasSubMenu: true));
+                           value: DescribeWatched(),
+                           items: () =>
+                           {
+                               var list = new List<SubItem>
+                               {
+                                   new(I18n.Get("AddFolder"), false, () => App.Instance.ChooseExtraFolder()),
+                               };
+                               foreach (var f in App.ExtraFolders)
+                               {
+                                   var captured = f;
+                                   list.Add(new SubItem(Path_GetFileName(captured), true, () => { }));
+                                   list.Add(new SubItem(I18n.Get("StopWatching"), false, () =>
+                                   {
+                                       App.ExtraFolders = App.ExtraFolders.Where(x => x != captured).ToList();
+                                       App.Instance.RestartWatchers();
+                                   }, Danger: true));
+                               }
+                               return list;
+                           }));
         s.Children.Add(Row(t, MenuIcons.List, I18n.Get("KeepOnLine"),
                            value: Line.KeepOnLine is null
                                ? I18n.Get("AsManyAsFit")
                                : I18n.Get("PhotosSuffix", Line.KeepOnLine.Value),
-                           hasSubMenu: true));
+                           items: () =>
+                           {
+                               var list = new List<SubItem>
+                               {
+                                   new(I18n.Get("AsManyAsFit"), Line.KeepOnLine is null,
+                                       () => App.Instance.SetKeep(null)),
+                               };
+                               foreach (var n in Line.KeepChoices)
+                               {
+                                   var captured = n;
+                                   list.Add(new SubItem(I18n.Get("PhotosSuffix", captured), Line.KeepOnLine == captured,
+                                                       () => App.Instance.SetKeep(captured)));
+                               }
+                               return list;
+                           }));
         s.Children.Add(Row(t, MenuIcons.CardSize, I18n.Get("Size"),
-                           value: Layout.SizeLabel(Layout.Size), hasSubMenu: true));
+                           value: Layout.SizeLabel(Layout.Size),
+                           items: () => Layout.AllSizes.Select(s =>
+                               new SubItem(Layout.SizeLabel(s), Layout.Size == s,
+                                           () => App.Instance.SetSize(s))).ToArray()));
         s.Children.Add(Row(t, MenuIcons.Globe, I18n.Get("Language"),
-                           value: CurrentLanguageName(), hasSubMenu: true));
+                           value: CurrentLanguageName(),
+                           items: () =>
+                           {
+                               var list = new List<SubItem>
+                               {
+                                   new(I18n.Get("SystemDefault"), string.IsNullOrWhiteSpace(I18n.OverrideName),
+                                       () => I18n.OverrideName = ""),
+                               };
+                               foreach (var ci in I18n.Supported)
+                               {
+                                   var captured = ci;
+                                   list.Add(new SubItem(captured.NativeName, I18n.OverrideName == captured.Name,
+                                                       () => I18n.OverrideName = captured.Name));
+                               }
+                               return list;
+                           }));
         s.Children.Add(Row(t, MenuIcons.Palette, I18n.Get("Theme"),
-                           value: ThemeLabel(), hasSubMenu: true));
+                           value: ThemeLabel(),
+                           items: () => new[]
+                           {
+                               new SubItem(I18n.Get("ThemeLight"), AppTheme.Mode == ThemeChoice.Light,
+                                           () => AppTheme.Mode = ThemeChoice.Light),
+                               new SubItem(I18n.Get("ThemeDark"), AppTheme.Mode == ThemeChoice.Dark,
+                                           () => AppTheme.Mode = ThemeChoice.Dark),
+                               new SubItem(I18n.Get("ThemeSystem"), AppTheme.Mode == ThemeChoice.System,
+                                           () => AppTheme.Mode = ThemeChoice.System),
+                           }));
         return s;
     }
 
@@ -697,7 +946,7 @@ internal sealed class TrayMenuWpf : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        _popup.IsOpen = false;
+        Close();
         _popup.Child = null;
         _card = null;
     }

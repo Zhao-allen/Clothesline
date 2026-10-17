@@ -91,9 +91,54 @@ public sealed class DonationWindow : Window
         MouseLeftButtonDown += OnDragStart;
         MouseMove += OnDragMove;
         MouseLeftButtonUp += OnDragEnd;
-        PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape) Close(); };
+        PreviewKeyDown += (_, e) => { if (e.Key == Key.Escape) SafeClose(); };
         // Clicking away dismisses it, which is what a pop-up is expected to do.
-        Deactivated += (_, _) => Close();
+        //
+        // Guarded twice over. A window that is still coming up can receive a
+        // stray WM_ACTIVATE, and closing from inside that - or from a second
+        // Deactivated before the first Close has finished - makes WPF throw
+        // InvalidOperationException from VerifyNotClosing. That crash reached
+        // the dispatcher unhandled and took the whole app down, because this
+        // window is the only place the exception could surface.
+        //
+        // IsLoaded skips the pre-show flutter; _closing makes a repeat call a
+        // no-op; the try/catch is the belt to that pair of braces.
+        Deactivated += (_, _) => DismissOnFocusLoss();
+    }
+
+    private bool _closing;
+
+    /// <summary>Closes, tolerating a window that is already on its way out.</summary>
+    private void SafeClose()
+    {
+        if (_closing) return;
+        _closing = true;
+        try { Close(); }
+        catch (InvalidOperationException) { _closing = false; }
+    }
+
+    /// <summary>
+    /// Closes because the user clicked somewhere else. Safe to call more than
+    /// once and at any point in the window's life.
+    /// </summary>
+    private void DismissOnFocusLoss()
+    {
+        // Not on screen yet: the activation flutter that follows Show() is not
+        // the user going away, and closing here is what crashed.
+        if (!IsLoaded) return;
+        if (_closing) return;
+
+        _closing = true;
+        try
+        {
+            Close();
+        }
+        catch (InvalidOperationException)
+        {
+            // Already closing or closed. Nothing to do, and nothing worth
+            // failing an app over.
+            _closing = false;
+        }
     }
 
     /// <summary>

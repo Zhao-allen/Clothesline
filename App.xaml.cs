@@ -65,7 +65,22 @@ internal partial class App : Application
             if (args.ExceptionObject is Exception ex) Diag.Fatal("crash", ex);
             else Diag.Write("crash", $"non-CLR exception: {args.ExceptionObject}");
         };
-        DispatcherUnhandledException += (_, args) => Diag.Fatal("crash", args.Exception);
+
+        // A dispatcher exception on the UI thread is normally fatal. For this
+        // app it must not be: the tray icon is the product, and losing it over
+        // a broken window leaves the user with nothing at all - not even a way
+        // to quit cleanly. Log it, keep running, and let whatever failed stay
+        // failed.
+        //
+        // This is deliberately not a blanket "swallow everything". The
+        // handlers above record the full stack to diag.log, and the donation
+        // window that used to crash here is now guarded at the source. This is
+        // the last line, not the first.
+        DispatcherUnhandledException += (_, args) =>
+        {
+            Diag.Fatal("crash", args.Exception);
+            args.Handled = true;
+        };
         TaskScheduler.UnobservedTaskException += (_, args) => Diag.Fatal("task", args.Exception);
 
         Diag.Session($"v{TrayIcon.AppVersion} args=[{string.Join(" ", e.Args)}]");
@@ -401,8 +416,19 @@ internal partial class App : Application
         // Dismiss() the line and turn the peek in ComeDown() into a no-op on a
         // hidden window - the capture hung, but the line never came down.
         bool showingNewCapture = _window.IsPeeking;
-        if (_window.Wanted && (!blocked || showingNewCapture)) _window.Present();
+
+        // Also protect a capture that is still flying in. The flight overlay
+        // runs for ~650ms, and BlocksLineUnderPointer() reads the foreground
+        // window during that window - the Snipping Tool overlay, or whatever
+        // the user clicked to take the shot - so a card mid-flight could be
+        // dismissed before it landed. The line is only hidden if the user has
+        // cards on it AND nothing new is arriving.
+        bool somethingArriving = showingNewCapture || _flightsInProgress > 0;
+
+        if (_window.Wanted && (!blocked || somethingArriving)) _window.Present();
+        else if (!blocked || somethingArriving) { /* not wanted: leave as is */ }
         else _window.Dismiss();
+
         if (_window.Wanted) _window.StartMouseTracking();
         else _window.StopMouseTracking();
     }

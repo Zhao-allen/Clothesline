@@ -874,4 +874,27 @@ internal static class UiPreview
         using var fs = File.Create(outputPath);
         encoder.Save(fs);
     }
+    /// <summary>
+    /// Opens the donation window repeatedly, stealing focus from it each time.
+    ///
+    /// This reproduces a crash that reached users: closing from inside a
+    /// Deactivated handler - which can fire before the window has finished
+    /// coming up, or twice before the first Close lands - makes WPF throw
+    /// InvalidOperationException out of VerifyNotClosing. That exception went
+    /// unhandled on the dispatcher and took the tray icon with it, so the app
+    /// looked like it had simply died.
+    ///
+    /// The loop is the point: one open might survive, ten in a row with the
+    /// focus yanked away mid-open is what actually broke it. Exits non-zero if
+    /// anything throws.
+    /// </summary>
+
+    private static void Pump()
+    {
+        for (int i = 0; i < 3; i++)
+        {
+            System.Windows.Forms.Application.DoEvents();
+            System.Threading.Thread.Sleep(60);
+        }
+    }
 }
