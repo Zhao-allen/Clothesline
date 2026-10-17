@@ -1,38 +1,31 @@
-feat(donation): rebuild the support window to the 11-qr mockups
+fix(setup): installer crashed on launch - drop InvariantGlobalization
 
-The window I landed earlier was guessed from a share link that never
-resolved; the real mockups turned up under ui-redesign/ and it was wrong in
-almost every dimension. Rebuilt against them.
+v0.3.0 and v0.3.1 shipped a Clothesline-Setup.exe that did nothing when run:
+no window, no error dialog, no log entry.
 
-What changed:
-- One placeholder code -> the real WeChat and Alipay codes side by side,
-  from ui-redesign (560x560, watermark-free), on equal 260x300 plates.
-- 340 wide -> 700; radius 18 -> 24.
-- Dark-only -> light and dark, following AppTheme.IsDark.
-- Single shadow -> three layers (far, near, top inset highlight) with 28 DIP
-  of margin so the 64px blur is not clipped.
-- Title 17 left-aligned -> 19 ExtraBold centred; the divider is gone; the
-  footer reads "thanks for the support" with a red heart.
+Cause: InstallerWPF.csproj set <InvariantGlobalization>true</...>. WPF's text
+stack resolves real culture data while shaping a line, and invariant mode has
+none, so the very first Measure threw:
 
-New:
-- UI/DonationTheme.cs - both palettes side by side so they cannot drift.
-  Card opacity is raised to 0.92/0.90 over the mockup's 0.66/0.55: those
-  values assume backdrop-filter, which WPF cannot do behind an
-  AllowsTransparency window, and at 0.55 the dark card averages to mid-grey
-  on a light desktop and its text drops to about 2:1 contrast.
-- Services/AppTheme.cs - ThemeMode (System/Light/Dark) persisted to the
-  "theme" setting, resolving System via the AppsUseLightTheme registry value
-  the installer already reads.
+    System.TypeInitializationException: The type initializer for
+    'MS.Internal.FontCache.MajorLanguages' threw an exception.
+     ---> System.Globalization.CultureNotFoundException:
+          Only the invariant culture is supported in globalization-invariant
+          mode. (Parameter 'name')  en is an invalid culture identifier.
 
-Fixes found while rebuilding:
-- Clicking close also started a drag: the handler matched on Border, and the
-  button is one. It is now tagged and skipped.
-- Reopening from the tray stacked copies; now single-instance via
-  ShowOrRaise().
-- Drag accumulated per-frame deltas and drifted; now absolute from the
-  origin.
-- Esc did not close; Deactivated does not dismiss. Both added.
+It surfaced in Window.Show() -> TextBox.MeasureOverride, i.e. while laying out
+the language picker, so the process died before any window existed. A WPF app
+with no console and no handler writes nothing anywhere, which is why it looked
+inert rather than broken. Ironically the crash landed on the one screen that
+exists to render five languages.
 
-i18n: DonationSubtitle / DonationWeChat / DonationAlipay / DonationFooter
-added to all five tables; DonationTitle reworded to match the heading.
-The tray row is now amber, per the mockups.
+Fix: remove the property and leave globalization on (the default). It costs a
+few MB of ICU data in the self-contained bundle; a working installer is worth
+more than that. The comment on the property now records why it must not come
+back.
+
+Verified by building the single-file publish and running it: it crashed before
+the change, and the window comes up after.
+
+Also: _commit_msg.txt was committed by accident in 62792bd. Removed and added
+to .gitignore.

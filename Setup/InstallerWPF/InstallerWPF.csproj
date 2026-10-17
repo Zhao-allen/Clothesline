@@ -13,7 +13,15 @@
     <!-- The payload is embedded whole. Disable the normal resource compression
          so the zip is stored as-is rather than being re-compressed. -->
     <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
-    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- InvariantGlobalization must stay OFF (the default).
+
+         It was on briefly and the installer died on startup with
+         CultureNotFoundException from MS.Internal.FontCache.MajorLanguages:
+         WPF's text stack resolves real culture data when it shapes a line,
+         and invariant mode has none. The crash landed on first Measure of
+         the language picker, so the window never appeared and the exe looked
+         inert. Globalization data costs a few MB; a working installer costs
+         more than that. -->
   </PropertyGroup>
 
   <ItemGroup>
