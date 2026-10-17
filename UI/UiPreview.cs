@@ -62,6 +62,9 @@ internal static class UiPreview
                     RenderCardMenu(outputPath, inbox: args.Length > 2
                         && string.Equals(args[2], "inbox", StringComparison.OrdinalIgnoreCase));
                     return true;
+                case "--export-submenus":
+                    RenderSubmenus(outputPath);
+                    return true;
                 case "--export-header":
                     RenderHeader(outputPath);
                     return true;
@@ -858,6 +861,13 @@ internal static class UiPreview
         };
         host.Content = card;
 
+        // The card reserves a transparent margin so its shadow is not clipped
+        // by the popup. RenderTargetBitmap paints an element at its visual
+        // offset, so leaving that margin in shifts the card down-right and
+        // crops the same amount off the far edge - which looks exactly like a
+        // menu that is too narrow. Drop it for the measurement.
+        card.Margin = new Thickness(0);
+
         card.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
         card.Arrange(new System.Windows.Rect(0, 0, card.DesiredSize.Width, card.DesiredSize.Height));
         card.UpdateLayout();
@@ -874,6 +884,84 @@ internal static class UiPreview
         using var fs = File.Create(outputPath);
         encoder.Save(fs);
     }
+
+    /// <summary>
+    /// Renders the three sub-menu shapes side by side: the switch cascade, the
+    /// folder cascade (add / tick / danger) and a single-choice cascade.
+    ///
+    /// A sub-menu only exists while its parent row is hovered, so without this
+    /// there is no way to review one without a mouse - and the cascade is
+    /// rebuilt from scratch each time, which makes it easy to break silently.
+    /// </summary>
+    private static void RenderSubmenus(string outputPath)
+    {
+        var line = new Line();
+        var window = new LineWindow(line);
+        using var tray = new TrayIcon(line, window, showIcon: false);
+        var menu = new TrayMenuWpf(line, window);
+
+        var specs = new (string Title, Func<IEnumerable<TrayMenuWpf.SubItem>> Items)[]
+        {
+            ("04 switches", () => new[]
+            {
+                new TrayMenuWpf.SubItem("当指针停在屏幕顶部", true, () => { },
+                                        Icon: MenuIcons.Line, IsToggle: true),
+                new TrayMenuWpf.SubItem("当有新内容挂上时", true, () => { },
+                                        Icon: MenuIcons.Camera, IsToggle: true),
+                new TrayMenuWpf.SubItem("覆盖全屏应用", false, () => { },
+                                        Icon: MenuIcons.Desktop, IsToggle: true),
+            }),
+            ("05 folders", () => new[]
+            {
+                new TrayMenuWpf.SubItem("添加文件夹…", false, () => { }, Icon: MenuIcons.Folder),
+                new TrayMenuWpf.SubItem("Documents", true, () => { }),
+                new TrayMenuWpf.SubItem("停止监视", false, () => { }, Danger: true),
+            }),
+            ("09 theme", () => new[]
+            {
+                new TrayMenuWpf.SubItem("浅色", false, () => { }, Icon: MenuIcons.Palette),
+                new TrayMenuWpf.SubItem("深色", false, () => { }, Icon: MenuIcons.Palette),
+                new TrayMenuWpf.SubItem("跟随系统", true, () => { }, Icon: MenuIcons.Desktop),
+            }),
+        };
+
+        var row = new System.Windows.Controls.StackPanel
+        {
+            Orientation = System.Windows.Controls.Orientation.Horizontal,
+            Margin = new Thickness(8),
+        };
+
+        foreach (var spec in specs)
+        {
+            var card = menu.BuildSubCardForPreview(spec.Items)
+                       ?? throw new InvalidOperationException($"{spec.Title} produced no card");
+            card.VerticalAlignment = System.Windows.VerticalAlignment.Top;
+            row.Children.Add(card);
+        }
+
+        var host = new System.Windows.Controls.Border
+        {
+            Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0xEE, 0xF2, 0xFF)),
+            Child = row,
+        };
+
+        host.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+        host.Arrange(new System.Windows.Rect(0, 0, host.DesiredSize.Width, host.DesiredSize.Height));
+        host.UpdateLayout();
+
+        int w = (int)Math.Ceiling(host.ActualWidth);
+        int h = (int)Math.Ceiling(host.ActualHeight);
+        if (w <= 0 || h <= 0) throw new InvalidOperationException($"sub-menus measured {w}x{h}");
+
+        var rtb = new RenderTargetBitmap(w, h, 96, 96, PixelFormats.Pbgra32);
+        rtb.Render(host);
+
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(rtb));
+        using var fs = File.Create(outputPath);
+        encoder.Save(fs);
+    }
+
     /// <summary>
     /// Opens the donation window repeatedly, stealing focus from it each time.
     ///

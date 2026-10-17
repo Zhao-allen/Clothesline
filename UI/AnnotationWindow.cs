@@ -1240,7 +1240,12 @@ internal sealed class AnnotationWindow : Window
                 }
                 : null;
             chip.Icon.Stroke = active ? AccentInk : FgSecond;
-            chip.Badge.Foreground = active ? AccentInk : FgMuted;
+            // Mockup .tb.active .lbl: the chip stays white and the lettering
+            // turns indigo. Reusing the row's white ink here painted the
+            // shortcut letter white on a white chip, i.e. invisible.
+            chip.Badge.Foreground = active
+                ? Frozen(Color.FromRgb(0x1E, 0x40, 0xAF))
+                : FgMuted;
             chip.Badge.Background = active
                 ? Frozen(Color.FromArgb(0xF2, 0xFF, 0xFF, 0xFF))
                 : Brushes.Transparent;

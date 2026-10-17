@@ -660,6 +660,9 @@ internal sealed class PeggedCard : UserControl, IDisposable
             AddItem(menu, I18n.Get("MoveToTrash"), () => line.Trash(item.Id), MenuIcons.Clear, danger: true);
         }
 
+        // Mockup 01-ctx separates the discard group from the take-down group.
+        AddSeparator(menu);
+
         var left = AddItem(menu, I18n.Get("TakeDownLeft"), () => line.TakeDown(item.Id, true), MenuIcons.ChevronLeft);
         left.IsEnabled = line.Neighbours(item.Id, true).Count > 0;
         var right = AddItem(menu, I18n.Get("TakeDownRight"), () => line.TakeDown(item.Id, false), MenuIcons.ChevronRight);
@@ -802,9 +805,16 @@ public static class CardMenuTheme
 
   <!-- Shell: 260 wide, radius 20, hairline border, layered shadow. The 28px
        margin is what keeps the 50px blur from being clipped by the popup's
-       own bounds - a ContextMenu clips its content to the window. -->
+       own bounds - a ContextMenu clips its content to the window.
+
+       The width therefore has to be 260 + 2x28: setting it to a flat 260 and
+       then insetting by 28 left the visible card 204 wide, which truncated
+       the longest row label. The offsets pull the window back so the card
+       still lands under the cursor. -->
   <Style x:Key='CardMenu' TargetType='ContextMenu'>
-    <Setter Property='Width' Value='260'/>
+    <Setter Property='Width' Value='316'/>
+    <Setter Property='HorizontalOffset' Value='-28'/>
+    <Setter Property='VerticalOffset' Value='-28'/>
     <Setter Property='Background' Value='Transparent'/>
     <Setter Property='Foreground' Value='{text}'/>
     <Setter Property='FontFamily' Value='Segoe UI Variable Display, Segoe UI'/>

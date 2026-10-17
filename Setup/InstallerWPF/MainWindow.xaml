@@ -7,7 +7,7 @@
         Background="Transparent"
         ResizeMode="NoResize"
         SizeToContent="Height"
-        Width="720"
+        Width="760"
         WindowStartupLocation="CenterScreen"
         ShowInTaskbar="True"
         SnapsToDevicePixels="True"

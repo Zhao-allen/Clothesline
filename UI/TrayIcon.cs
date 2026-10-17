@@ -167,6 +167,46 @@ internal sealed class TrayTheme
     public Brush CoffeeTextBrush => Frozen(CoffeeFg);
     public Brush CoffeeIconBrush => Frozen(CoffeeFg);
 
+    private Brush? _activeRowBrush;
+    private Brush? _checkBrush;
+
+    /// <summary>
+    /// The mockup's <c>.row.active</c>: the blue-to-indigo gradient a row wears
+    /// while the sub-menu it owns is open. White ink sits on top of it, which
+    /// is why every row that can go active keeps a handle on its own glyphs.
+    /// </summary>
+    public Brush ActiveRowBrush => _activeRowBrush ??= FreezeGradient(
+        WColor.FromArgb(235, 0x3B, 0x82, 0xF6),   // rgba(59,130,246,.92)
+        WColor.FromArgb(235, 0x63, 0x66, 0xF1));  // rgba(99,102,241,.92)
+
+    /// <summary>Ink for a row painted with <see cref="ActiveRowBrush"/>.</summary>
+    public Brush ActiveRowTextBrush => Frozen(WColor.FromRgb(0xFF, 0xFF, 0xFF));
+
+    /// <summary>
+    /// The mockup's <c>.check</c> / <c>.lbl</c> square: a 14-16px gradient tile
+    /// with a white tick. Used for "show the line" and for a selected
+    /// sub-menu entry, so both read as the same control.
+    /// </summary>
+    public Brush CheckBrush => _checkBrush ??= FreezeGradient(
+        WColor.FromRgb(0x3B, 0x82, 0xF6),         // #3b82f6
+        WColor.FromRgb(0x63, 0x66, 0xF1));        // #6366f1
+
+    private static Brush FreezeGradient(WColor from, WColor to)
+    {
+        // Fully qualified: System.Drawing.Drawing2D is also in scope here and
+        // it has its own LinearGradientBrush.
+        var brush = new System.Windows.Media.LinearGradientBrush(
+            new System.Windows.Media.GradientStopCollection
+            {
+                new System.Windows.Media.GradientStop(from, 0),
+                new System.Windows.Media.GradientStop(to, 1),
+            },
+            new WPoint(0, 0),
+            new WPoint(1, 1));
+        brush.Freeze();
+        return brush;
+    }
+
     public Brush SheenBrush => IsDarkSide
         ? Frozen(WColor.FromArgb(0x14, 0xFF, 0xFF, 0xFF))
         : Frozen(WColor.FromArgb(0x45, 0xFF, 0xFF, 0xFF));
