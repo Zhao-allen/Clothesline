@@ -19,3 +19,4 @@ publish/
 
 ## Installer build output (payload.zip is already covered by *.zip)
 Setup/out/
+_probe/
