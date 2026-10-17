@@ -126,6 +126,18 @@ internal sealed class TrayTheme
 
     /// <summary>The palette in force right now.</summary>
     public static TrayTheme Current => AppTheme.IsDark ? Dark : Light;
+
+    /// <summary>
+    /// The card colour with alpha forced opaque, for the places WinForms will
+    /// not take a translucent one: Control.BackColor and the drop-down's own
+    /// BackColor both throw ArgumentException on an alpha below 255.
+    ///
+    /// Surfaces that want the glass look paint it themselves in OnPaint with
+    /// <see cref="BgCard"/>; this is only for the property assignments that
+    /// sit behind those and still need a sane solid to erase with.
+    /// </summary>
+    public static GColor OpaqueCard => GColor.FromArgb(255,
+        Current.BgCard.R, Current.BgCard.G, Current.BgCard.B);
 }
 
 /// <summary>Kept as an alias so the rest of the file reads as before.</summary>
@@ -143,6 +155,8 @@ internal static class TrayPalette
     public static GColor Danger => TrayTheme.Current.Danger;
     public static GColor KnobDark => TrayTheme.Current.KnobDark;
     public static GColor Coffee => TrayTheme.Current.CoffeeFg;
+    /// <summary>Opaque card, for the WinForms properties that reject alpha.</summary>
+    public static GColor BgCardOpaque => TrayTheme.OpaqueCard;
 }
 
 /// <summary>
@@ -296,9 +310,15 @@ internal sealed class TrayIcon : IDisposable
     /// </summary>
     internal ContextMenuStrip BuildMenu()
     {
+        // The mockups pin the menu at 340px. Left to auto-size, WinForms sizes
+        // to the widest row, so the card would be a different width in every
+        // language - "Save to Desktop" alone is much longer in Spanish than in
+        // Chinese. Locking the width keeps one card shape across all five.
+        const int MenuWidth = 340;
+
         var menu = new ContextMenuStrip
         {
-            Font = new GFont("Segoe UI Variable Display", 10f, GUnit.Point),
+            Font = new GFont("Segoe UI Variable Display", 12.5f * 72f / 96f, GUnit.Point),
             // No horizontal padding: rows run edge to edge (Win11 style) and
             // the header strip's divider can reach both sides. The vertical
             // inset does not live here either - ToolStripDropDownMenu
@@ -309,30 +329,34 @@ internal sealed class TrayIcon : IDisposable
             // ShowImageMargin MUST stay true: it is the column the per-row
             // icons live in now that the checkmarks are gone.
             ShowImageMargin = true,
-            ImageScalingSize = new GSize(16, 16),
+            // 14x14 in the mockups; WinForms still scales from a larger raster
+            // (see MakeIcon) so the stroke survives the reduction.
+            ImageScalingSize = new GSize(14, 14),
             Renderer = new ToolStripProfessionalRenderer(new TrayColorTable()),
             ForeColor = TrayPalette.FgPrimary,
-            BackColor = TrayPalette.BgCard
+            BackColor = TrayPalette.BgCardOpaque
         };
         _refreshers.Clear();
 
         // ── Header: name, version, watch state, live count ──
-        _header = new MenuHeaderStrip { Width = 296, Height = 58 };
+        _header = new MenuHeaderStrip { Width = MenuWidth, Height = 58 };
         var host = new ToolStripControlHost(_header)
         {
             AutoSize = false,
-            Size = new GSize(296, 58),
+            Size = new GSize(MenuWidth, 58),
             Margin = new Padding(0),
             Padding = new Padding(0)
         };
         menu.Items.Add(host);
 
         // ── Header thumbnail row ──
-        _thumbs = new MenuThumbnailStrip { Width = 296, Height = 52 };
+        // 48px tall in the mockups, with the tiles sharing the width evenly
+        // rather than being a fixed 52x34 crop.
+        _thumbs = new MenuThumbnailStrip { Width = MenuWidth, Height = 48 };
         menu.Items.Add(new ToolStripControlHost(_thumbs)
         {
             AutoSize = false,
-            Size = new GSize(296, 52),
+            Size = new GSize(MenuWidth, 48),
             Margin = new Padding(0),
             Padding = new Padding(0)
         });
@@ -591,7 +615,7 @@ internal sealed class TrayIcon : IDisposable
     {
         menu.Items.Add(new ToolStripLabel(text)
         {
-            BackColor = TrayPalette.BgCard,
+            BackColor = TrayPalette.BgCardOpaque,
             ForeColor = TrayPalette.FgMuted,
             Font = new GFont("Segoe UI Variable Display", 8.5f, GFontStyle.Bold),
             Padding = new Padding(0, 8, 0, 3),
@@ -666,9 +690,9 @@ internal sealed class TrayIcon : IDisposable
             // and ImageScalingSize match the root strip, which is what makes
             // the two levels line up.
             drop.ShowImageMargin = true;
-            drop.ImageScalingSize = new GSize(16, 16);
+            drop.ImageScalingSize = new GSize(14, 14);
             drop.Font = new GFont("Segoe UI Variable Display", 10f, GUnit.Point);
-            drop.BackColor = TrayPalette.BgCard;
+            drop.BackColor = TrayPalette.BgCardOpaque;
             drop.ForeColor = TrayPalette.FgPrimary;
             drop.Renderer = new ToolStripProfessionalRenderer(new TrayColorTable());
         }
@@ -723,8 +747,14 @@ internal sealed class TrayIcon : IDisposable
     {
         // Set the font on every row: sub-menu rows live in their own
         // auto-created ContextMenuStrip whose font does not always inherit.
-        item.Font = new GFont("Segoe UI Variable Display", 10f, GUnit.Point);
-        item.Padding = new Padding(0, 6, 0, 6);
+        //
+        // 12.5px at 96dpi is the mockup's row text. Point sizes are the only
+        // thing GFont takes, so convert: px * 72 / 96.
+        item.Font = new GFont("Segoe UI Variable Display", 12.5f * 72f / 96f, GUnit.Point);
+        // 30px row height in the mockups, i.e. 12.5px text plus 8.75px above
+        // and below. Padding is in pixels and does not scale with font, so it
+        // is set to land on 30 rather than left to grow with the font.
+        item.Padding = new Padding(0, 8, 0, 8);
         item.Margin = new Padding(0);
         item.TextAlign = GAlign.MiddleLeft;
     }
@@ -1025,7 +1055,7 @@ internal sealed class MenuHeaderStrip : System.Windows.Forms.Control
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer
                  | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
-        BackColor = TrayPalette.BgCard;
+        BackColor = TrayPalette.BgCardOpaque;
     }
 
     public void SetCount(int count) => _count = count;
@@ -1163,7 +1193,7 @@ internal sealed class MenuThumbnailStrip : System.Windows.Forms.Control
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer
                  | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
-        BackColor = TrayPalette.BgCard;
+        BackColor = TrayPalette.BgCardOpaque;
     }
 
     /// <summary>Re-reads the line. Bitmaps are converted once per menu open.</summary>
@@ -1220,7 +1250,14 @@ internal sealed class MenuThumbnailStrip : System.Windows.Forms.Control
         using (var bg = new GSolidBrush(TrayPalette.BgCard))
             g.FillRectangle(bg, ClientRectangle);
 
-        const int tw = 52, th = 34, gap = 7, left = 16, top = 11;
+        // Mockup metrics: 48px tall tiles, 6px gaps, 16px side inset, 9px
+        // radius. Unlike the old fixed 52x34 crop, the tiles share the
+        // available width (flex:1), so two cards get a wide pair instead of
+        // two narrow strips stranded in the middle.
+        const int th = 48, gap = 6, left = 16, top = 10;
+        const int slots = 3;
+        int usable = Width - left * 2;
+        int tw = (usable - gap * (slots - 1)) / slots;
 
         if (_thumbs.Count == 0)
         {
@@ -1233,7 +1270,7 @@ internal sealed class MenuThumbnailStrip : System.Windows.Forms.Control
             for (int i = 0; i < _thumbs.Count; i++)
             {
                 var box = new GRect(left + i * (tw + gap), top, tw, th);
-                using (var clip = ToggleRow.RoundRect(box, 4f))
+                using (var clip = ToggleRow.RoundRect(box, 9f))
                 {
                     var saved = g.Save();
                     g.SetClip(clip);
@@ -1247,7 +1284,7 @@ internal sealed class MenuThumbnailStrip : System.Windows.Forms.Control
             if (_extra > 0)
             {
                 var box = new GRect(left + _thumbs.Count * (tw + gap), top, tw, th);
-                using (var path = ToggleRow.RoundRect(box, 4f))
+                using (var path = ToggleRow.RoundRect(box, 9f))
                 {
                     using var fill = new GSolidBrush(TrayPalette.BgElevated);
                     g.FillPath(fill, path);
