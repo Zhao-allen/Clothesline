@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Ink;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Shell;
@@ -51,22 +52,76 @@ namespace Clothesline.UI;
 /// </summary>
 internal sealed class AnnotationWindow : Window
 {
-    // ── Win11 dark palette, matching the tray menu ──
-    private static readonly Brush BgWindow   = Frozen(Color.FromRgb(0x20, 0x20, 0x20));
-    private static readonly Brush BgCard     = Frozen(Color.FromRgb(0x2B, 0x2B, 0x2B));
-    private static readonly Brush BgCanvas   = Frozen(Color.FromRgb(0x14, 0x14, 0x14));
-    private static readonly Brush BgHover    = Frozen(Color.FromRgb(0x3C, 0x3C, 0x3C));
-    private static readonly Brush BgPressed  = Frozen(Color.FromRgb(0x45, 0x45, 0x45));
-    private static readonly Brush BgElevated = Frozen(Color.FromRgb(0x34, 0x34, 0x34));
-    private static readonly Brush StrokeLine = Frozen(Color.FromRgb(0x3D, 0x3D, 0x3D));
-    private static readonly Brush StrokeLine2 = Frozen(Color.FromRgb(0x4A, 0x4A, 0x4A));
-    private static readonly Brush FgPrimary  = Frozen(Colors.White);
-    private static readonly Brush FgSecond   = Frozen(Color.FromRgb(0xC8, 0xC8, 0xC8));
-    private static readonly Brush FgMuted    = Frozen(Color.FromRgb(0x8A, 0x8A, 0x8A));
-    private static readonly Brush Accent     = Frozen(Color.FromRgb(0x4C, 0xC2, 0xFF));
-    private static readonly Brush AccentSoft = Frozen(Color.FromArgb(0x30, 0x4C, 0xC2, 0xFF));
-    private static readonly Brush AccentRing = Frozen(Color.FromArgb(0x73, 0x4C, 0xC2, 0xFF));
-    private static readonly Brush AccentInk  = Frozen(Color.FromRgb(0x0B, 0x2A, 0x3D));
+    // ── Palette, resolved from the app theme ──
+    //
+    // These were a second hardcoded copy of the tray menu's dark numbers,
+    // which is how the editor ended up dark-on-dark while the mockups specify
+    // a light glass card. They are now derived from TrayTheme, so the editor
+    // follows the same light/dark switch as the tray menu and the card menu
+    // instead of drifting from both.
+    //
+    // The canvas is the one surface that stays dark in both themes: it is the
+    // mat around the picture, and it has to read as "behind" the artwork
+    // without competing with it. Everything else follows the theme.
+    private static TrayTheme T => TrayTheme.Current;
+
+    private static Brush BgWindow => T.CardBrush;
+    private static Brush BgCard => T.CardBrush;
+    private static Brush BgCanvas => T.IsDarkSide
+        ? Frozen(Color.FromRgb(0x14, 0x16, 0x26))
+        : Frozen(Color.FromRgb(0xE2, 0xE8, 0xF0));
+    private static Brush BgHover => T.RowHoverBrush;
+    private static Brush BgPressed => T.IsDarkSide
+        ? Frozen(Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF))
+        : Frozen(Color.FromArgb(0x14, 0x0F, 0x17, 0x2A));
+    private static Brush BgElevated => T.IsDarkSide
+        ? Frozen(Color.FromArgb(0xF4, 0x1E, 0x21, 0x34))
+        : Frozen(Color.FromArgb(0xEB, 0xFF, 0xFF, 0xFF));
+    private static Brush StrokeLine => T.DividerBrush;
+    private static Brush StrokeLine2 => T.CardBorderBrush;
+    private static Brush FgPrimary => T.TitleBrush;
+    private static Brush FgSecond => T.RowTextBrush;
+    private static Brush FgMuted => T.SubtitleBrush;
+    private static Brush Accent => T.AccentBrush;
+    private static Brush AccentSoft => Frozen(Color.FromArgb(0x30, T.Accent.R, T.Accent.G, T.Accent.B));
+    private static Brush AccentRing => Frozen(Color.FromArgb(0x73, T.Accent.R, T.Accent.G, T.Accent.B));
+    // Ink on the accent fill. White reads as the mockups' active button and
+    // stays legible on the indigo gradient in both themes.
+    private static Brush AccentInk => Frozen(Colors.White);
+
+    /// <summary>The gradient the mockups put behind an active tool button.</summary>
+    private static LinearGradientBrush AccentGradient
+    {
+        get
+        {
+            var g = new LinearGradientBrush
+            {
+                StartPoint = new Point(0, 0),
+                EndPoint = new Point(1, 1),
+            };
+            g.GradientStops.Add(new GradientStop(T.LogoGradientStart, 0));
+            g.GradientStops.Add(new GradientStop(T.LogoGradientEnd, 1));
+            g.Freeze();
+            return g;
+        }
+    }
+
+    /// <summary>The 135-degree sheen the mockups lay over the whole card.</summary>
+    private static LinearGradientBrush SheenOverlay
+    {
+        get
+        {
+            var g = new LinearGradientBrush
+            {
+                StartPoint = new Point(0, 0),
+                EndPoint = new Point(1, 1),
+            };
+            g.GradientStops.Add(new GradientStop(T.SheenColor, 0));
+            g.GradientStops.Add(new GradientStop(Colors.Transparent, 0.4));
+            g.Freeze();
+            return g;
+        }
+    }
 
     private static Brush Frozen(Color c)
     {
@@ -155,6 +210,7 @@ internal sealed class AnnotationWindow : Window
     {
         public required Border Root { get; init; }
         public required WpfPath Icon { get; init; }
+        public required TextBlock Badge { get; init; }
         public required Func<bool> IsActive { get; init; }
         public bool Hover;
     }
@@ -185,7 +241,11 @@ internal sealed class AnnotationWindow : Window
         Title = I18n.Get("AnnotateTitle") + " – Clothesline";
         WindowStyle = WindowStyle.None;
         ResizeMode = ResizeMode.CanResize;
-        Background = BgWindow;
+        // Transparent, not BgWindow: the card inside supplies the fill, and a
+        // transparent shell is what lets that card have 24px rounded corners.
+        // An opaque window background would square them off.
+        Background = Brushes.Transparent;
+        AllowsTransparency = true;
         Width = 800;
         Height = 600;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
@@ -201,7 +261,10 @@ internal sealed class AnnotationWindow : Window
         TextOptions.SetTextFormattingMode(this, TextFormattingMode.Display);
 
         // Custom chrome: the default ToolWindow title bar is a light grey
-        // strip that fights the dark canvas.
+        // strip that fights the canvas. CornerRadius is 0 because the card
+        // inside is what carries the 24px radius - WindowChrome rounds the
+        // *window*, and rounding both would show the shell's corner through
+        // the card's.
         WindowChrome.SetWindowChrome(this, new WindowChrome
         {
             CaptionHeight = 42,
@@ -264,7 +327,7 @@ internal sealed class AnnotationWindow : Window
         Height = Math.Min(900, _original.PixelHeight + 134);
 
         var root = new Grid { Background = BgWindow };
-        Content = root;
+        Content = Shell(root);
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });   // title bar
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });   // toolbar
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
@@ -333,6 +396,62 @@ internal sealed class AnnotationWindow : Window
             if (!fitsAtNative && _scroll.ViewportWidth > 0 && _scroll.ViewportHeight > 0)
                 FitToWindow();
         }), DispatcherPriority.Loaded);
+    }
+
+    /// <summary>
+    /// Wraps the editor in the mockup's glass card: 24px radius, a hairline
+    /// border, a layered drop shadow, and the 135-degree sheen across the top
+    /// left. The margin is what keeps the shadow from being clipped by the
+    /// window's bounds - a DropShadowEffect paints outside its element.
+    /// </summary>
+    private UIElement Shell(UIElement content)
+    {
+        var card = new Border
+        {
+            CornerRadius = new CornerRadius(24),
+            Background = BgCard,
+            BorderBrush = StrokeLine2,
+            BorderThickness = new Thickness(1),
+            // 30/60/-15 at 0.30 light, 0.55 dark - the mockup's two-layer
+            // shadow, with the wide one carrying most of the lift.
+            Effect = new DropShadowEffect
+            {
+                Color = T.IsDarkSide ? Colors.Black : Color.FromRgb(0x0F, 0x17, 0x2A),
+                Opacity = T.IsDarkSide ? 0.55 : 0.30,
+                BlurRadius = 60,
+                ShadowDepth = 15,
+                Direction = 270,
+            },
+            Child = content,
+        };
+
+        var layer = new Grid();
+        layer.Children.Add(card);
+
+        // Sheen and inner highlight are decorative: they must not swallow
+        // clicks meant for the toolbar or the canvas.
+        layer.Children.Add(new Border
+        {
+            CornerRadius = new CornerRadius(24),
+            Background = SheenOverlay,
+            IsHitTestVisible = false,
+        });
+        layer.Children.Add(new Border
+        {
+            CornerRadius = new CornerRadius(24),
+            BorderBrush = T.IsDarkSide
+                ? Frozen(Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF))
+                : Frozen(Color.FromArgb(0xE6, 0xFF, 0xFF, 0xFF)),
+            BorderThickness = new Thickness(1, 1, 1, 0),
+            IsHitTestVisible = false,
+        });
+
+        return new Border
+        {
+            // Room for the shadow to draw without being cut off.
+            Margin = new Thickness(30),
+            Child = layer,
+        };
     }
 
     private UIElement BuildTitleBar()
@@ -610,6 +729,9 @@ internal sealed class AnnotationWindow : Window
             VerticalAlignment = VAlign.Center
         };
 
+        // The mockup's shortcut badge: a 13x13 rounded pill in the corner,
+        // white-backed so it survives both the transparent and the active
+        // gradient behind it. A bare letter could vanish on either.
         var badge = new TextBlock
         {
             Text = shortcut,
@@ -618,23 +740,37 @@ internal sealed class AnnotationWindow : Window
             Foreground = FgMuted,
             HorizontalAlignment = HAlign.Right,
             VerticalAlignment = VAlign.Bottom,
-            Margin = new Thickness(0, 0, 4, 1)
+            Margin = new Thickness(0, 0, 2, 2),
+            TextAlignment = TextAlignment.Center,
+            MinWidth = 13,
+            MinHeight = 13,
         };
 
-        var content = new Grid { Width = 38, Height = 38 };
+        var badgeHost = new Border
+        {
+            Child = badge,
+            CornerRadius = new CornerRadius(4),
+            Background = Brushes.Transparent,
+            HorizontalAlignment = HAlign.Right,
+            VerticalAlignment = VAlign.Bottom,
+            Margin = new Thickness(0, 0, 2, 2),
+            Padding = new Thickness(2, 1, 2, 1),
+        };
+
+        var content = new Grid { Width = 40, Height = 40 };
         content.Children.Add(icon);
-        content.Children.Add(badge);
+        content.Children.Add(badgeHost);
 
         var chip = new Border
         {
             Child = content,
-            CornerRadius = new CornerRadius(7),
+            CornerRadius = new CornerRadius(10),
             Background = Brushes.Transparent,
             Cursor = WpfCursors.Hand,
             ToolTip = $"{I18n.Get(labelKey)} ({shortcut})"
         };
 
-        var entry = new ToolChip { Root = chip, Icon = icon, IsActive = isActive };
+        var entry = new ToolChip { Root = chip, Icon = icon, Badge = badge, IsActive = isActive };
         _toolChips.Add(entry);
 
         chip.MouseEnter += (_, _) => { entry.Hover = true; RefreshChips(); };
@@ -1086,12 +1222,28 @@ internal sealed class AnnotationWindow : Window
         foreach (var chip in _toolChips)
         {
             bool active = chip.IsActive();
-            chip.Root.Background = active ? AccentSoft
+            // Active chips take the mockup's indigo gradient with a soft
+            // shadow, not a translucent tint: the gradient is what makes the
+            // live tool readable at a glance, and the tint was not.
+            chip.Root.Background = active ? AccentGradient
                                  : chip.Hover ? BgHover
                                  : Brushes.Transparent;
-            chip.Root.BorderThickness = new Thickness(active ? 1 : 0);
-            chip.Root.BorderBrush = active ? AccentRing : Brushes.Transparent;
-            chip.Icon.Stroke = active ? Accent : FgSecond;
+            chip.Root.BorderThickness = new Thickness(0);
+            chip.Root.Effect = active
+                ? new DropShadowEffect
+                {
+                    Color = Color.FromRgb(0x3B, 0x82, 0xF6),
+                    Opacity = 0.35,
+                    BlurRadius = 12,
+                    ShadowDepth = 4,
+                    Direction = 270,
+                }
+                : null;
+            chip.Icon.Stroke = active ? AccentInk : FgSecond;
+            chip.Badge.Foreground = active ? AccentInk : FgMuted;
+            chip.Badge.Background = active
+                ? Frozen(Color.FromArgb(0xF2, 0xFF, 0xFF, 0xFF))
+                : Brushes.Transparent;
         }
     }
 
