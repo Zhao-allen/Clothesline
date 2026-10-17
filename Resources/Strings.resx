@@ -82,7 +82,7 @@
   <data name="SectionBehavior" xml:space="preserve"><value>BEHAVIOR</value></data>
   <data name="SectionApp" xml:space="preserve"><value>APP</value></data>
   <data name="TakeScreenshot" xml:space="preserve"><value>Take a screenshot</value></data>
-  <data name="ClearLineHint" xml:space="preserve"><value>Empty the line</value></data>
+  <data name="ClearLineHint" xml:space="preserve"><value>Clear</value></data>
   <data name="OnLineCount" xml:space="preserve"><value>{0} on the line</value></data>
   <data name="WatchingClipboard" xml:space="preserve"><value>Watching the clipboard</value></data>
   <data name="ClipboardOff" xml:space="preserve"><value>Clipboard watch is off</value></data>

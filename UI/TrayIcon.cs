@@ -72,7 +72,26 @@ internal sealed class TrayTheme
 
     public required GColor Accent { get; init; }
     public required GColor AccentSoft { get; init; }
+
+    /// <summary>
+    /// Indigo 700 / indigo 300 - the "add a folder" entry's ink. Darker than
+    /// <see cref="Accent"/> on purpose: 05-sub2 marks that row as an action
+    /// inside a list of choices, and the deeper indigo reads as a link rather
+    /// than as the selected state's #6366f1.
+    /// </summary>
+    public required GColor AccentStrong { get; init; }
+
     public required GColor Danger { get; init; }
+
+    /// <summary>
+    /// The lighter red the mockups use for a destructive *value* rather than a
+    /// destructive label: "Empty the line" prints 清空 in #ef4444 while the quit
+    /// row prints 退出 in #dc2626. Two reds on purpose - one is a word inside a
+    /// row, the other is the row's own ink. In dark they collapse to the same
+    /// #f87171, which is what 02-main-dark does.
+    /// </summary>
+    public required GColor DangerValue { get; init; }
+
     public required GColor KnobDark { get; init; }
 
     /// <summary>Amber wash for the "buy me a coffee" row.</summary>
@@ -98,7 +117,9 @@ internal sealed class TrayTheme
 
         Accent = GColor.FromArgb(99, 102, 241),            // #6366f1
         AccentSoft = GColor.FromArgb(31, 99, 102, 241),
+        AccentStrong = GColor.FromArgb(67, 56, 202),       // #4338ca
         Danger = GColor.FromArgb(220, 38, 38),             // #dc2626
+        DangerValue = GColor.FromArgb(239, 68, 68),        // #ef4444
         KnobDark = GColor.FromArgb(255, 255, 255),
 
         CoffeeBg = GColor.FromArgb(41, 245, 158, 11),      // rgba(245,158,11,.16)
@@ -108,12 +129,14 @@ internal sealed class TrayTheme
     public static TrayTheme Dark { get; } = new()
     {
         IsDarkSide = true,
-        // rgba(20,22,38,.55), but raised to .90: a WinForms drop-down cannot
-        // blur what is behind it, so at .55 the card averages against the
-        // desktop and its text loses contrast. See DonationTheme for the same
-        // call made on the WPF side.
-        BgCard = GColor.FromArgb(230, 20, 22, 38),
-        BgCardAlpha = 230,
+        // rgba(20,22,38,.55) - the mockup value. It is only safe now that the
+        // menu is a WPF Popup with AllowsTransparency: the old WinForms
+        // drop-down could not composite against the desktop, so the card had
+        // to be nearly opaque (.90) to keep its text readable. Still no real
+        // blur - see the note on the palette - so this is the glass look
+        // without the frost.
+        BgCard = GColor.FromArgb(140, 20, 22, 38),
+        BgCardAlpha = 140,
         BgElevated = GColor.FromArgb(244, 30, 33, 52),
         BgHover = GColor.FromArgb(15, 255, 255, 255),      // rgba(255,255,255,.06)
         Stroke = GColor.FromArgb(26, 255, 255, 255),      // rgba(255,255,255,.10)
@@ -125,7 +148,9 @@ internal sealed class TrayTheme
 
         Accent = GColor.FromArgb(129, 140, 248),           // #818cf8
         AccentSoft = GColor.FromArgb(46, 96, 165, 250),
+        AccentStrong = GColor.FromArgb(165, 180, 252),     // #a5b4fc
         Danger = GColor.FromArgb(248, 113, 113),           // #f87171
+        DangerValue = GColor.FromArgb(248, 113, 113),      // #f87171
         KnobDark = GColor.FromArgb(15, 23, 42),
 
         CoffeeBg = GColor.FromArgb(56, 245, 158, 11),      // rgba(245,158,11,.22)
@@ -163,6 +188,8 @@ internal sealed class TrayTheme
 
     public Brush AccentBrush => Frozen(Accent);
     public Brush DangerBrush => Frozen(Danger);
+    public Brush DangerValueBrush => Frozen(DangerValue);
+    public Brush AccentStrongBrush => Frozen(AccentStrong);
     public Brush CoffeeBrush => Frozen(CoffeeBg);
     public Brush CoffeeTextBrush => Frozen(CoffeeFg);
     public Brush CoffeeIconBrush => Frozen(CoffeeFg);

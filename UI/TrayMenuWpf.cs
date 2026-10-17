@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Effects;
+using System.Windows.Threading;
 using Clothesline.Models;
 using Clothesline.Services;
 
@@ -12,6 +13,7 @@ using Clothesline.Services;
 // in two namespaces. Everything here is WPF.
 using Image = System.Windows.Controls.Image;
 using Brush = System.Windows.Media.Brush;
+using Run = System.Windows.Documents.Run;
 using WColor = System.Windows.Media.Color;
 using Orientation = System.Windows.Controls.Orientation;
 using Popup = System.Windows.Controls.Primitives.Popup;
@@ -60,6 +62,33 @@ internal sealed class TrayMenuWpf : IDisposable
     /// desktop with no way to dismiss it.
     /// </summary>
     private readonly List<Popup> _openSubs = new();
+
+    // The same list, but kept across Close(): when the card is cached (the
+    // theme has not changed since last open) the reused rows still own their
+    // sub-popups, yet Close() emptied _openSubs. Holding the references here
+    // lets Show() re-register them without rebuilding the whole card - which
+    // is the slow path the cache is meant to avoid.
+    private readonly List<Popup> _allSubs = new();
+
+    // Auto-close: a popup with StaysOpen=false only closes on a click
+    // outside, not on mouse-leave. A menu that stays up while the pointer
+    // is nowhere near it feels broken, so a short timer checks whether the
+    // cursor is still over the card or any of its cascades.
+    private DispatcherTimer? _autoCloseTimer;
+
+    // Cache guard: the theme (light/dark) is the only thing that changes
+    // between openings and forces a rebuild. The toggles and values inside
+    // the rows are refreshed by the lambdas at hover time, so a stale card
+    // is only a colour problem - and rebuilding a 20-row card on every
+    // right-click is what makes the menu feel sluggish.
+    private bool _lastThemeDark;
+
+    // True once the pointer has actually entered the card. The auto-close
+    // timer must not fire until then: right after Show() the cursor is still
+    // on the tray icon, not over the card, so IsMouseOverAnyMenu() is false
+    // and an unconditional close would yank the menu away before the user
+    // could use it - the menu would blink open and vanish.
+    private bool _hovered;
 
     // Mockup metrics (ui-redesign/02-main). All in DIP.
     private const double MenuWidth = 340;
@@ -114,17 +143,42 @@ internal sealed class TrayMenuWpf : IDisposable
     /// <summary>
     /// Opens the menu near the cursor. The tray icon's own click is what
     /// calls this; Windows puts the cursor there already.
+    ///
+    /// Rebuilding is skipped when the theme has not changed since the last
+    /// open: the lambdas inside the rows read fresh values on hover, so the
+    /// only stale thing a cached card can carry is the wrong palette.
     /// </summary>
     public void Show()
     {
         if (_disposed) return;
-        Rebuild();
+
+        bool dark = TrayTheme.Current.IsDarkSide;
+        if (_card is null || dark != _lastThemeDark)
+        {
+            _lastThemeDark = dark;
+            Rebuild();
+        }
+        else
+        {
+            // Cached card: Close() emptied _openSubs on the last dismiss, so
+            // re-register the surviving cascades. The row closures still point
+            // at the same popup objects, so re-opening them on hover works.
+            _openSubs.Clear();
+            _openSubs.AddRange(_allSubs);
+        }
         _popup.IsOpen = true;
 
         // A popup with no focusable content still needs to become active for
         // the keyboard to reach it, otherwise Esc does nothing and the rows
         // never highlight under the caret.
         _card?.MoveFocus(new TraversalRequest(FocusNavigationDirection.First));
+
+        // Start the auto-close watch. StaysOpen=false only closes on a click
+        // outside; without this the menu stays up forever when the pointer
+        // simply wanders away. _hovered is reset so the timer cannot fire
+        // until the pointer first reaches the card.
+        _hovered = false;
+        StartAutoCloseTimer();
     }
 
     /// <summary>
@@ -135,12 +189,63 @@ internal sealed class TrayMenuWpf : IDisposable
     /// </summary>
     public void Close()
     {
+        _autoCloseTimer?.Stop();
+        _autoCloseTimer = null;
         foreach (var sub in _openSubs.ToArray()) sub.IsOpen = false;
         _openSubs.Clear();
         _popup.IsOpen = false;
+        _hovered = false;
     }
 
     public bool IsOpen => _popup.IsOpen;
+
+    // MARK: auto-close
+
+    /// <summary>
+    /// Starts a 250ms timer that closes the menu when the cursor has left
+    /// both the main card and every open sub-menu. The delay is long enough
+    /// for the pointer to travel from a row to its cascade (they are adjacent
+    /// but not overlapping) without killing the menu mid-journey.
+    /// </summary>
+    private void StartAutoCloseTimer()
+    {
+        _autoCloseTimer?.Stop();
+        _autoCloseTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(250),
+        };
+        _autoCloseTimer.Tick += (_, _) =>
+        {
+            // _hovered guards against closing on open: until the pointer has
+            // actually reached the card, IsMouseOverAnyMenu() is false (the
+            // cursor is still on the tray icon) and a raw check would close the
+            // menu before the user could interact with it.
+            if (_hovered && !IsMouseOverAnyMenu())
+            {
+                _autoCloseTimer?.Stop();
+                _autoCloseTimer = null;
+                Close();
+            }
+        };
+        _autoCloseTimer.Start();
+    }
+
+    /// <summary>
+    /// True while the pointer is over the main menu card or any open
+    /// sub-menu popup. Used by the auto-close timer to decide whether the
+    /// menu has been abandoned.
+    /// </summary>
+    private bool IsMouseOverAnyMenu()
+    {
+        if (_card is not null && _card.IsMouseOver) return true;
+        foreach (var sub in _openSubs)
+        {
+            if (sub.Child is FrameworkElement fe && fe.IsMouseOver) return true;
+            // The popup itself does not have IsMouseOver; its child is what
+            // the pointer is actually on.
+        }
+        return false;
+    }
 
     /// <summary>
     /// Builds the card without opening the popup, for the off-screen preview.
@@ -171,10 +276,19 @@ internal sealed class TrayMenuWpf : IDisposable
 
         _card = BuildCard(t);
         _popup.Child = _card;
+        // Once the pointer actually reaches the card, arm auto-close: a later
+        // "mouse left the menu" tick can then dismiss it. Set here (not in Show)
+        // so repeated openings keep a single handler per rebuilt card.
+        _card.MouseEnter += (_, _) => _hovered = true;
     }
 
     private Border BuildCard(TrayTheme t)
     {
+        // A rebuild makes a fresh set of sub-popups; drop the stale ones so a
+        // re-registered reference can never point at a menu that no longer
+        // exists. Rebuild() calls Close() first, so _openSubs is already empty.
+        _allSubs.Clear();
+
         var card = new Border
         {
             // Border.Width is the card itself; the shadow margin sits outside
@@ -377,11 +491,15 @@ internal sealed class TrayMenuWpf : IDisposable
             return strip;
         }
 
-        strip.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        strip.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(ThumbGap) });
-        strip.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        strip.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(ThumbGap) });
-        strip.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        // .thumbs is a flex row of flex:1 tiles, so the strip divides by how
+        // many tiles there actually are. It used to be hard-wired to three
+        // columns, which left a third of the strip empty at two captures.
+        int slots = live.Count + (_line.LiveCount > live.Count ? 1 : 0);
+        for (int i = 0; i < slots; i++)
+        {
+            if (i > 0) strip.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(ThumbGap) });
+            strip.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        }
 
         for (int i = 0; i < live.Count; i++)
         {
@@ -445,10 +563,16 @@ internal sealed class TrayMenuWpf : IDisposable
                        Func<IEnumerable<SubItem>>? items = null,
                        bool isToggle = false, bool toggleOn = false,
                        Action? click = null, bool coffee = false,
-                       FrameworkElement? iconOverride = null)
+                       FrameworkElement? iconOverride = null,
+                       bool danger = false,
+                       bool dangerValue = false,
+                       string? dimmedSuffix = null,
+                       MenuIcons.Entry? trailingChevron = null,
+                       SubKind subKind = SubKind.Choice)
     {
         var v = RowContent(t, icon, label, value, items is not null, isToggle,
-                           toggleOn, coffee, iconOverride);
+                           toggleOn, coffee, iconOverride,
+                           danger, dangerValue, dimmedSuffix, trailingChevron);
 
         var row = new Border
         {
@@ -479,13 +603,14 @@ internal sealed class TrayMenuWpf : IDisposable
                 StaysOpen = false,
                 Placement = PlacementMode.Right,
                 Focusable = false,
-                Child = SubCard(t, items),
+                Child = SubCard(t, items, subKind),
             };
 
-            // Every open sub-menu is registered so Close() can take them all
-            // down together. Without this, dismissing the main menu left the
-            // cascade floating over the desktop with nothing to close it.
-            _openSubs.Add(sub);
+        // Every open sub-menu is registered so Close() can take them all
+        // down together. Without this, dismissing the main menu left the
+        // cascade floating over the desktop with nothing to close it.
+        _openSubs.Add(sub);
+        _allSubs.Add(sub);
             sub.Closed += (_, _) =>
             {
                 _openSubs.Remove(sub);
@@ -554,11 +679,12 @@ internal sealed class TrayMenuWpf : IDisposable
     /// preview. Sub-menus only exist while their parent row is hovered, so
     /// this is the only way to see one without a mouse.
     /// </summary>
-    internal Border? BuildSubCardForPreview(Func<IEnumerable<SubItem>> items)
+    internal Border? BuildSubCardForPreview(Func<IEnumerable<SubItem>> items,
+                                            SubKind kind = SubKind.Choice)
     {
         try
         {
-            return SubCard(TrayTheme.Current, items);
+            return SubCard(TrayTheme.Current, items, kind);
         }
         catch
         {
@@ -572,23 +698,38 @@ internal sealed class TrayMenuWpf : IDisposable
     /// <param name="IsToggle">Render a switch instead of a tick. Used by the
     /// "bring the line down" cascade, whose entries are independent switches
     /// rather than one-of-N choices.</param>
+    /// <param name="Accent">Indigo 600 instead of the row ink. 05-sub2 gives
+    /// this to "add a folder" so the one action in a list of folders reads as
+    /// an action.</param>
     internal readonly record struct SubItem(string Label, bool IsOn, Action Choose,
                                             bool Danger = false,
                                             MenuIcons.Entry? Icon = null,
-                                            bool IsToggle = false);
+                                            bool IsToggle = false,
+                                            bool Accent = false);
+
+    /// <summary>
+    /// The six cascades are not one design repeated. The mockups give each its
+    /// own row height, and the label grows with it:
+    /// 04 (switches) 32px / 12.5, 05 (folders) 34px / 12.5, 06-09 36px / 13.5.
+    /// </summary>
+    internal enum SubKind { Toggle, Folder, Choice }
+
+    private static (double Row, double Font) SubMetrics(SubKind kind) => kind switch
+    {
+        SubKind.Toggle => (32, 12.5),
+        SubKind.Folder => (34, 12.5),
+        _ => (36, 13.5),
+    };
 
     /// <summary>
     /// The card a sub-menu lives in: the same glass as the main menu, 240 wide
     /// per the mockups (200-280 depending on the cascade), with one row per
     /// <see cref="SubItem"/>.
     /// </summary>
-    private Border SubCard(TrayTheme t, Func<IEnumerable<SubItem>> items)
+    private Border SubCard(TrayTheme t, Func<IEnumerable<SubItem>> items, SubKind kind)
     {
         var list = items().ToList();
-
-        // The switch cascade is the tightest of the six (mockup 04: 32px rows);
-        // everything else sits at 34.
-        double rowHeight = list.Count > 0 && list.All(i => i.IsToggle) ? 32 : 34;
+        var (rowHeight, rowFont) = SubMetrics(kind);
 
         var card = new Border
         {
@@ -612,7 +753,7 @@ internal sealed class TrayMenuWpf : IDisposable
         var stack = new StackPanel();
         foreach (var item in list)
         {
-            stack.Children.Add(SubRow(t, item, rowHeight));
+            stack.Children.Add(SubRow(t, item, rowHeight, rowFont));
         }
         card.Child = stack;
         return card;
@@ -659,21 +800,24 @@ internal sealed class TrayMenuWpf : IDisposable
         };
     }
 
-    private static System.Windows.Shapes.Path SubGlyph(TrayTheme t, MenuIcons.Entry icon)
+    private static System.Windows.Shapes.Path SubGlyph(TrayTheme t, MenuIcons.Entry icon, double size = 15)
         => new()
         {
             Data = MenuIcons.Wpf(icon),
             Stroke = t.RowIconBrush,
             StrokeThickness = 1.9,
-            Width = 15, Height = 15,
+            Width = size, Height = size,
             Stretch = Stretch.Uniform,
             VerticalAlignment = VA.Center,
+            // .item .ico sits at 65-70% opacity in the mockups: present, but
+            // never competing with the label.
+            Opacity = 0.68,
             StrokeStartLineCap = PenLineCap.Round,
             StrokeEndLineCap = PenLineCap.Round,
             StrokeLineJoin = PenLineJoin.Round,
         };
 
-    private Border SubRow(TrayTheme t, SubItem item, double height)
+    private Border SubRow(TrayTheme t, SubItem item, double height, double font)
     {
         var row = new Border
         {
@@ -698,7 +842,12 @@ internal sealed class TrayMenuWpf : IDisposable
         };
 
         if (item.IsOn && !item.IsToggle) lead.Children.Add(CheckSquare(t, 16));
-        if (item.Icon is not null) lead.Children.Add(SubGlyph(t, item.Icon));
+        if (item.Icon is not null)
+        {
+            // 04/05 draw their icons at 14px, 09 at 15 - the taller choice
+            // lists carry the larger glyph.
+            lead.Children.Add(SubGlyph(t, item.Icon, height >= 36 ? 15 : 14));
+        }
 
         if (lead.Children.Count > 0)
         {
@@ -714,9 +863,12 @@ internal sealed class TrayMenuWpf : IDisposable
         var label = new TextBlock
         {
             Text = item.Label,
-            FontSize = 12.5,
-            FontWeight = FontWeights.Medium,
-            Foreground = item.Danger ? t.DangerBrush : t.RowTextBrush,
+            FontSize = font,
+            // .item.add is 600; .item.danger is 500 like the rest.
+            FontWeight = item.Accent ? FontWeights.SemiBold : FontWeights.Medium,
+            Foreground = item.Danger ? t.DangerBrush
+                       : item.Accent ? t.AccentStrongBrush
+                       : t.RowTextBrush,
             VerticalAlignment = VA.Center,
             TextTrimming = TextTrimming.CharacterEllipsis,
         };
@@ -747,6 +899,12 @@ internal sealed class TrayMenuWpf : IDisposable
     /// <summary>
     /// The pieces of a row whose ink has to change when the row goes active.
     /// Null fields are simply absent from that row.
+    ///
+    /// The resting brushes are captured at build time rather than re-derived
+    /// in <see cref="PaintRow"/>: a row's ink is not always the palette
+    /// default. Danger rows are red, coffee rows amber, and a destructive
+    /// value ("Empty the line") is a different red from a destructive label
+    /// ("Quit"), so recomputing from the theme would quietly repaint them.
     /// </summary>
     private sealed class RowVisuals
     {
@@ -755,12 +913,26 @@ internal sealed class TrayMenuWpf : IDisposable
         public TextBlock? Value { get; init; }
         public System.Windows.Shapes.Path? Icon { get; init; }
         public System.Windows.Shapes.Path? Chevron { get; init; }
+
+        public required Brush LabelInk { get; init; }
+        public Brush? ValueInk { get; init; }
+        public Brush? IconInk { get; init; }
+        public Brush? ChevronInk { get; init; }
+
+        /// <summary>
+        /// The dimmed brand run on the quit row, and the brush that dims it.
+        /// Run has no Opacity of its own, so the 55% is baked into an alpha
+        /// brush - and because it is set per-run, PaintRow has to restore it
+        /// by hand when the row goes active.
+        /// </summary>
+        public Run? DimSuffix { get; init; }
+        public Brush? DimInk { get; init; }
     }
 
     /// <summary>
     /// Repaints a row's ink for the active / resting state. The active row is
-    /// a saturated gradient, so every glyph on it has to be white; the resting
-    /// row goes back to the palette's own ink (coffee rows keep their amber).
+    /// a saturated gradient, so every glyph on it has to be white; resting
+    /// puts back exactly what the row was built with.
     /// </summary>
     private static void PaintRow(TrayTheme t, RowVisuals v, bool active, bool coffee)
     {
@@ -771,23 +943,31 @@ internal sealed class TrayMenuWpf : IDisposable
             if (v.Value is not null) v.Value.Foreground = ink;
             if (v.Icon is not null) v.Icon.Stroke = ink;
             if (v.Chevron is not null) v.Chevron.Stroke = ink;
+            if (v.DimSuffix is not null) v.DimSuffix.Foreground = ink;
             return;
         }
 
-        v.Label.Foreground = coffee ? t.CoffeeTextBrush : t.RowTextBrush;
-        if (v.Value is not null)
-            v.Value.Foreground = coffee ? t.CoffeeTextBrush : t.RowValueBrush;
-        if (v.Icon is not null)
-            v.Icon.Stroke = coffee ? t.CoffeeIconBrush : t.RowIconBrush;
-        if (v.Chevron is not null)
-            v.Chevron.Stroke = t.RowIconBrush;
+        v.Label.Foreground = v.LabelInk;
+        if (v.Value is not null) v.Value.Foreground = v.ValueInk ?? v.LabelInk;
+        if (v.Icon is not null) v.Icon.Stroke = v.IconInk ?? t.RowIconBrush;
+        if (v.Chevron is not null) v.Chevron.Stroke = v.ChevronInk ?? t.RowIconBrush;
+        if (v.DimSuffix is not null) v.DimSuffix.Foreground = v.DimInk ?? v.LabelInk;
     }
 
     private RowVisuals RowContent(TrayTheme t, MenuIcons.Entry icon, string label,
                                   string? value, bool hasSubMenu, bool isToggle,
                                   bool toggleOn, bool coffee,
-                                  FrameworkElement? iconOverride)
+                                  FrameworkElement? iconOverride,
+                                  bool danger, bool dangerValue, string? dimmedSuffix,
+                                  MenuIcons.Entry? trailingChevron)
     {
+        var iconInk = danger ? t.DangerBrush
+                    : coffee ? t.CoffeeIconBrush
+                    : t.RowIconBrush;
+        var labelInk = danger ? t.DangerBrush
+                     : coffee ? t.CoffeeTextBrush
+                     : t.RowTextBrush;
+
         var grid = new Grid();
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });   // icon
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }); // label
@@ -809,7 +989,7 @@ internal sealed class TrayMenuWpf : IDisposable
             glyph = new System.Windows.Shapes.Path
             {
                 Data = MenuIcons.Wpf(icon),
-                Stroke = coffee ? t.CoffeeIconBrush : t.RowIconBrush,
+                Stroke = iconInk,
                 StrokeThickness = 1.9,
                 Width = IconSize, Height = IconSize,
                 Stretch = Stretch.Uniform,
@@ -825,12 +1005,37 @@ internal sealed class TrayMenuWpf : IDisposable
 
         var labelBlock = new TextBlock
         {
-            Text = label,
             FontSize = 12.5,
-            Foreground = coffee ? t.CoffeeTextBrush : t.RowTextBrush,
+            // Mockup .foot is weight 600; the destructive rows are the only
+            // ones that carry it.
+            FontWeight = danger ? FontWeights.SemiBold : FontWeights.Normal,
+            Foreground = labelInk,
             VerticalAlignment = VA.Center,
             TextTrimming = TextTrimming.CharacterEllipsis,
         };
+
+        Run? dimSuffixRun = null;
+        Brush? dimInk = null;
+
+        if (dimmedSuffix is null)
+        {
+            labelBlock.Text = label;
+        }
+        else
+        {
+            // Two runs rather than two TextBlocks so the ellipsis and the
+            // vertical centring still work as one line. Only the ink and the
+            // weight differ - 55% of the row's own colour, per .foot span.
+            dimInk = Dim(labelInk);
+            dimSuffixRun = new Run(" " + dimmedSuffix)
+            {
+                Foreground = dimInk,
+                FontWeight = FontWeights.Medium,
+            };
+            labelBlock.Inlines.Add(new Run(label));
+            labelBlock.Inlines.Add(dimSuffixRun);
+        }
+
         Grid.SetColumn(labelBlock, 1);
         grid.Children.Add(labelBlock);
 
@@ -844,19 +1049,15 @@ internal sealed class TrayMenuWpf : IDisposable
         }
         else if (hasSubMenu)
         {
-            chevron = new System.Windows.Shapes.Path
-            {
-                Data = MenuIcons.Wpf(MenuIcons.Chevron),
-                Stroke = t.RowIconBrush,
-                StrokeThickness = 2.5,
-                Width = 10, Height = 10,
-                Stretch = Stretch.Uniform,
-                VerticalAlignment = VA.Center,
-                Margin = new Thickness(8, 0, 10, 0),
-                StrokeStartLineCap = PenLineCap.Round,
-                StrokeEndLineCap = PenLineCap.Round,
-                StrokeLineJoin = PenLineJoin.Round,
-            };
+            chevron = TrailingChevron(t, MenuIcons.Chevron, iconInk);
+            grid.Children.Add(chevron);
+            Grid.SetColumn(chevron, 2);
+        }
+        else if (trailingChevron is not null)
+        {
+            // "Open the screenshots folder" wears the mockup's double chevron:
+            // it leaves the menu rather than opening a cascade.
+            chevron = TrailingChevron(t, trailingChevron, iconInk);
             grid.Children.Add(chevron);
             Grid.SetColumn(chevron, 2);
         }
@@ -866,7 +1067,13 @@ internal sealed class TrayMenuWpf : IDisposable
             {
                 Text = value,
                 FontSize = 11.5,
-                Foreground = coffee ? t.CoffeeTextBrush : t.RowValueBrush,
+                // .row .v sits at 55% opacity over the row's own ink; the
+                // destructive value overrides that with a solid red at 600.
+                Foreground = dangerValue ? t.DangerValueBrush
+                           : coffee ? t.CoffeeTextBrush
+                           : t.RowValueBrush,
+                FontWeight = dangerValue ? FontWeights.SemiBold : FontWeights.Normal,
+                Opacity = dangerValue || coffee ? 1 : 0.55,
                 VerticalAlignment = VA.Center,
                 Margin = new Thickness(8, 0, 10, 0),
             };
@@ -881,8 +1088,40 @@ internal sealed class TrayMenuWpf : IDisposable
             Value = valueBlock,
             Icon = glyph,
             Chevron = chevron,
+            LabelInk = labelInk,
+            ValueInk = valueBlock?.Foreground,
+            IconInk = glyph is null ? null : iconInk,
+            ChevronInk = chevron is null ? null : iconInk,
+            DimSuffix = dimSuffixRun,
+            DimInk = dimInk,
         };
     }
+
+    /// <summary>The same colour at 55% alpha, for the dimmed half of a label.</summary>
+    private static Brush Dim(Brush ink)
+    {
+        if (ink is not SolidColorBrush solid) return ink;
+        var dim = new SolidColorBrush(WColor.FromArgb(
+            (byte)(solid.Color.A * 0.55), solid.Color.R, solid.Color.G, solid.Color.B));
+        dim.Freeze();
+        return dim;
+    }
+
+    /// <summary>The 10px chevron at the row's trailing edge, in the row's ink.</summary>
+    private static System.Windows.Shapes.Path TrailingChevron(
+        TrayTheme t, MenuIcons.Entry glyph, Brush ink) => new()
+        {
+            Data = MenuIcons.Wpf(glyph),
+            Stroke = ink,
+            StrokeThickness = 2.5,
+            Width = 10, Height = 10,
+            Stretch = Stretch.Uniform,
+            VerticalAlignment = VA.Center,
+            Margin = new Thickness(8, 0, 10, 0),
+            StrokeStartLineCap = PenLineCap.Round,
+            StrokeEndLineCap = PenLineCap.Round,
+            StrokeLineJoin = PenLineJoin.Round,
+        };
 
     /// <summary>
     /// The mockup's toggle: a 30x18 track with a 14px knob that slides 12px.
@@ -959,7 +1198,8 @@ internal sealed class TrayMenuWpf : IDisposable
         s.Children.Add(Row(t, MenuIcons.Screenshot, I18n.Get("TakeScreenshot"),
                            value: "Win+Shift+S", click: StartScreenshot));
         s.Children.Add(Row(t, MenuIcons.Clear, I18n.Get("TakeEverythingDown"),
-                           value: I18n.Get("ClearLineHint"), click: () => _line.Clear()));
+                           value: I18n.Get("ClearLineHint"), dangerValue: true,
+                           click: () => _line.Clear()));
         return s;
     }
 
@@ -1010,14 +1250,19 @@ internal sealed class TrayMenuWpf : IDisposable
                                new SubItem(I18n.Get("OverFullScreenApps"), FullScreen.ShowLineOver,
                                            () => { FullScreen.ShowLineOver = !FullScreen.ShowLineOver; App.Instance.Refresh(); },
                                            Icon: MenuIcons.Desktop, IsToggle: true),
-                           }));
+                           },
+                           subKind: SubKind.Toggle));
         s.Children.Add(Row(t, MenuIcons.Folder, I18n.Get("AlsoWatchFolders"),
                            value: DescribeWatched(),
+                           subKind: SubKind.Folder,
                            items: () =>
                            {
                                var list = new List<SubItem>
                                {
-                                   new(I18n.Get("AddFolder"), false, () => App.Instance.ChooseExtraFolder()),
+                                   // 05-sub2's one action: indigo 600 with a plus.
+                                   new(I18n.Get("AddFolder"), false,
+                                       () => App.Instance.ChooseExtraFolder(),
+                                       Icon: MenuIcons.Plus, Accent: true),
                                };
                                foreach (var f in App.ExtraFolders)
                                {
@@ -1027,7 +1272,7 @@ internal sealed class TrayMenuWpf : IDisposable
                                    {
                                        App.ExtraFolders = App.ExtraFolders.Where(x => x != captured).ToList();
                                        App.Instance.RestartWatchers();
-                                   }, Danger: true));
+                                   }, Danger: true, Icon: MenuIcons.StopWatching));
                                }
                                return list;
                            }));
@@ -1086,16 +1331,24 @@ internal sealed class TrayMenuWpf : IDisposable
                            value: ThemeLabel(),
                            items: () => new[]
                            {
+                               // 09-sub6 gives the two explicit themes their
+                               // own glyphs and leaves "follow the system" to
+                               // the tick alone.
                                new SubItem(I18n.Get("ThemeLight"), AppTheme.Mode == ThemeChoice.Light,
-                                           () => AppTheme.Mode = ThemeChoice.Light),
+                                           () => AppTheme.Mode = ThemeChoice.Light,
+                                           Icon: MenuIcons.Sun),
                                new SubItem(I18n.Get("ThemeDark"), AppTheme.Mode == ThemeChoice.Dark,
-                                           () => AppTheme.Mode = ThemeChoice.Dark),
+                                           () => AppTheme.Mode = ThemeChoice.Dark,
+                                           Icon: MenuIcons.Moon),
                                new SubItem(I18n.Get("ThemeSystem"), AppTheme.Mode == ThemeChoice.System,
                                            () => AppTheme.Mode = ThemeChoice.System),
                            }));
 
+        // 02-main gives this row no value text, only the double chevron: it
+        // opens Explorer rather than a cascade, and the two chevrons say
+        // "leaves the menu" where one says "opens a sub-menu".
         s.Children.Add(Row(t, MenuIcons.Folder, I18n.Get("OpenScreenshotsFolder"),
-                           value: "\u2197", click: () =>
+                           trailingChevron: MenuIcons.DoubleChevron, click: () =>
                            {
                                var folder = Inbox.IsEnabled ? Inbox.Folder : Inbox.ScreenshotsFolder;
                                try { System.Diagnostics.Process.Start("explorer.exe", folder); } catch { }
@@ -1137,7 +1390,23 @@ internal sealed class TrayMenuWpf : IDisposable
             Margin = new Thickness(14, 6, 14, 9),
             Background = t.DividerBrush,
         });
-        s.Children.Add(Row(t, MenuIcons.Warning, I18n.Get("Quit"), click: () => App.Instance.ShutdownApp()));
+
+        // Mockup .foot: the verb in #dc2626 at 600, the brand at 55% opacity
+        // and 500. Split at the brand name rather than adding a second
+        // resource, because every translation already ends with it - except
+        // Japanese, which puts it first; there the whole line stays red.
+        var quit = I18n.Get("Quit");
+        const string brand = "Clothesline";
+        string label = quit;
+        string? suffix = null;
+        if (quit.EndsWith(brand, StringComparison.Ordinal) && quit.Length > brand.Length)
+        {
+            label = quit[..^brand.Length].TrimEnd();
+            suffix = brand;
+        }
+
+        s.Children.Add(Row(t, MenuIcons.Warning, label, dimmedSuffix: suffix, danger: true,
+                           click: () => App.Instance.ShutdownApp()));
         return s;
     }
 
@@ -1200,6 +1469,8 @@ internal sealed class TrayMenuWpf : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        _autoCloseTimer?.Stop();
+        _autoCloseTimer = null;
         Close();
         _popup.Child = null;
         _card = null;

@@ -320,6 +320,10 @@ internal sealed class PeggedCard : UserControl, IDisposable
 
     public void UpdateFade(double x, double width)
     {
+        // 飞入过程中卡片由 Arrive() 隐藏、着陆后由 Land() 淡入。这里若直接
+        // 改写 Opacity，会抢在 Land 之前把飞行中的卡片亮出来（飞入缩略图和
+        // 绳上卡片叠在一起），或在 Land 之后又被布局覆盖。飞入期间交还控制权。
+        if (_item.Flying) { Opacity = 0; return; }
         double fade = Math.Min(1, Math.Max(0, Math.Min(x, width - x) / 90.0));
         Opacity = fade;
     }
@@ -644,10 +648,30 @@ internal sealed class PeggedCard : UserControl, IDisposable
         if (!item.IsRecording)
             AddItem(menu, I18n.Get("Edit"), () => line.Markup(item.Id), MenuIcons.Pen);
         AddItem(menu, I18n.Get("ShowInExplorer"), () => line.Reveal(item.Id), MenuIcons.Search);
-        if (inInbox)
-            AddItem(menu, I18n.Get("SaveToDesktop"), () => line.SaveToDesktop(item.Id), MenuIcons.Desktop);
+
+        // Save to desktop is always offered, per 01-ctx - the mockup draws one
+        // canonical menu, not two, so a row that vanishes depending on where
+        // the file happens to live is a surprise. What it *does* differs by
+        // origin, because a move means something different in each place:
+        //   inbox capture  - the inbox is staging, so the file moves out to
+        //                    the desktop and the card leaves the line (this
+        //                    has always been the behaviour);
+        //   watched folder - the file is the user's own, so it is copied. A
+        //                    move here would silently relocate a file out of
+        //                    the folder they pointed us at.
+        // Line.SaveToDesktop owns that branch so the menu stays declarative.
+        AddItem(menu, I18n.Get("SaveToDesktop"), () => line.SaveToDesktop(item.Id), MenuIcons.Desktop);
 
         AddSeparator(menu);
+
+        // Two rows outside the inbox, one inside it. That asymmetry is
+        // deliberate and this comment is the record of the decision: outside
+        // the inbox, "take down" (drop from the line, file untouched) and
+        // "move to trash" (drop and recycle the file) are genuinely different
+        // outcomes, and collapsing them into the mockup's single 丢弃 row
+        // would make one label mean two things. Inside the inbox the file is
+        // ours to recycle, so there is only one sensible outcome and the
+        // single 丢弃 row is right. The mockup only draws the inbox case.
         if (inInbox)
         {
             // In the inbox, Discard recycles the file, so it is the
@@ -843,7 +867,15 @@ public static class CardMenuTheme
 
   <!-- Row: 40 tall, 10 radius, icon gutter on the left, shortcut on the
        right. The 12px gap is the mockup's, so an icon and its label read as
-       one unit rather than two columns. -->
+       one unit rather than two columns.
+
+       The shortcut column asks for tabular figures (font-variant-numeric:
+       tabular-nums in the mockup). Proportional digits give Ctrl+C and a
+       future Ctrl+Shift+C different widths per digit, which makes the
+       right edge of the column ragged; Tabular pins every digit to the same
+       advance. Segoe UI carries the tnum feature, so this is honoured
+       rather than quietly dropped - and if a fallback font lacks it, WPF
+       ignores the request instead of substituting a different face. -->
   <Style x:Key='CardRow' TargetType='MenuItem'>
     <Setter Property='Foreground' Value='{text}'/>
     <Setter Property='FontFamily' Value='Segoe UI Variable Display, Segoe UI'/>
@@ -872,6 +904,7 @@ public static class CardMenuTheme
                                 TextElement.Foreground='{{TemplateBinding Foreground}}'/>
               <TextBlock Grid.Column='2' Margin='12,0,0,0' FontSize='11.5'
                          Opacity='0.5' VerticalAlignment='Center'
+                         Typography.NumeralAlignment='Tabular'
                          Text='{{Binding InputGestureText, RelativeSource={{RelativeSource AncestorType=MenuItem}}}}'
                          TextElement.Foreground='{muted}'/>
             </Grid>
@@ -912,6 +945,7 @@ public static class CardMenuTheme
                                 TextElement.Foreground='{{TemplateBinding Foreground}}'/>
               <TextBlock Grid.Column='2' Margin='12,0,0,0' FontSize='11.5'
                          Opacity='0.5' VerticalAlignment='Center'
+                         Typography.NumeralAlignment='Tabular'
                          Text='{{Binding InputGestureText, RelativeSource={{RelativeSource AncestorType=MenuItem}}}}'
                          TextElement.Foreground='{muted}'/>
             </Grid>

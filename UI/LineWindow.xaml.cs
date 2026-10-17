@@ -51,7 +51,7 @@ internal partial class LineWindow : Window
         InitializeComponent();
         // Start tucked above the top edge. Must be set here (before Show)
         // so it never fights with the slide-in animation that Reveal starts.
-        SlideTransform.Y = -Layout.PanelHeight - 12;
+        SetSlideInstant(-Layout.PanelHeight - 12);
         SourceInitialized += (_, _) => ApplyWindowStyles();
         Loaded += (_, _) =>
         {
@@ -302,20 +302,19 @@ internal partial class LineWindow : Window
         }
     }
 
-    public new void Show()
-    {
-        if (IsPresent) return;
-        IsPresent = true;
-        base.Show();
-    }
-
     public void Present()
     {
-        if (IsPresent) return;
         IsPresent = true;
         Opacity = 1;
-        if (IsRevealed) Show();
-        else base.Show();
+        // Always go through base.Show(). There used to be a `new Show()` wrapper
+        // here that early-returned on IsPresent - so anything that set the flag
+        // first (Present itself, or SetRevealed) ended up with a window that
+        // counted as present but had no HWND behind it. IsPresent is our own
+        // bookkeeping, never the window's real state; Dismiss clears it and
+        // hides the window, which is a combination the flag alone cannot tell
+        // apart from "shown". base.Show() on an already-visible window is a
+        // no-op, so calling it unconditionally is safe.
+        base.Show();
     }
 
     public void Dismiss()
@@ -343,31 +342,39 @@ internal partial class LineWindow : Window
         // The early-out used to be `if (on == IsRevealed) return;`, which is
         // wrong: IsRevealed and IsPresent are separate facts, and a window can
         // be flagged revealed while not on screen - Dismiss() sets
-        // IsPresent=false but leaves the flag alone, and the mouse tracker
-        // retracts without clearing it either.
+        // IsPresent=false but leaves the flag alone.
         //
-        // So asking to reveal an already-revealed window has to fall through
-        // and make sure it is actually present. Skipping that left captures
-        // hanging on a line nobody could see: the card was added (the log says
-        // "hung ... live=N"), ComeDown() called Present() then Reveal(), and
-        // Reveal() returned immediately on the flag without ever calling
-        // Show().
+        // So asking to reveal an already-revealed window still has to make
+        // sure it is present *and* where "revealed" says it is. Skipping that
+        // left captures hanging on a line nobody could see: the card was added
+        // (the log said "hung ... live=N"), ComeDown() asked for a reveal, and
+        // the flag said it was already done.
         if (on == IsRevealed)
         {
-            if (on) Present();      // revealed but possibly not on screen
+            if (on)
+            {
+                Present();
+                // Flagged revealed but parked above the top edge is the same
+                // invisible line as one that was never shown. Snap it back -
+                // but only when it really is parked, so a slide already on its
+                // way down is left to finish.
+                if (SlideTransform.Y <= -Layout.PanelHeight) SetSlideInstant(0);
+            }
             return;
         }
+
+        double before = SlideTransform.Y;
 
         IsRevealed = on;
         _line.Revealed = on;
         if (on)
         {
             _line.Scroll = 0;
-            Show();
+            Present();
             if (animate)
                 AnimateSlide(0, TimeSpan.FromMilliseconds(420));
             else
-                SlideTransform.Y = 0;
+                SetSlideInstant(0);
         }
         else
         {
@@ -380,15 +387,41 @@ internal partial class LineWindow : Window
             Pinned = false;
             _peekUntil = DateTime.MinValue;
         }
+
+        // Kept because it is the only way to see this class of failure from
+        // outside: the window reports IsVisible=true while the strip itself is
+        // translated off-screen. A reveal that does not end up at 0 is a bug.
+        Diag.Write("line", $"reveal={on} animate={animate} y {before:F0} -> {SlideTransform.Y:F0} visible={IsVisible}");
     }
 
     private void AnimateSlide(double to, TimeSpan duration)
     {
+        // A running or held animation on this property prevents a new one from
+        // starting reliably. Clear it first so the next BeginAnimation wins.
+        SlideTransform.BeginAnimation(TranslateTransform.YProperty, null);
         var anim = new DoubleAnimation(to, duration)
         {
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
         };
         SlideTransform.BeginAnimation(TranslateTransform.YProperty, anim);
+    }
+
+    /// <summary>
+    /// Parks the strip at <paramref name="y"/> with no animation.
+    ///
+    /// The animation has to be cleared first. AnimateSlide leaves a
+    /// DoubleAnimation holding its final value (FillBehavior.HoldEnd), and in
+    /// WPF's precedence list an animated value outranks the local one - so a
+    /// bare <c>SlideTransform.Y = 0</c> is accepted and then ignored, and the
+    /// strip stays parked above the top edge. That is exactly what broke the
+    /// instant reveal on a capture: ComeDown asked for Y=0, got -258, and the
+    /// line was invisible while IsRevealed said otherwise, which in turn made
+    /// the hover path think there was nothing left to reveal.
+    /// </summary>
+    private void SetSlideInstant(double y)
+    {
+        SlideTransform.BeginAnimation(TranslateTransform.YProperty, null);
+        SlideTransform.Y = y;
     }
 
     public void Toggle()
