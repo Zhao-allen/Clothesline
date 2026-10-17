@@ -428,6 +428,7 @@ internal sealed class Line : INotifyPropertyChanged
     public void Markup(Guid id)
     {
         var item = Items.FirstOrDefault(i => i.Id == id);
+        Diag.Write("line", $"markup enter: id={(item is null ? "gone" : "ok")} exists={(item is not null && File.Exists(item.Url))}");
         if (item is null || !File.Exists(item.Url)) return;
         try
         {

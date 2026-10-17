@@ -190,6 +190,13 @@ internal sealed class AnnotationWindow : Window
         Height = 600;
         WindowStartupLocation = WindowStartupLocation.CenterScreen;
         ShowInTaskbar = false;
+        // The line window is Topmost, and a plain ShowDialog() window has no
+        // owner, so the editor used to open *behind* the rope (and anything
+        // else that was on top). Modal alone does not win a z-order fight
+        // against a topmost window. Topmost makes the editor the highest
+        // priority window on screen, which is what an editor you just asked
+        // for should be.
+        Topmost = true;
         UseLayoutRounding = true;
         TextOptions.SetTextFormattingMode(this, TextFormattingMode.Display);
 

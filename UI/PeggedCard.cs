@@ -422,11 +422,13 @@ internal sealed class PeggedCard : UserControl, IDisposable
             {
                 _didLongPress = true;
                 _line.PressedId = null;
+                Services.Diag.Write("card", $"hold fired -> markup {System.IO.Path.GetFileName(_item.Url)}");
                 _line.Markup(_item.Id);
             }
         };
         _holdTimer.Start();
         CaptureMouse();
+        Services.Diag.Write("card", $"press down at {_downPoint.X:F0},{_downPoint.Y:F0}");
     }
 
     private void OnMouseMove(object sender, MouseEventArgs e)
