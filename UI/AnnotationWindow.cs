@@ -326,6 +326,17 @@ internal sealed class AnnotationWindow : Window
         Height = Math.Min(900, _original.PixelHeight + 132);
 
         var root = new Grid { Background = BgWindow };
+        // The card Border's CornerRadius is not inherited by its Child, so root's
+        // rectangular Background would paint over the corner triangles and square
+        // the window off against the desktop - the exact "opaque background would
+        // square them off" trap the constructor comment warns about. Clip the
+        // content to the card's 24px radius so the corners stay round.
+        root.SizeChanged += (_, _) =>
+        {
+            if (root.ActualWidth > 0 && root.ActualHeight > 0)
+                root.Clip = new RectangleGeometry(
+                    new Rect(0, 0, root.ActualWidth, root.ActualHeight), 24, 24);
+        };
         Content = Shell(root);
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });   // title bar
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });   // toolbar
