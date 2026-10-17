@@ -91,8 +91,38 @@ jobs:
         run: |
           dotnet publish Setup\InstallerWPF\InstallerWPF.csproj `
             -c Release -r ${{ env.RUNTIME }} --self-contained true `
-            -p:PublishSingleFile=true -o Setup\out
+            -p:PublishSingleFile=true `
+            -p:IncludeAllContentForSelfExtract=true -o Setup\out
           Move-Item Setup\out\Clothesline-Setup.exe Clothesline-Setup.exe -Force
+
+      - name: Smoke-test the installer
+        shell: pwsh
+        run: |
+          # Run the artifact before publishing it. Three releases in a row
+          # shipped installers that crashed on first double-click while CI
+          # stayed green, because every check so far only verified that the
+          # files EXIST. Existence is not the contract: the contract is that
+          # a user can run it. /silent takes the same Install() path the GUI
+          # does, minus the window - and the v0.3.3 regression was exactly a
+          # window-creation crash, which is why the GUI is exercised too
+          # (started, given three seconds to show its first window, then
+          # killed; surviving that long means chrome construction worked).
+          $smoke = Join-Path $env:TEMP 'clothesline-smoke'
+          Remove-Item $smoke -Recurse -Force -ErrorAction SilentlyContinue
+
+          .\Clothesline-Setup.exe /silent /dir=$smoke /nostartmenu
+          if ($LASTEXITCODE -ne 0) { throw "silent install failed with exit $LASTEXITCODE" }
+          if (-not (Test-Path (Join-Path $smoke 'Clothesline.exe'))) { throw 'Clothesline.exe missing after silent install' }
+
+          $gui = Start-Process -FilePath .\Clothesline-Setup.exe -PassThru
+          Start-Sleep -Seconds 4
+          if ($gui.HasExited) {
+            throw "installer GUI exited with code $($gui.ExitCode) - window creation crashed"
+          }
+          Stop-Process -Id $gui.Id -Force
+          .\Clothesline-Setup.exe /silent /uninstall /dir=$smoke 2>$null | Out-Null
+          Remove-Item $smoke -Recurse -Force -ErrorAction SilentlyContinue
+          Write-Output 'installer smoke test passed'
 
       - name: Verify artifacts
         shell: pwsh
