@@ -20,20 +20,50 @@ internal sealed class ScreenshotWatcher : IDisposable
         ".mp4", ".mov", ".mkv", ".avi", ".wmv"
     };
 
+    /// <summary>
+    /// Name shapes that mark a file as a fresh capture rather than some
+    /// other image the user happened to save into a watched folder. Matched
+    /// case-insensitively against the file name without its extension.
+    /// Covers the Windows screenshot tool's own naming plus the common
+    /// third-party tools; anything unrecognised is deliberately left alone.
+    /// </summary>
+    private static readonly string[] ScreenshotNameHints =
+    {
+        "screenshot", "screen shot", "屏幕截图", "截屏", "screenclip",
+        "clipboard", "snipaste", "screen recording", "屏幕录制",
+    };
+
     private readonly FileSystemWatcher _watcher;
     private readonly HashSet<string> _known = new(StringComparer.OrdinalIgnoreCase);
     private readonly Action<string> _onNew;
     private readonly Action _onChange;
     private readonly DateTime _launchDate = DateTime.Now;
+    private readonly bool _requireScreenshotName;
     private bool _disposed;
+
+    /// <summary>
+    /// _known is touched from three places: Start (UI thread), Scan (timer
+    /// thread) and Adopt (UI thread, straight after ClipboardWatcher saves a
+    /// file into this very folder). Everything that reads or writes it goes
+    /// through this gate.
+    /// </summary>
+    private readonly object _gate = new();
 
     public string Folder { get; }
 
-    public ScreenshotWatcher(string folder, Action<string> onNew, Action onChange)
+    /// <param name="requireScreenshotName">
+    /// When true, only files whose name looks like a capture are hung. Used
+    /// for folders with mixed content (the Desktop safety watcher); the
+    /// Inbox and the system Screenshots folder are dedicated capture
+    /// locations, so everything image-shaped in them counts.
+    /// </param>
+    public ScreenshotWatcher(string folder, Action<string> onNew, Action onChange,
+                             bool requireScreenshotName = false)
     {
         Folder = folder;
         _onNew = onNew;
         _onChange = onChange;
+        _requireScreenshotName = requireScreenshotName;
         try { Directory.CreateDirectory(folder); } catch { }
         _watcher = new FileSystemWatcher(folder)
         {
@@ -61,7 +91,10 @@ internal sealed class ScreenshotWatcher : IDisposable
         {
             if (!Directory.Exists(Folder)) Directory.CreateDirectory(Folder);
             // Adopt everything already there.
-            foreach (var f in ListFiles()) _known.Add(f);
+            lock (_gate)
+            {
+                foreach (var f in ListFiles()) _known.Add(f);
+            }
             _watcher.EnableRaisingEvents = true;
             Diag.Write("watch", $"watching {Folder} ({_known.Count} pre-existing)");
         }
@@ -73,7 +106,7 @@ internal sealed class ScreenshotWatcher : IDisposable
         try
         {
             return Directory.EnumerateFiles(Folder)
-                .Where(IsCandidate)
+                .Where(f => IsCandidate(f, _requireScreenshotName))
                 .OrderBy(f =>
                 {
                     try { return File.GetCreationTime(f); } catch { return DateTime.MinValue; }
@@ -83,7 +116,7 @@ internal sealed class ScreenshotWatcher : IDisposable
         catch { return new List<string>(); }
     }
 
-    private static bool IsCandidate(string path)
+    private static bool IsCandidate(string path, bool requireScreenshotName)
     {
         // "<name>-annotated.png" is what the annotation window writes when it
         // cannot replace the original in place. That is an edit of something
@@ -93,7 +126,18 @@ internal sealed class ScreenshotWatcher : IDisposable
             return false;
 
         var ext = Path.GetExtension(path);
-        return ImageExtensions.Contains(ext) || RecordingExtensions.Contains(ext);
+        if (!ImageExtensions.Contains(ext) && !RecordingExtensions.Contains(ext))
+            return false;
+
+        if (!requireScreenshotName) return true;
+
+        // Name-gated folders (the Desktop): only files that announce
+        // themselves as captures hang. Everything else - a photo saved from
+        // an editor, a download dropped on the desktop - is left alone, the
+        // way the original's screenshot-metadata check left it alone.
+        var name = Path.GetFileNameWithoutExtension(path);
+        return ScreenshotNameHints.Any(hint =>
+            name.Contains(hint, StringComparison.OrdinalIgnoreCase));
     }
 
     private void Scan()
@@ -102,11 +146,22 @@ internal sealed class ScreenshotWatcher : IDisposable
         var files = ListFiles();
         var current = new HashSet<string>(files, StringComparer.OrdinalIgnoreCase);
 
+        // Snapshot the diff under the gate: Adopt runs on the UI thread and
+        // would otherwise race this timer-thread scan.
+        List<string> fresh;
+        List<string> vanished;
+        lock (_gate)
+        {
+            fresh = files.Where(f => !_known.Contains(f)).ToList();
+            vanished = _known.Where(old => !current.Contains(old)).ToList();
+            _known.Clear();
+            foreach (var f in files) _known.Add(f);
+        }
+
         // New files: not in known, created after launch (so we don't re-hang
         // every file at startup).
-        foreach (var f in files)
+        foreach (var f in fresh)
         {
-            if (_known.Contains(f)) continue;
             try
             {
                 if (File.GetCreationTime(f) >= _launchDate)
@@ -118,18 +173,12 @@ internal sealed class ScreenshotWatcher : IDisposable
             catch (Exception ex) { Diag.Error("watch", ex); }
         }
 
-        // Removed files: in known but not now.
-        bool changed = false;
-        foreach (var old in _known)
+        foreach (var old in vanished)
         {
-            if (current.Contains(old)) continue;
-            changed = true;
             Diag.Write("watch", $"vanished -> {Path.GetFileName(old)}");
         }
 
-        _known.Clear();
-        foreach (var f in files) _known.Add(f);
-        if (changed)
+        if (vanished.Count > 0)
         {
             // Line.Prune marshals to the UI thread and re-raises anything the
             // UI throws. This callback runs on a timer thread with no handler,
@@ -139,9 +188,31 @@ internal sealed class ScreenshotWatcher : IDisposable
         }
     }
 
+    /// <summary>
+    /// Marks a path as already handled so a later Scan does not announce it
+    /// again. Called right after ClipboardWatcher saves a capture into this
+    /// folder: HangCapture hangs it directly, and without this the folder
+    /// scan would report the very same file a second time - Hang() dedups
+    /// the card, but the second pass still re-runs ComeDown and resets the
+    /// peek timer on every single clipboard capture.
+    /// </summary>
+    public void Adopt(string path)
+    {
+        var full = Path.GetFullPath(path);
+        // Only files this watcher owns may enter _known: a foreign path
+        // would never appear in ListFiles, so it would read as "vanished"
+        // on every scan and re-run _onChange forever.
+        var root = Path.GetFullPath(Folder);
+        if (!full.StartsWith(root.EndsWith(Path.DirectorySeparatorChar)
+                ? root
+                : root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            return;
+        lock (_gate) _known.Add(full);
+    }
+
     public void PruneKnown(Predicate<string> stillExists)
     {
-        _known.RemoveWhere(p => !stillExists(p));
+        lock (_gate) _known.RemoveWhere(p => !stillExists(p));
     }
 
     public void Dispose()

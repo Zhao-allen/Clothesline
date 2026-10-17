@@ -235,7 +235,20 @@ internal partial class App : Application
     {
         if (ClipboardWatcher.IsEnabled)
         {
-            _clipboardWatcher ??= new ClipboardWatcher(HangCapture);
+            _clipboardWatcher ??= new ClipboardWatcher(url =>
+            {
+                // The capture was just written into a watched folder. Tell
+                // every watcher that owns it so the folder scan does not
+                // announce the same file a second time - Hang() dedups the
+                // card, but the second pass still re-runs ComeDown and
+                // resets the peek timer on every clipboard capture. Adopt
+                // self-filters to its own folder, so calling it on all of
+                // them is safe.
+                _watcher?.Adopt(url);
+                _safetyWatcher?.Adopt(url);
+                foreach (var w in _folderWatchers) w.Adopt(url);
+                HangCapture(url);
+            });
             _clipboardWatcher.Start();
         }
         else
@@ -260,10 +273,16 @@ internal partial class App : Application
         _watcher = new ScreenshotWatcher(primary, HangCapture, _line.Prune);
         _watcher.Start();
 
-        // Safety: also watch the Desktop in case captures land there.
+        // Safety: also watch the Desktop in case captures land there. The
+        // desktop holds mixed content, so this one is name-gated: only
+        // files that call themselves screenshots hang, everything else
+        // (a photo saved from an editor, a download dropped there) is
+        // left alone. The Inbox and the system Screenshots folder are
+        // dedicated capture locations and stay ungated.
         if (Inbox.IsEnabled && !SamePath(primary, Inbox.DesktopFolder))
         {
-            _safetyWatcher = new ScreenshotWatcher(Inbox.DesktopFolder, HangCapture, _line.Prune);
+            _safetyWatcher = new ScreenshotWatcher(Inbox.DesktopFolder, HangCapture, _line.Prune,
+                                                   requireScreenshotName: true);
             _safetyWatcher.Start();
         }
 
