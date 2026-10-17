@@ -46,6 +46,9 @@ internal static class UiPreview
                 case "--export-menu":
                     RenderMenu(outputPath, demo);
                     return true;
+                case "--export-traymenu-wpf":
+                    RenderTrayMenuWpf(outputPath, demo);
+                    return true;
                 case "--export-annotation":
                     RenderAnnotation(outputPath);
                     return true;
@@ -809,5 +812,66 @@ internal static class UiPreview
         rtb.Render(visual);
         rtb.Freeze();
         return rtb;
+    }
+
+    /// <summary>
+    /// Renders the WPF tray menu to a PNG.
+    ///
+    /// The menu is a Popup, and a Popup has its own top-level window that only
+    /// exists while it is open - so it cannot be handed to RenderTargetBitmap
+    /// the way an in-tree visual can. Instead the card is built the same way
+    /// TrayMenuWpf builds it, placed in a temporary window, measured and
+    /// rendered, then thrown away.
+    ///
+    /// This exists because the menu is now the app's most-seen surface and it
+    /// is built entirely in code: without this, a layout regression is
+    /// invisible until someone right-clicks the tray.
+    /// </summary>
+    private static void RenderTrayMenuWpf(string outputPath, bool demo)
+    {
+        var line = new Line();
+        if (demo)
+        {
+            for (int i = 0; i < 2; i++)
+                line.Items.Add(new PeggedItem($"demo-{i}.png", DemoThumb(i)));
+        }
+
+        var window = new LineWindow(line);
+        using var tray = new TrayIcon(line, window, showIcon: false);
+
+        // Force the WPF menu to exist and build its card.
+        var menu = new TrayMenuWpf(line, window);
+        var card = menu.BuildCardForPreview();
+        if (card is null) throw new InvalidOperationException("tray menu produced no card");
+
+        // A throwaway host to measure and render against. Never shown.
+        var host = new System.Windows.Window
+        {
+            Width = 1, Height = 1,
+            WindowStyle = System.Windows.WindowStyle.None,
+            ShowInTaskbar = false,
+            ShowActivated = false,
+            AllowsTransparency = true,
+            Background = Brushes.Transparent,
+            WindowState = System.Windows.WindowState.Minimized,
+            Left = -4000, Top = -4000,
+        };
+        host.Content = card;
+
+        card.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
+        card.Arrange(new System.Windows.Rect(0, 0, card.DesiredSize.Width, card.DesiredSize.Height));
+        card.UpdateLayout();
+
+        int w = (int)Math.Ceiling(card.ActualWidth);
+        int h = (int)Math.Ceiling(card.ActualHeight);
+        if (w <= 0 || h <= 0) throw new InvalidOperationException($"tray menu measured {w}x{h}");
+
+        var rtb = new RenderTargetBitmap(w, h, 96, 96, PixelFormats.Pbgra32);
+        rtb.Render(card);
+
+        var encoder = new PngBitmapEncoder();
+        encoder.Frames.Add(BitmapFrame.Create(rtb));
+        using var fs = File.Create(outputPath);
+        encoder.Save(fs);
     }
 }

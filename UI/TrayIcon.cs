@@ -6,6 +6,7 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using Clothesline.Models;
 using Clothesline.Services;
@@ -28,6 +29,11 @@ using WPen = System.Windows.Media.Pen;
 using WSolidBrush = System.Windows.Media.SolidColorBrush;
 using WScale = System.Windows.Media.ScaleTransform;
 using WTranslate = System.Windows.Media.TranslateTransform;
+
+// This file is mostly WinForms, but TrayTheme now also exposes WPF brushes
+// for the tray menu. Both namespaces are in scope because the project sets
+// UseWPF and UseWindowsForms, so name the WPF one explicitly.
+using Brush = System.Windows.Media.Brush;
 
 namespace Clothesline.UI;
 
@@ -76,6 +82,7 @@ internal sealed class TrayTheme
 
     public static TrayTheme Light { get; } = new()
     {
+        IsDarkSide = false,
         // rgba(255,255,255,.62) - the mockup value, and legible here because
         // a light card only ever lands on a light desktop.
         BgCard = GColor.FromArgb(158, 255, 255, 255),
@@ -100,6 +107,7 @@ internal sealed class TrayTheme
 
     public static TrayTheme Dark { get; } = new()
     {
+        IsDarkSide = true,
         // rgba(20,22,38,.55), but raised to .90: a WinForms drop-down cannot
         // blur what is behind it, so at .55 the card averages against the
         // desktop and its text loses contrast. See DonationTheme for the same
@@ -126,6 +134,80 @@ internal sealed class TrayTheme
 
     /// <summary>The palette in force right now.</summary>
     public static TrayTheme Current => AppTheme.IsDark ? Dark : Light;
+
+    // MARK: WPF brushes
+    //
+    // The WPF tray menu (TrayMenuWpf) needs these as Media.Brush, and the
+    // GDI surfaces above need them as GColor. Both sets are derived from the
+    // same six GColor values rather than declared twice, so a colour cannot
+    // mean one thing in WPF and another in the old WinForms menu.
+
+    public Brush CardBrush => Frozen(BgCard);
+    public Brush ElevatedBrush => Frozen(BgElevated);
+    public Brush RowHoverBrush => Frozen(BgHover);
+    public Brush DividerBrush => Frozen(StrokeSoft);
+    public Brush CardBorderBrush => Frozen(Stroke);
+    public Brush ThumbBorderBrush => Frozen(StrokeSoft);
+
+    public Brush TitleBrush => Frozen(FgPrimary);
+    public Brush SubtitleBrush => Frozen(FgMuted);
+    public Brush RowTextBrush => Frozen(FgPrimary);
+    public Brush RowValueBrush => Frozen(FgMuted);
+    public Brush RowIconBrush => Frozen(FgSecondary);
+    public Brush ToggleKnobOnBrush => Frozen(GColor.FromArgb(255, 255, 255, 255));
+    public Brush ToggleKnobOffBrush => Frozen(FgMuted);
+    public Brush ToggleOnBrush => AccentBrush;
+    public Brush ToggleOffBrush => Frozen(IsDarkSide
+        ? GColor.FromArgb(255, 0x33, 0x41, 0x55)      // #334155
+        : GColor.FromArgb(255, 0xCB, 0xD5, 0xE1));    // #cbd5e1
+
+    public Brush AccentBrush => Frozen(Accent);
+    public Brush CoffeeBrush => Frozen(CoffeeBg);
+    public Brush CoffeeTextBrush => Frozen(CoffeeFg);
+    public Brush CoffeeIconBrush => Frozen(CoffeeFg);
+
+    public Brush SheenBrush => IsDarkSide
+        ? Frozen(WColor.FromArgb(0x14, 0xFF, 0xFF, 0xFF))
+        : Frozen(WColor.FromArgb(0x45, 0xFF, 0xFF, 0xFF));
+
+    public WColor SheenColor => IsDarkSide
+        ? WColor.FromArgb(0x14, 0xFF, 0xFF, 0xFF)
+        : WColor.FromArgb(0x45, 0xFF, 0xFF, 0xFF);
+
+    public WColor LogoGradientStart => IsDarkSide
+        ? WColor.FromRgb(0x60, 0xA5, 0xFA)
+        : WColor.FromRgb(0x3B, 0x82, 0xF6);
+
+    public WColor LogoGradientEnd => IsDarkSide
+        ? WColor.FromRgb(0x81, 0x8C, 0xF8)
+        : WColor.FromRgb(0x63, 0x66, 0xF1);
+
+    public WColor BadgeGradientStart => IsDarkSide
+        ? WColor.FromArgb(0x2E, 0x60, 0xA5, 0xFA)
+        : WColor.FromArgb(0x1F, 0x3B, 0x82, 0xF6);
+
+    public WColor BadgeGradientEnd => IsDarkSide
+        ? WColor.FromArgb(0x2E, 0x81, 0x8C, 0xF8)
+        : WColor.FromArgb(0x1F, 0x63, 0x66, 0xF1);
+
+    public Brush BadgeTextBrush => IsDarkSide
+        ? Frozen(WColor.FromRgb(0xC7, 0xD2, 0xFE))
+        : Frozen(WColor.FromRgb(0x43, 0x38, 0xCA));
+
+    /// <summary>Which side of the pair this instance is, for the values above.</summary>
+    public bool IsDarkSide { get; init; }
+
+    /// <summary>True when the shadow should be black rather than slate.</summary>
+    public bool IsDarkShadow => IsDarkSide;
+
+    private static Brush Frozen(GColor c) => Frozen(WColor.FromArgb(c.A, c.R, c.G, c.B));
+
+    private static Brush Frozen(WColor c)
+    {
+        var b = new SolidColorBrush(c);
+        b.Freeze();
+        return b;
+    }
 
     /// <summary>
     /// The card colour with alpha forced opaque, for the places WinForms will
@@ -196,6 +278,17 @@ internal sealed class TrayIcon : IDisposable
     private MenuHeaderStrip? _header;
     private MenuThumbnailStrip? _thumbs;
 
+    /// <summary>
+    /// The WPF menu, which is what the user actually sees on right-click.
+    /// The WinForms strip is still built for <see cref="UiPreview"/> to render
+    /// off-screen, but it is no longer attached to the tray icon: a WinForms
+    /// drop-down cannot draw the mockups' glass, corners or translucency.
+    /// </summary>
+    private TrayMenuWpf? _menu;
+
+    /// <summary>Kept alive so the preview tool has a menu to render.</summary>
+    private ContextMenuStrip? _previewMenu;
+
     public TrayIcon(Line line, LineWindow window, bool showIcon = true)
     {
         _line = line;
@@ -206,13 +299,29 @@ internal sealed class TrayIcon : IDisposable
             Text = "Clothesline"
         };
         UpdateIcon();
-        _icon.ContextMenuStrip = BuildMenu();
+        // Still built (the preview tool renders exactly what the user sees),
+        // but no longer assigned to _icon.ContextMenuStrip.
+        _previewMenu = BuildMenu();
+        _menu = new TrayMenuWpf(line, window);
         _icon.MouseClick += (_, e) =>
         {
-            if (e.Button != MouseButtons.Left) return;
-            Diag.Write("tray", "tray icon left click -> toggle line");
-            try { _window.Toggle(); }
-            catch (Exception ex) { Diag.Error("tray", ex); }
+            if (e.Button == MouseButtons.Left)
+            {
+                Diag.Write("tray", "tray icon left click -> toggle line");
+                try { _window.Toggle(); }
+                catch (Exception ex) { Diag.Error("tray", ex); }
+                return;
+            }
+
+            // Right-click opens the WPF menu. MouseUp rather than MouseClick:
+            // Click fires on Down, which would open the menu a beat before the
+            // shell's own "show menu" nudge and let it fight for focus.
+            if (e.Button == MouseButtons.Right)
+            {
+                Diag.Write("tray", "tray icon right click -> menu");
+                try { _menu?.Show(); }
+                catch (Exception ex) { Diag.Error("tray", ex); }
+            }
         };
 
         I18n.Changed += Rebuild;
@@ -245,10 +354,16 @@ internal sealed class TrayIcon : IDisposable
         // owned by the strip rather than by the menu, so a rebuild (a language
         // change is enough to trigger one) would drop them on the floor.
         _thumbs?.Release();
-        _icon.ContextMenuStrip?.Dispose();
+        _previewMenu?.Dispose();
         ReleaseImages();
-        _icon.ContextMenuStrip = BuildMenu();
+        _previewMenu = BuildMenu();
         UpdateIcon();
+
+        // The WPF menu reads its palette and its localised strings when it
+        // builds, which it does on every open - so a language or theme change
+        // needs nothing here. It only has to close, otherwise it would sit on
+        // screen showing the old language under the cursor.
+        _menu?.Close();
     }
 
     private void ReleaseImages()
@@ -904,7 +1019,9 @@ internal sealed class TrayIcon : IDisposable
         var icon = _icon.Icon;
         _thumbs?.Release();
         _icon.Visible = false;
-        _icon.ContextMenuStrip?.Dispose();
+        _previewMenu?.Dispose();
+        _menu?.Dispose();
+        _menu = null;
         ReleaseImages();
         _icon.Dispose();
         icon?.Dispose();
