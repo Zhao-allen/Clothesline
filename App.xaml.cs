@@ -2,6 +2,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using Clothesline.Models;
 using Clothesline.Services;
 using Clothesline.UI;
@@ -342,22 +343,37 @@ internal partial class App : Application
             var screen = LineWindow.ScreenUnderPointer();
             _window.ComeDown(screen);
 
-            bool fly = _flightsInProgress < 2;
-            var id = _line.Hang(path, flying: fly);
+        bool fly = _flightsInProgress < 2;
+        var id = _line.Hang(path, flying: fly);
 
-            if (fly && id is not null)
+        if (fly && id is not null)
+        {
+            _flightsInProgress++;
+            bool landed = false;
+            Action land = () =>
             {
-                _flightsInProgress++;
-                StartFlight(id.Value, path, screen);
-            }
+                if (landed) return;
+                landed = true;
+                _line.Land(id.Value);
+                _flightsInProgress--;
+            };
+            StartFlight(id.Value, path, screen, land);
+
+            // 兜底：飞入动画因窗口隐藏（peek 期间）、CompositionTarget 未推进
+            // 等原因无法在合理时间内完成时，强制让卡片落到绳上，避免"截图后
+            // 图片迟迟不显示，要再开一次晾衣绳才看得见"的问题。
+            var guard = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1200) };
+            guard.Tick += (_, _) => { guard.Stop(); land(); };
+            guard.Start();
+        }
         });
     }
 
-    private void StartFlight(Guid id, string path, Screen screen)
+    private void StartFlight(Guid id, string path, Screen screen, Action onLanded)
     {
         int count = _line.Items.Count;
         int index = _line.Items.ToList().FindIndex(i => i.Id == id);
-        if (index < 0) { _flightsInProgress--; return; }
+        if (index < 0) { onLanded(); return; }
 
         double w = _window.Width;
         double x = Layout.X(index, count, w, _line.VisibleCount, _line.Scroll);
@@ -366,19 +382,12 @@ internal partial class App : Application
         var to = new Rect(x - Layout.CardWidth / 2, ropeY - Layout.PinAbove, Layout.CardWidth, cardH);
 
         var photo = Thumbnail.Make(path, int.MaxValue);
-        if (photo is null) { _flightsInProgress--; return; }
+        if (photo is null) { onLanded(); return; }
 
         var from = ComputeFromRect(photo, screen, to);
         var item = _line.Items.First(i => i.Id == id);
 
-        FlightOverlay.Ensure(screen).StartFlight(item, from, to, photo, () =>
-        {
-            Dispatcher.Invoke(() =>
-            {
-                _line.Land(id);
-                _flightsInProgress--;
-            });
-        });
+        FlightOverlay.Ensure(screen).StartFlight(item, from, to, photo, onLanded);
     }
 
     private Rect ComputeFromRect(BitmapSource photo, Screen screen, Rect to)

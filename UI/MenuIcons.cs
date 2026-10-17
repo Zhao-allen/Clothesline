@@ -105,6 +105,33 @@ internal static class MenuIcons
     public static readonly Entry ExternalLink = new(
         "M7 17L17 7M9 7h8v8", "external");
 
+    /// <summary>09-sub6: the light-theme entry.</summary>
+    public static readonly Entry Sun = new(
+        "M8 12A4 4 0 1 1 16 12A4 4 0 1 1 8 12Z"
+        + "M12 2v2M12 20v2M2 12h2M20 12h2"
+        + "M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4", "sun");
+
+    /// <summary>09-sub6: the dark-theme entry.</summary>
+    public static readonly Entry Moon = new(
+        "M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z", "moon");
+
+    /// <summary>05-sub2: "add a folder".</summary>
+    public static readonly Entry Plus = new(
+        "M12 5v14M5 12h14", "plus");
+
+    /// <summary>05-sub2: "stop watching this folder".</summary>
+    public static readonly Entry StopWatching = new(
+        "M7.5 6h9a1.5 1.5 0 0 1 1.5 1.5v9a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 16.5v-9A1.5 1.5 0 0 1 7.5 6Z"
+        + "M6.5 6.5l11 11M17.5 6.5l-11 11", "stop-watching");
+
+    /// <summary>
+    /// Two chevrons, for "open the screenshots folder". The mockup draws this
+    /// where the other rows draw a single chevron: the row opens something
+    /// outside the menu rather than a cascade.
+    /// </summary>
+    public static readonly Entry DoubleChevron = new(
+        "M7 17 12 12 7 7M13 17 18 12 13 7", "double-chevron");
+
     /// <summary>The geometry for WPF surfaces, or null if the data is bad.</summary>
     public static Geometry? Wpf(Entry entry)
     {

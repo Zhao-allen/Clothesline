@@ -82,7 +82,7 @@
   <data name="SectionBehavior" xml:space="preserve"><value>COMPORTEMENT</value></data>
   <data name="SectionApp" xml:space="preserve"><value>APP</value></data>
   <data name="TakeScreenshot" xml:space="preserve"><value>Prendre une capture</value></data>
-  <data name="ClearLineHint" xml:space="preserve"><value>Vider la corde</value></data>
+  <data name="ClearLineHint" xml:space="preserve"><value>Vider</value></data>
   <data name="OnLineCount" xml:space="preserve"><value>{0} sur la corde</value></data>
   <data name="WatchingClipboard" xml:space="preserve"><value>Surveillance du presse-papiers</value></data>
   <data name="ClipboardOff" xml:space="preserve"><value>Surveillance désactivée</value></data>

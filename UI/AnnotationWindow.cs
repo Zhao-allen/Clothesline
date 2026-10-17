@@ -74,17 +74,11 @@ internal sealed class AnnotationWindow : Window
     private static Brush BgPressed => T.IsDarkSide
         ? Frozen(Color.FromArgb(0x24, 0xFF, 0xFF, 0xFF))
         : Frozen(Color.FromArgb(0x14, 0x0F, 0x17, 0x2A));
-    private static Brush BgElevated => T.IsDarkSide
-        ? Frozen(Color.FromArgb(0xF4, 0x1E, 0x21, 0x34))
-        : Frozen(Color.FromArgb(0xEB, 0xFF, 0xFF, 0xFF));
     private static Brush StrokeLine => T.DividerBrush;
     private static Brush StrokeLine2 => T.CardBorderBrush;
     private static Brush FgPrimary => T.TitleBrush;
     private static Brush FgSecond => T.RowTextBrush;
     private static Brush FgMuted => T.SubtitleBrush;
-    private static Brush Accent => T.AccentBrush;
-    private static Brush AccentSoft => Frozen(Color.FromArgb(0x30, T.Accent.R, T.Accent.G, T.Accent.B));
-    private static Brush AccentRing => Frozen(Color.FromArgb(0x73, T.Accent.R, T.Accent.G, T.Accent.B));
     // Ink on the accent fill. White reads as the mockups' active button and
     // stays legible on the indigo gradient in both themes.
     private static Brush AccentInk => Frozen(Colors.White);
@@ -219,6 +213,8 @@ internal sealed class AnnotationWindow : Window
     {
         public required Border Root { get; init; }
         public required Color Color { get; init; }
+        /// <summary>The 1.1x lift the mockup puts on the selected swatch.</summary>
+        public required ScaleTransform Scale { get; init; }
     }
 
     private sealed class WidthDot
@@ -320,11 +316,14 @@ internal sealed class AnnotationWindow : Window
 
     private void BuildUi()
     {
-        // Chrome is 42px title + 58px toolbar + 34px status = 134. The old
+        // Chrome is 38px title + 60px toolbar + 34px status = 132. The old
         // +120 was 14 short, so the image always overflowed the viewport and
         // the editor opened with a scrollbar and its bottom edge cropped.
+        // The shell's 30px mat is not counted here on purpose: adding it
+        // would make every window 60px taller than its content, and the
+        // remainder is absorbed by FitToWindow below anyway.
         Width = Math.Min(1200, _original.PixelWidth + 60);
-        Height = Math.Min(900, _original.PixelHeight + 134);
+        Height = Math.Min(900, _original.PixelHeight + 132);
 
         var root = new Grid { Background = BgWindow };
         Content = Shell(root);
@@ -374,8 +373,15 @@ internal sealed class AnnotationWindow : Window
         Dispatcher.BeginInvoke(new Action(() =>
         {
             if (_toolbarLeft is null || _toolbarRight is null) return;
+            // +60 is the shell's 30px margin on each side. The old +20 sized
+            // the *window* to the toolbar and forgot the mat around the card,
+            // so the bar hung 40px past the rounded corner and painted over
+            // the shadow gutter - visible as the Save button clipped by the
+            // window edge. Nothing clips a Border's child, so the overflow was
+            // drawn rather than cut, which is why it went unnoticed until the
+            // toolbar grew in the P1 pass.
             double need = _toolbarLeft.DesiredSize.Width
-                        + _toolbarRight.DesiredSize.Width + 20;
+                        + _toolbarRight.DesiredSize.Width + 60 + 4;
             if (need <= 20) return;
 
             MinWidth = need;
@@ -458,7 +464,7 @@ internal sealed class AnnotationWindow : Window
     {
         var bar = new Grid
         {
-            Height = 42,
+            Height = 38,
             Background = BgCard
         };
         bar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -467,18 +473,32 @@ internal sealed class AnnotationWindow : Window
         bar.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         bar.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-        // Accent dot + file name + dimensions
-        var dot = new Border
+        // Accent dot: a 6px circle with a 2px halo. The mockup draws the halo
+        // as box-shadow 0 0 0 2px rgba(251,113,133,.18) - a spread shadow, not
+        // a blur - so it is two concentric borders here rather than an Effect:
+        // 10px of halo-washed rose around a 6px dot. The halo is part of the
+        // 18px left inset, hence the 16px margin (18 minus the 2px that
+        // overhangs the dot) and the 6px gap to the file name (8 minus 2).
+        var dotHalo = new Border
         {
-            Width = 9,
-            Height = 9,
-            CornerRadius = new CornerRadius(2),
-            Background = Accent,
-            Margin = new Thickness(14, 0, 10, 0),
-            VerticalAlignment = VAlign.Center
+            Width = 10,
+            Height = 10,
+            CornerRadius = new CornerRadius(5),
+            Background = Frozen(Color.FromArgb(0x2E, 0xFB, 0x71, 0x85)),
+            Margin = new Thickness(16, 0, 6, 0),
+            VerticalAlignment = VAlign.Center,
+            Child = new Border
+            {
+                Width = 6,
+                Height = 6,
+                CornerRadius = new CornerRadius(3),
+                Background = Frozen(Color.FromRgb(0xFB, 0x71, 0x85)),
+                HorizontalAlignment = HAlign.Center,
+                VerticalAlignment = VAlign.Center,
+            }
         };
-        Grid.SetColumn(dot, 0);
-        bar.Children.Add(dot);
+        Grid.SetColumn(dotHalo, 0);
+        bar.Children.Add(dotHalo);
 
         var name = new TextBlock
         {
@@ -491,22 +511,30 @@ internal sealed class AnnotationWindow : Window
         Grid.SetColumn(name, 1);
         bar.Children.Add(name);
 
+        // .meta is opacity:.5 with a 6px lead-in - the dimensions read as a
+        // footnote to the file name, not as a second title.
         var dims = new TextBlock
         {
             Text = $"{_original.PixelWidth} × {_original.PixelHeight}",
             Foreground = FgMuted,
             FontSize = 11.5,
-            Margin = new Thickness(9, 0, 0, 0),
+            Opacity = 0.5,
+            Margin = new Thickness(6, 0, 0, 0),
             VerticalAlignment = VAlign.Center
         };
         Grid.SetColumn(dims, 2);
         bar.Children.Add(dims);
 
-        // Window buttons
+        // Window buttons: 28x28 with a 6px gap, per .win-btn. They sit inside
+        // the same 18px right inset as the toolbar's actions.
         var buttons = new StackPanel
         {
             Orientation = WpfOrientation.Horizontal,
-            HorizontalAlignment = HAlign.Right
+            HorizontalAlignment = HAlign.Right,
+            // 15, not 18: each button carries 3px of its own margin, which is
+            // how the 6px gap between them is built. 15 + 3 lands the last
+            // button's right edge on the mockup's 18px inset.
+            Margin = new Thickness(0, 0, 15, 0)
         };
         buttons.Children.Add(ChromeButton("\uE921", () => WindowState = WindowState.Minimized));
         buttons.Children.Add(ChromeButton("\uE922", ToggleMaximize));
@@ -530,18 +558,25 @@ internal sealed class AnnotationWindow : Window
         {
             Text = glyph,
             FontFamily = new System.Windows.Media.FontFamily("Segoe MDL2 Assets"),
-            FontSize = 10,
-            Foreground = FgSecond,
+            FontSize = 12,
+            // .win-btn is #475569 with .close at #ef4444 - the close button is
+            // red in its resting state, not filled red on hover. Filling it
+            // reads as a primary destructive action, which is wrong for a
+            // title-bar button; the mockup only ever washes it like the other
+            // two.
+            Foreground = isClose ? Frozen(Color.FromRgb(0xEF, 0x44, 0x44)) : FgSecond,
             HorizontalAlignment = HAlign.Center,
             VerticalAlignment = VAlign.Center
         };
         var btn = new Border
         {
-            Width = 44,
-            Height = 42,
+            Width = 28,
+            Height = 28,
+            CornerRadius = new CornerRadius(8),
             Child = text,
             Background = Brushes.Transparent,
-            Cursor = WpfCursors.Arrow
+            Cursor = WpfCursors.Arrow,
+            Margin = new Thickness(3, 0, 3, 0)
         };
         // The chrome hit test resolves the topmost element under the cursor and
         // checks IsHitTestVisibleInChrome on that element only (no walk up the
@@ -551,16 +586,8 @@ internal sealed class AnnotationWindow : Window
         // testing so every pixel of the button resolves to this Border.
         text.IsHitTestVisible = false;
         WindowChrome.SetIsHitTestVisibleInChrome(btn, true);
-        btn.MouseEnter += (_, _) =>
-        {
-            btn.Background = isClose ? Frozen(Color.FromRgb(0xC4, 0x2B, 0x1C)) : BgHover;
-            text.Foreground = FgPrimary;
-        };
-        btn.MouseLeave += (_, _) =>
-        {
-            btn.Background = Brushes.Transparent;
-            text.Foreground = FgSecond;
-        };
+        btn.MouseEnter += (_, _) => btn.Background = BgHover;
+        btn.MouseLeave += (_, _) => btn.Background = Brushes.Transparent;
         // MouseLeftButtonDown is a Direct event raised along the tree as the
         // underlying Mouse.MouseDown bubbles; marking it handled marks that
         // bubbling event handled too, which stops it reaching the title bar.
@@ -581,7 +608,7 @@ internal sealed class AnnotationWindow : Window
         var bar = new StackPanel
         {
             Orientation = WpfOrientation.Horizontal,
-            Height = 58,
+            Height = 60,
             Background = BgCard
         };
 
@@ -608,13 +635,17 @@ internal sealed class AnnotationWindow : Window
         {
             Orientation = WpfOrientation.Horizontal,
             VerticalAlignment = VAlign.Center,
-            Margin = new Thickness(10, 0, 10, 0)
+            Margin = new Thickness(0)
         };
+        // The mockup's seven: red, orange, yellow, green, blue, white, slate.
+        // These are Tailwind's 500 ramp (#ef4444 #f97316 #eab308 #22c55e
+        // #3b82f6) rather than the older ad-hoc values, so a swatch, a badge
+        // and the logo gradient are now drawn from one palette.
         foreach (var c in new[]
                  {
-                     Color.FromRgb(0xFF, 0x4D, 0x4D), Color.FromRgb(0xFF, 0x9F, 0x43),
-                     Color.FromRgb(0xFF, 0xD9, 0x3D), Color.FromRgb(0x5F, 0xD9, 0x7A),
-                     Color.FromRgb(0x4C, 0xC2, 0xFF), Colors.White, Color.FromRgb(0x11, 0x11, 0x11),
+                     Color.FromRgb(0xEF, 0x44, 0x44), Color.FromRgb(0xF9, 0x73, 0x16),
+                     Color.FromRgb(0xEA, 0xB3, 0x08), Color.FromRgb(0x22, 0xC5, 0x5E),
+                     Color.FromRgb(0x3B, 0x82, 0xF6), Colors.White, Color.FromRgb(0x0F, 0x17, 0x2A),
                  })
         {
             swatches.Children.Add(MakeSwatch(c));
@@ -630,7 +661,7 @@ internal sealed class AnnotationWindow : Window
         {
             Orientation = WpfOrientation.Horizontal,
             VerticalAlignment = VAlign.Center,
-            Margin = new Thickness(10, 0, 10, 0)
+            Margin = new Thickness(0)
         };
         widths.Children.Add(MakeWidthDot(2, "StrokeThin"));
         widths.Children.Add(MakeWidthDot(4, "StrokeMedium"));
@@ -643,7 +674,7 @@ internal sealed class AnnotationWindow : Window
         {
             Orientation = WpfOrientation.Horizontal,
             VerticalAlignment = VAlign.Center,
-            Margin = new Thickness(10, 0, 10, 0)
+            Margin = new Thickness(0)
         };
         _undoButton = MakeIconButton(IcoUndo, "Undo", "Ctrl+Z", Undo);
         _redoButton = MakeIconButton(IcoRedo, "Redo", "Ctrl+Y", Redo);
@@ -655,14 +686,15 @@ internal sealed class AnnotationWindow : Window
         // Actions. A StackPanel left-packs its children, so the groups above
         // go in one, and the buttons go in a second one layered on top that
         // stretches and right-aligns them.
-        var host = new Grid { Height = 58, Background = BgCard };
+        var host = new Grid { Height = 60, Background = BgCard };
         host.Children.Add(bar);
         var right = new StackPanel
         {
             Orientation = WpfOrientation.Horizontal,
             HorizontalAlignment = HAlign.Right,
             VerticalAlignment = VAlign.Center,
-            Margin = new Thickness(0, 0, 12, 0)
+            // 18px right inset, matching .toolbar{padding:0 18px}.
+            Margin = new Thickness(0, 0, 18, 0)
         };
         right.Children.Add(MakeTextButton(I18n.Get("Cancel"), "Esc", primary: false, Close));
         right.Children.Add(MakeTextButton(I18n.Get("Save"), "Ctrl+S", primary: true, Save));
@@ -687,7 +719,11 @@ internal sealed class AnnotationWindow : Window
         {
             Orientation = WpfOrientation.Horizontal,
             VerticalAlignment = VAlign.Center,
-            Margin = new Thickness(8, 0, 0, 0)
+            // .toolbar has 6px between children and 18px of left padding; the
+            // separators carry 12px on each side, which is that gap plus
+            // .sep's own 6px margin. Only the very first group needs the
+            // leading inset.
+            Margin = new Thickness(parent.Children.Count == 0 ? 18 : 0, 0, 0, 0)
         };
         foreach (var def in defs)
         {
@@ -702,9 +738,10 @@ internal sealed class AnnotationWindow : Window
     private static Border Separator() => new()
     {
         Width = 1,
-        Height = 26,
+        Height = 28,
         Background = StrokeLine2,
-        Margin = new Thickness(8, 0, 8, 0),
+        // 12 each side = the toolbar's 6px gap plus .sep's own 6px margin.
+        Margin = new Thickness(12, 0, 12, 0),
         VerticalAlignment = VAlign.Center
     };
 
@@ -722,8 +759,8 @@ internal sealed class AnnotationWindow : Window
             StrokeEndLineCap = PenLineCap.Round,
             StrokeLineJoin = PenLineJoin.Round,
             Fill = Brushes.Transparent,
-            Width = 17,
-            Height = 17,
+            Width = 18,
+            Height = 18,
             Stretch = Stretch.Uniform,
             HorizontalAlignment = HAlign.Center,
             VerticalAlignment = VAlign.Center
@@ -790,8 +827,8 @@ internal sealed class AnnotationWindow : Window
             StrokeEndLineCap = PenLineCap.Round,
             StrokeLineJoin = PenLineJoin.Round,
             Fill = Brushes.Transparent,
-            Width = 17,
-            Height = 17,
+            Width = 18,
+            Height = 18,
             Stretch = Stretch.Uniform,
             HorizontalAlignment = HAlign.Center,
             VerticalAlignment = VAlign.Center
@@ -823,8 +860,10 @@ internal sealed class AnnotationWindow : Window
         content.Children.Add(new TextBlock
         {
             Text = label,
-            FontWeight = primary ? FontWeights.Bold : FontWeights.SemiBold,
-            FontSize = 13,
+            // .pill is 600 in both variants - the fill, not the weight, is what
+            // marks the primary action.
+            FontWeight = FontWeights.SemiBold,
+            FontSize = 12.5,
             VerticalAlignment = VAlign.Center
         });
         content.Children.Add(new TextBlock
@@ -839,15 +878,30 @@ internal sealed class AnnotationWindow : Window
         var btn = new Border
         {
             Child = content,
-            Height = 34,
-            CornerRadius = new CornerRadius(7),
-            Padding = new Thickness(16, 0, 16, 0),
+            Height = 36,
+            CornerRadius = new CornerRadius(10),
+            Padding = new Thickness(12, 0, 12, 0),
             Margin = new Thickness(6, 0, 0, 0),
             Cursor = WpfCursors.Hand,
-            Background = primary ? Accent : Brushes.Transparent,
-            BorderBrush = primary ? Brushes.Transparent : StrokeLine2,
-            BorderThickness = new Thickness(1)
+            // .pill.primary is a 135-degree #3b82f6 -> #6366f1 fill with a blue
+            // glow; .pill.ghost is bare text with no border at all. The ghost
+            // used to carry a 1px hairline, which made two adjacent buttons
+            // look like a segmented control instead of one action and one
+            // escape hatch.
+            Background = primary ? AccentGradient : Brushes.Transparent,
+            BorderThickness = new Thickness(0)
         };
+        if (primary)
+        {
+            btn.Effect = new DropShadowEffect
+            {
+                Color = Color.FromRgb(0x3B, 0x82, 0xF6),
+                Opacity = 0.35,
+                BlurRadius = 14,
+                ShadowDepth = 4,
+                Direction = 270
+            };
+        }
         if (btn.Child is Panel p)
             foreach (var tb in p.Children.OfType<TextBlock>())
                 tb.Foreground = primary ? AccentInk : FgSecond;
@@ -868,26 +922,43 @@ internal sealed class AnnotationWindow : Window
 
     private Border MakeSwatch(Color color)
     {
-        var fill = new Border
+        // .sw: a 22px circle whose 2px border is transparent until it is the
+        // selected colour, plus an inset 2px white ring and a soft drop
+        // shadow. The white ring is what keeps a pale swatch (white, yellow)
+        // visible against the card, so it is structural, not decoration - it
+        // is drawn as a nested border rather than an Effect because a blur
+        // would smear it at this size.
+        var scale = new ScaleTransform(1, 1);
+        var root = new Border
         {
             Width = 22,
             Height = 22,
             CornerRadius = new CornerRadius(11),
-            Background = new SolidColorBrush(color)
-        };
-
-        var root = new Border
-        {
-            Child = fill,
-            Padding = new Thickness(2),
-            CornerRadius = new CornerRadius(13),
             BorderThickness = new Thickness(2),
             BorderBrush = Brushes.Transparent,
+            Background = new SolidColorBrush(color),
             Cursor = WpfCursors.Hand,
-            Margin = new Thickness(0, 0, 3, 0),
+            Margin = new Thickness(0, 0, 5, 0),
+            RenderTransform = scale,
+            RenderTransformOrigin = new Point(0.5, 0.5),
+            Effect = new DropShadowEffect
+            {
+                Color = Colors.Black,
+                Opacity = 0.18,
+                BlurRadius = 3,
+                ShadowDepth = 1,
+                Direction = 270
+            },
+            Child = new Border
+            {
+                CornerRadius = new CornerRadius(9),
+                BorderThickness = new Thickness(2),
+                BorderBrush = Frozen(Colors.White),
+                Background = Brushes.Transparent,
+            },
             ToolTip = color.ToString(CultureInfo.InvariantCulture)
         };
-        _swatches.Add(new ColorSwatch { Root = root, Color = color });
+        _swatches.Add(new ColorSwatch { Root = root, Color = color, Scale = scale });
 
         root.MouseLeftButtonUp += (_, _) =>
         {
@@ -905,7 +976,8 @@ internal sealed class AnnotationWindow : Window
         {
             Text = "+",
             FontSize = 14,
-            Foreground = FgSecond,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = FgMuted,
             HorizontalAlignment = HAlign.Center,
             VerticalAlignment = VAlign.Center,
             Margin = new Thickness(0, -1, 0, 0)
@@ -913,10 +985,12 @@ internal sealed class AnnotationWindow : Window
         var root = new Border
         {
             Child = plus,
-            Width = 26,
-            Height = 26,
-            CornerRadius = new CornerRadius(13),
-            Background = BgElevated,
+            // .sw.add keeps the 22px footprint of a swatch but drops the ring
+            // and the shadow - it is an affordance, not a colour.
+            Width = 22,
+            Height = 22,
+            CornerRadius = new CornerRadius(11),
+            Background = BgHover,
             Cursor = WpfCursors.Hand,
             ToolTip = I18n.Get("MoreColors")
         };
@@ -940,10 +1014,15 @@ internal sealed class AnnotationWindow : Window
 
     private Border MakeWidthDot(double width, string labelKey)
     {
+        // .sz: a 24px circle holding a dot of 5, 8 or 12px. The three steps are
+        // fixed sizes, not a formula - a linear ramp made the 2px and 4px
+        // presets nearly indistinguishable, which is why the mockup spaces
+        // them 5 / 8 / 12.
+        double size = width switch { <= 2 => 5, <= 4 => 8, _ => 12 };
         var dot = new Ellipse
         {
-            Width = 5 + width * 1.4,
-            Height = 5 + width * 1.4,
+            Width = size,
+            Height = size,
             Fill = FgSecond,
             HorizontalAlignment = HAlign.Center,
             VerticalAlignment = VAlign.Center
@@ -951,11 +1030,12 @@ internal sealed class AnnotationWindow : Window
         var root = new Border
         {
             Child = dot,
-            Width = 30,
-            Height = 38,
-            CornerRadius = new CornerRadius(7),
+            Width = 24,
+            Height = 24,
+            CornerRadius = new CornerRadius(12),
             Background = Brushes.Transparent,
             Cursor = WpfCursors.Hand,
+            Margin = new Thickness(0, 0, 4, 0),
             ToolTip = I18n.Get(labelKey)
         };
         _widthDots.Add(new WidthDot { Root = root, Dot = dot, Width = width });
@@ -1255,7 +1335,15 @@ internal sealed class AnnotationWindow : Window
     private void RefreshSwatches()
     {
         foreach (var s in _swatches)
-            s.Root.BorderBrush = s.Color == _currentColor ? Accent : Brushes.Transparent;
+        {
+            bool on = s.Color == _currentColor;
+            // .sw.active{border-color:#6366f1;transform:scale(1.1)} - the ring
+            // plus the lift, not a tick. The lift is what makes the selection
+            // readable at a glance in a row of seven similar circles.
+            s.Root.BorderBrush = on ? Frozen(Color.FromRgb(0x63, 0x66, 0xF1)) : Brushes.Transparent;
+            s.Scale.ScaleX = on ? 1.1 : 1.0;
+            s.Scale.ScaleY = on ? 1.1 : 1.0;
+        }
     }
 
     private void RefreshWidthDots()
@@ -1263,8 +1351,12 @@ internal sealed class AnnotationWindow : Window
         foreach (var d in _widthDots)
         {
             bool on = Math.Abs(d.Width - _strokeWidth) < 0.01;
-            d.Root.Background = on ? AccentSoft : Brushes.Transparent;
-            d.Dot.Fill = on ? Accent : FgSecond;
+            // .sz.active is the same 135-degree blue-to-indigo fill as an
+            // active tool, with the dot knocked out to white. The old wash
+            // (tinted background, accent dot) left the selected size looking
+            // like a hover state rather than a pressed one.
+            d.Root.Background = on ? AccentGradient : Brushes.Transparent;
+            d.Dot.Fill = on ? AccentInk : FgSecond;
         }
     }
 

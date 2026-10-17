@@ -82,7 +82,7 @@
   <data name="SectionBehavior" xml:space="preserve"><value>COMPORTAMIENTO</value></data>
   <data name="SectionApp" xml:space="preserve"><value>APP</value></data>
   <data name="TakeScreenshot" xml:space="preserve"><value>Hacer una captura</value></data>
-  <data name="ClearLineHint" xml:space="preserve"><value>Vaciar la línea</value></data>
+  <data name="ClearLineHint" xml:space="preserve"><value>Vaciar</value></data>
   <data name="OnLineCount" xml:space="preserve"><value>{0} en la línea</value></data>
   <data name="WatchingClipboard" xml:space="preserve"><value>Vigilando el portapapeles</value></data>
   <data name="ClipboardOff" xml:space="preserve"><value>Vigilancia desactivada</value></data>

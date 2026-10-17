@@ -402,16 +402,36 @@ internal sealed class Line : INotifyPropertyChanged
         Drop(id, quietly: true);
     }
 
+    /// <summary>
+    /// Puts the item's file on the desktop.
+    ///
+    /// The card menu now offers this row for every card, not just inbox ones,
+    /// so the two origins need different handling. An inbox capture is staging
+    /// - it was copied there by us, nothing else points at it - so the file is
+    /// moved out and the card comes down. A file in a watched folder belongs to
+    /// the user and may be referenced by other apps, so it is copied and the
+    /// card stays: moving it would quietly relocate the original out of the
+    /// folder they asked us to watch.
+    /// </summary>
     public void SaveToDesktop(Guid id)
     {
         var item = Items.FirstOrDefault(i => i.Id == id);
         if (item is null) return;
         var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
         var target = UniquePath(desktop, Path.GetFileName(item.Url));
+        bool inbox = IsInInbox(id);
         try
         {
-            File.Move(item.Url, target);
-            Drop(id, quietly: true);
+            if (inbox)
+            {
+                File.Move(item.Url, target);
+                Drop(id, quietly: true);
+            }
+            else
+            {
+                File.Copy(item.Url, target);
+            }
+            Diag.Write("line", $"save to desktop -> {(inbox ? "moved out of inbox" : "copied, original kept")}");
         }
         catch { Sound.Beep(); }
     }

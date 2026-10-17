@@ -720,12 +720,22 @@ internal static class UiPreview
         window.Show();
         window.UpdateLayout();
         System.Windows.Forms.Application.DoEvents();
+        // The annotation window resizes itself on Loaded via BeginInvoke so
+        // the toolbar fits. That runs during DoEvents, but the layout pass
+        // that commits the new size is separate - a second flush is needed
+        // before we read RenderSize, or the capture is a frame behind.
+        window.UpdateLayout();
 
         var root = (Visual)window.Content;
         var size = ((FrameworkElement)root).RenderSize;
+        // If the async resize has not landed yet, the width is still the
+        // image plus shell margins, which clips the right-hand actions. Give
+        // it a generous floor so the preview cannot be cropped regardless of
+        // the timing of the dispatcher queue.
+        int w = Math.Max((int)Math.Ceiling(size.Width), 1200);
+        int h = (int)Math.Ceiling(size.Height);
         var rtb = new RenderTargetBitmap(
-            (int)Math.Ceiling(size.Width), (int)Math.Ceiling(size.Height),
-            96, 96, PixelFormats.Pbgra32);
+            w, h, 96, 96, PixelFormats.Pbgra32);
         rtb.Render(root);
 
         var encoder = new PngBitmapEncoder();
@@ -900,9 +910,16 @@ internal static class UiPreview
         using var tray = new TrayIcon(line, window, showIcon: false);
         var menu = new TrayMenuWpf(line, window);
 
-        var specs = new (string Title, Func<IEnumerable<TrayMenuWpf.SubItem>> Items)[]
+        // Each cascade carries its own SubKind because the mockups do not use one
+        // row height everywhere: 04 is 32px, 05 is 34px, and the single-choice
+        // cascades (06-09) are 36px with a larger label. The samples below also
+        // mirror the real rows - 05 really does paint 添加文件夹… in the indigo
+        // accent with a plus glyph, and 09 really does use sun/moon rather than a
+        // generic palette swatch - so a regression in either shows up here.
+        var specs = new (string Title, TrayMenuWpf.SubKind Kind,
+                         Func<IEnumerable<TrayMenuWpf.SubItem>> Items)[]
         {
-            ("04 switches", () => new[]
+            ("04 switches", TrayMenuWpf.SubKind.Toggle, () => new[]
             {
                 new TrayMenuWpf.SubItem("当指针停在屏幕顶部", true, () => { },
                                         Icon: MenuIcons.Line, IsToggle: true),
@@ -911,16 +928,18 @@ internal static class UiPreview
                 new TrayMenuWpf.SubItem("覆盖全屏应用", false, () => { },
                                         Icon: MenuIcons.Desktop, IsToggle: true),
             }),
-            ("05 folders", () => new[]
+            ("05 folders", TrayMenuWpf.SubKind.Folder, () => new[]
             {
-                new TrayMenuWpf.SubItem("添加文件夹…", false, () => { }, Icon: MenuIcons.Folder),
+                new TrayMenuWpf.SubItem("添加文件夹…", false, () => { },
+                                        Icon: MenuIcons.Plus, Accent: true),
                 new TrayMenuWpf.SubItem("Documents", true, () => { }),
-                new TrayMenuWpf.SubItem("停止监视", false, () => { }, Danger: true),
+                new TrayMenuWpf.SubItem("停止监视", false, () => { },
+                                        Icon: MenuIcons.StopWatching, Danger: true),
             }),
-            ("09 theme", () => new[]
+            ("09 theme", TrayMenuWpf.SubKind.Choice, () => new[]
             {
-                new TrayMenuWpf.SubItem("浅色", false, () => { }, Icon: MenuIcons.Palette),
-                new TrayMenuWpf.SubItem("深色", false, () => { }, Icon: MenuIcons.Palette),
+                new TrayMenuWpf.SubItem("浅色", false, () => { }, Icon: MenuIcons.Sun),
+                new TrayMenuWpf.SubItem("深色", false, () => { }, Icon: MenuIcons.Moon),
                 new TrayMenuWpf.SubItem("跟随系统", true, () => { }, Icon: MenuIcons.Desktop),
             }),
         };
@@ -933,7 +952,7 @@ internal static class UiPreview
 
         foreach (var spec in specs)
         {
-            var card = menu.BuildSubCardForPreview(spec.Items)
+            var card = menu.BuildSubCardForPreview(spec.Items, spec.Kind)
                        ?? throw new InvalidOperationException($"{spec.Title} produced no card");
             card.VerticalAlignment = System.Windows.VerticalAlignment.Top;
             row.Children.Add(card);

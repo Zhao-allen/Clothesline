@@ -82,7 +82,7 @@
   <data name="SectionBehavior" xml:space="preserve"><value>動作</value></data>
   <data name="SectionApp" xml:space="preserve"><value>アプリ</value></data>
   <data name="TakeScreenshot" xml:space="preserve"><value>スクリーンショットを撮る</value></data>
-  <data name="ClearLineHint" xml:space="preserve"><value>ラインを空にする</value></data>
+  <data name="ClearLineHint" xml:space="preserve"><value>空にする</value></data>
   <data name="OnLineCount" xml:space="preserve"><value>ライン上 {0} 枚</value></data>
   <data name="WatchingClipboard" xml:space="preserve"><value>クリップボードを監視中</value></data>
   <data name="ClipboardOff" xml:space="preserve"><value>監視はオフです</value></data>

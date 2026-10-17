@@ -167,13 +167,14 @@ public partial class MainWindow : Window
         }
         else if (_state == State.Done || _state == State.UninstallDone)
         {
-            PrimaryLabel.Text = _s.Close;
+            PrimaryLabel.Text = _state == State.Done ? _s.Done : _s.Close;
         }
 
         if (_state == State.Done)
         {
             OkHeading.Text = _s.DoneTitle;
-            OkSubtext.Text = _s.DoneBody;
+            OkSubtext.Text = _s.DoneSubtext;
+            DoneBodyText.Text = _s.DoneBody;
             LaunchCheckText.Text = _s.Launch;
         }
         else if (_state == State.UninstallDone)
@@ -344,8 +345,14 @@ public partial class MainWindow : Window
         ProgressBarTrack.Visibility = Visibility.Collapsed;
 
         OkHeading.Text = _s.DoneTitle;
-        OkSubtext.Text = _s.DoneBody;
-        DoneBodyText.Visibility = Visibility.Collapsed;
+        // Two lines, not one. The banner carries a one-sentence confirmation;
+        // the paragraph below it carries the "what happens next" detail. These
+        // used to be the same string - DoneBody was stuffed into the banner and
+        // DoneBodyText collapsed - which read as a banner that repeated itself
+        // and left the mockup's body paragraph missing entirely.
+        OkSubtext.Text = _s.DoneSubtext;
+        DoneBodyText.Text = _s.DoneBody;
+        DoneBodyText.Visibility = Visibility.Visible;
 
         LaunchCheckRow.Visibility = Visibility.Visible;
         LaunchCheckText.Text = _s.Launch;
@@ -353,7 +360,10 @@ public partial class MainWindow : Window
         LaunchCheckMark.Visibility = Visibility.Visible;
 
         SecondaryButton.Visibility = Visibility.Collapsed;
-        PrimaryLabel.Text = _s.Close;
+        // 完成 / Finish, not 关闭 / Close: the install succeeded and there is
+        // nothing to close away. The uninstall-done state keeps Close, because
+        // there the button really does just dismiss a report.
+        PrimaryLabel.Text = _s.Done;
         PrimaryIcon.Visibility = Visibility.Collapsed;
 
         InstallContext.Log($"installed to {_targetFolder}");
