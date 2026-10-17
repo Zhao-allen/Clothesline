@@ -8,7 +8,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Clothesline-Setup</AssemblyName>
     <RootNamespace>ClotheslineSetup</RootNamespace>
-    <Version>0.3.3</Version>
+    <Version>0.3.4</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <!-- The payload is embedded whole. Disable the normal resource compression
          so the zip is stored as-is rather than being re-compressed. -->
