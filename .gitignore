@@ -16,3 +16,6 @@ publish/
 *.pdb
 *.zip
 [Tt]humbs.db
+
+## Installer build output (payload.zip is already covered by *.zip)
+Setup/out/

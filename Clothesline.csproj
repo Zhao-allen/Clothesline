@@ -14,9 +14,16 @@
     <AssemblyName>Clothesline</AssemblyName>
     <!-- Without this the assembly version defaults to 1.0.0 and the tray
          menu header shows "v1.0.0". Kept in step with the release tag. -->
-    <Version>0.1.9</Version>
+    <Version>0.2.0</Version>
     <SatelliteResourceLanguages>en;es;zh;ja;fr</SatelliteResourceLanguages>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The installer lives in Setup/ but is built as its own solution-less
+         project by build.ps1 and the release workflow. The default **/*.cs
+         glob would otherwise pull its WinForms sources into this WPF app. -->
+    <Compile Remove="Setup/**/*.cs" />
+  </ItemGroup>
 
   <ItemGroup>
     <Compile Update="Resources\Strings.Designer.cs">
