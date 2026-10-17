@@ -54,8 +54,14 @@ jobs:
             if (-not $line) { throw "could not read <Version> from Clothesline.csproj" }
             $tag = 'v' + $line.Matches[0].Groups[1].Value
           }
-          if ($tag -notmatch '^v\d+\.\d+\.\d+$') {
-            throw "tag must look like v1.2.3, got '$tag'"
+          # Accept v1.2.3 or v1.2.3.4 (3 or 4 numeric segments).
+          # Auto-prepend 'v' if the user forgot it (so '0.3.4' → 'v0.3.4').
+          if ($tag -notmatch '^v\d+\.\d+\.\d+(\.\d+)?$') {
+            if ($tag -match '^\d+\.\d+\.\d+(\.\d+)?$') {
+              $tag = 'v' + $tag
+            } else {
+              throw "tag must look like v1.2.3 or v1.2.3.4, got '$tag'"
+            }
           }
           "tag=$tag" >> $env:GITHUB_OUTPUT
           Write-Host "release tag: $tag"
