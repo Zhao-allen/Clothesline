@@ -5,7 +5,7 @@ namespace Clothesline.Services;
 /// <summary>
 /// Which theme the app should paint itself with.
 /// </summary>
-internal enum ThemeMode
+internal enum ThemeChoice
 {
     /// <summary>Follow the Windows app theme (Settings > Personalization > Colors).</summary>
     System = 0,
@@ -32,29 +32,83 @@ internal enum ThemeMode
 /// </summary>
 internal static class AppTheme
 {
-    public static ThemeMode Mode
+    /// <summary>Raised after the resolved theme changes, so long-lived
+    /// surfaces (the tray menu) can repaint without a restart.</summary>
+    public static event Action? Changed;
+
+    private static ThemeChoice _mode = ReadMode();
+    private static bool _isDark = ComputeIsDark(_mode);
+    private static bool _watching;
+
+    public static ThemeChoice Mode
     {
-        get => Settings.Default.GetString("theme") switch
-        {
-            "light" => ThemeMode.Light,
-            "dark" => ThemeMode.Dark,
-            _ => ThemeMode.System,
-        };
+        get => _mode;
         set
         {
+            if (value == _mode) return;
+            _mode = value;
             Settings.Default.SetString("theme", value switch
             {
-                ThemeMode.Light => "light",
-                ThemeMode.Dark => "dark",
+                ThemeChoice.Light => "light",
+                ThemeChoice.Dark => "dark",
                 _ => "system",
             });
+
+            // Re-resolve now: switching System -> Dark (or the reverse) changes
+            // what IsDark returns immediately, not on the next system change.
+            Apply(ComputeIsDark(_mode));
         }
     }
 
-    public static bool IsDark => Mode switch
+    public static bool IsDark => _isDark;
+
+    /// <summary>
+    /// Starts listening for Windows theme changes. Call once from startup;
+    /// without it, "follow the system" would only be re-read on next launch.
+    /// </summary>
+    public static void WatchSystemChanges()
     {
-        ThemeMode.Light => false,
-        ThemeMode.Dark => true,
+        if (_watching) return;
+        _watching = true;
+        try
+        {
+            SystemEvents.UserPreferenceChanged += OnUserPreferenceChanged;
+        }
+        catch
+        {
+            // A missing shell (session 0, some remote cases) is not worth
+            // failing startup over; the theme simply stays where it is.
+        }
+    }
+
+    private static void OnUserPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
+    {
+        if (e.Category != UserPreferenceCategory.General) return;
+        Apply(ComputeIsDark(_mode));
+    }
+
+    /// <summary>
+    /// Adopts a resolved theme, telling subscribers only when it actually
+    /// moved. The event is what makes a live switch possible.
+    /// </summary>
+    private static void Apply(bool dark)
+    {
+        if (dark == _isDark) return;
+        _isDark = dark;
+        Changed?.Invoke();
+    }
+
+    private static ThemeChoice ReadMode() => Settings.Default.GetString("theme") switch
+    {
+        "light" => ThemeChoice.Light,
+        "dark" => ThemeChoice.Dark,
+        _ => ThemeChoice.System,
+    };
+
+    private static bool ComputeIsDark(ThemeChoice mode) => mode switch
+    {
+        ThemeChoice.Light => false,
+        ThemeChoice.Dark => true,
         _ => SystemUsesDark(),
     };
 

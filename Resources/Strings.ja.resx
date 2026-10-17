@@ -127,4 +127,9 @@
   <data name="DonationWeChat" xml:space="preserve"><value>WeChat Pay</value></data>
   <data name="DonationAlipay" xml:space="preserve"><value>Alipay</value></data>
   <data name="DonationFooter" xml:space="preserve"><value>ご支援ありがとう</value></data>
+  <data name="SectionSupport" xml:space="preserve"><value>サポート</value></data>
+  <data name="Theme" xml:space="preserve"><value>テーマ</value></data>
+  <data name="ThemeLight" xml:space="preserve"><value>ライト</value></data>
+  <data name="ThemeDark" xml:space="preserve"><value>ダーク</value></data>
+  <data name="ThemeSystem" xml:space="preserve"><value>システム既定</value></data>
 </root>

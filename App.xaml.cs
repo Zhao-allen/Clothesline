@@ -110,6 +110,11 @@ internal partial class App : Application
         // produces (mirrors the original Tendedero design on macOS).
         _hotKey = HotKey.RegisterDefault(() => _window.Toggle());
 
+        // So "follow the system" actually follows: without this the resolved
+        // theme is only read once at launch and a Windows light/dark flip
+        // would not be picked up until the next start.
+        AppTheme.WatchSystemChanges();
+
         _tray = new TrayIcon(_line, _window);
 
         // Cursor sampler for capture-flight origin (Tier 2 positioning).

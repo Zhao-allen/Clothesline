@@ -127,4 +127,9 @@ Enregistrer une copie ? Choisissez Non pour rester dans l'éditeur et réessayer
   <data name="DonationWeChat" xml:space="preserve"><value>WeChat Pay</value></data>
   <data name="DonationAlipay" xml:space="preserve"><value>Alipay</value></data>
   <data name="DonationFooter" xml:space="preserve"><value>Merci du soutien</value></data>
+  <data name="SectionSupport" xml:space="preserve"><value>SOUTIEN</value></data>
+  <data name="Theme" xml:space="preserve"><value>Thème</value></data>
+  <data name="ThemeLight" xml:space="preserve"><value>Clair</value></data>
+  <data name="ThemeDark" xml:space="preserve"><value>Sombre</value></data>
+  <data name="ThemeSystem" xml:space="preserve"><value>Valeur système par défaut</value></data>
 </root>

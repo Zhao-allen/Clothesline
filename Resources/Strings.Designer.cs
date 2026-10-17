@@ -81,5 +81,10 @@ namespace Clothesline.Resources {
         public static string DonationWeChat => ResourceManager.GetString("DonationWeChat", resourceCulture);
         public static string DonationAlipay => ResourceManager.GetString("DonationAlipay", resourceCulture);
         public static string DonationFooter => ResourceManager.GetString("DonationFooter", resourceCulture);
+        public static string SectionSupport => ResourceManager.GetString("SectionSupport", resourceCulture);
+        public static string Theme => ResourceManager.GetString("Theme", resourceCulture);
+        public static string ThemeLight => ResourceManager.GetString("ThemeLight", resourceCulture);
+        public static string ThemeDark => ResourceManager.GetString("ThemeDark", resourceCulture);
+        public static string ThemeSystem => ResourceManager.GetString("ThemeSystem", resourceCulture);
     }
 }

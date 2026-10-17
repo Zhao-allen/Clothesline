@@ -32,30 +32,117 @@ using WTranslate = System.Windows.Media.TranslateTransform;
 namespace Clothesline.UI;
 
 /// <summary>
-/// The Win11 dark palette shared by the tray menu and its custom-painted
-/// parts (header strip, thumbnail strip, toggle switches).
+/// The tray menu palette, in both themes, taken from ui-redesign/02-main.
 ///
-/// This is the app's single source of truth for the dark theme. WPF surfaces
-/// do not restate these values: <see cref="CardMenuTheme"/> reads them and
-/// adapts them to WPF brushes, so the tray menu and the card's right-click
-/// menu cannot drift apart. Add a colour here, not in a UI file.
+/// Two instances rather than one static set of fields, because the menu has
+/// to follow the Windows theme now: light and dark are the same design at
+/// different values, and keeping them side by side is the only way they stay
+/// in step. Read through <see cref="Current"/>; never a field directly.
+///
+/// Everything is translucent on purpose. The mockups' glass look
+/// (blur + saturate) cannot be reproduced by a WinForms drop-down, but a
+/// semi-transparent card still lets the desktop through where the surface is
+/// drawn, and opaque surfaces - the sub-menus - read as the raised layer
+/// above it.
+///
+/// This remains the single source of truth: CardMenuTheme in PeggedCard.cs
+/// adapts these to WPF brushes rather than restating them.
 /// </summary>
+internal sealed class TrayTheme
+{
+    // Card. Blurred, translucent, with a hairline that is white in dark and
+    // near-black in light - the trick that makes a light card visible on a
+    // light desktop.
+    public required GColor BgCard { get; init; }
+    public required int BgCardAlpha { get; init; }
+    public required GColor BgElevated { get; init; }
+    public required GColor BgHover { get; init; }
+    public required GColor Stroke { get; init; }
+    public required GColor StrokeSoft { get; init; }
+
+    public required GColor FgPrimary { get; init; }
+    public required GColor FgSecondary { get; init; }
+    public required GColor FgMuted { get; init; }
+
+    public required GColor Accent { get; init; }
+    public required GColor AccentSoft { get; init; }
+    public required GColor Danger { get; init; }
+    public required GColor KnobDark { get; init; }
+
+    /// <summary>Amber wash for the "buy me a coffee" row.</summary>
+    public required GColor CoffeeBg { get; init; }
+    /// <summary>Amber text and icon for that row.</summary>
+    public required GColor CoffeeFg { get; init; }
+
+    public static TrayTheme Light { get; } = new()
+    {
+        // rgba(255,255,255,.62) - the mockup value, and legible here because
+        // a light card only ever lands on a light desktop.
+        BgCard = GColor.FromArgb(158, 255, 255, 255),
+        BgCardAlpha = 158,
+        BgElevated = GColor.FromArgb(235, 255, 255, 255),
+        BgHover = GColor.FromArgb(20, 15, 23, 42),          // rgba(15,23,42,.05)
+        Stroke = GColor.FromArgb(217, 255, 255, 255),      // rgba(255,255,255,.85)
+        StrokeSoft = GColor.FromArgb(20, 15, 23, 42),      // rgba(15,23,42,.08)
+
+        FgPrimary = GColor.FromArgb(15, 23, 42),           // #0f172a
+        FgSecondary = GColor.FromArgb(31, 41, 55),         // #1f2937
+        FgMuted = GColor.FromArgb(100, 116, 139),          // #64748b
+
+        Accent = GColor.FromArgb(99, 102, 241),            // #6366f1
+        AccentSoft = GColor.FromArgb(31, 99, 102, 241),
+        Danger = GColor.FromArgb(220, 38, 38),             // #dc2626
+        KnobDark = GColor.FromArgb(255, 255, 255),
+
+        CoffeeBg = GColor.FromArgb(41, 245, 158, 11),      // rgba(245,158,11,.16)
+        CoffeeFg = GColor.FromArgb(154, 52, 18),           // #9a3412
+    };
+
+    public static TrayTheme Dark { get; } = new()
+    {
+        // rgba(20,22,38,.55), but raised to .90: a WinForms drop-down cannot
+        // blur what is behind it, so at .55 the card averages against the
+        // desktop and its text loses contrast. See DonationTheme for the same
+        // call made on the WPF side.
+        BgCard = GColor.FromArgb(230, 20, 22, 38),
+        BgCardAlpha = 230,
+        BgElevated = GColor.FromArgb(244, 30, 33, 52),
+        BgHover = GColor.FromArgb(15, 255, 255, 255),      // rgba(255,255,255,.06)
+        Stroke = GColor.FromArgb(26, 255, 255, 255),      // rgba(255,255,255,.10)
+        StrokeSoft = GColor.FromArgb(26, 255, 255, 255),
+
+        FgPrimary = GColor.FromArgb(248, 250, 252),        // #f8fafc
+        FgSecondary = GColor.FromArgb(226, 232, 240),      // #e2e8f0
+        FgMuted = GColor.FromArgb(148, 163, 184),          // #94a3b8
+
+        Accent = GColor.FromArgb(129, 140, 248),           // #818cf8
+        AccentSoft = GColor.FromArgb(46, 96, 165, 250),
+        Danger = GColor.FromArgb(248, 113, 113),           // #f87171
+        KnobDark = GColor.FromArgb(15, 23, 42),
+
+        CoffeeBg = GColor.FromArgb(56, 245, 158, 11),      // rgba(245,158,11,.22)
+        CoffeeFg = GColor.FromArgb(253, 230, 138),         // #fde68a
+    };
+
+    /// <summary>The palette in force right now.</summary>
+    public static TrayTheme Current => AppTheme.IsDark ? Dark : Light;
+}
+
+/// <summary>Kept as an alias so the rest of the file reads as before.</summary>
 internal static class TrayPalette
 {
-    public static readonly GColor BgCard      = GColor.FromArgb(43, 43, 43);    // #2B2B2B
-    public static readonly GColor BgHover     = GColor.FromArgb(60, 60, 60);
-    public static readonly GColor BgElevated  = GColor.FromArgb(52, 52, 52);
-    public static readonly GColor FgPrimary   = GColor.FromArgb(255, 255, 255);
-    public static readonly GColor FgSecondary = GColor.FromArgb(200, 200, 200);
-    public static readonly GColor FgMuted     = GColor.FromArgb(138, 138, 138);
-    public static readonly GColor Accent      = GColor.FromArgb(76, 194, 255);  // #4CC2FF
-    public static readonly GColor AccentSoft  = GColor.FromArgb(40, 76, 194, 255);
-    public static readonly GColor Stroke      = GColor.FromArgb(61, 61, 61);    // #3D3D3D
-    public static readonly GColor Danger      = GColor.FromArgb(255, 153, 164);
-    public static readonly GColor KnobDark    = GColor.FromArgb(11, 42, 61);
-    /// <summary>Amber, for the "Buy me a coffee" row - the one row the menu
-    /// warm up, so it reads as an invitation rather than another setting.</summary>
-    public static readonly GColor Coffee      = GColor.FromArgb(251, 191, 36);
+    public static GColor BgCard => TrayTheme.Current.BgCard;
+    public static GColor BgElevated => TrayTheme.Current.BgElevated;
+    public static GColor BgHover => TrayTheme.Current.BgHover;
+    public static GColor Stroke => TrayTheme.Current.Stroke;
+    public static GColor FgPrimary => TrayTheme.Current.FgPrimary;
+    public static GColor FgSecondary => TrayTheme.Current.FgSecondary;
+    public static GColor FgMuted => TrayTheme.Current.FgMuted;
+    public static GColor Accent => TrayTheme.Current.Accent;
+    public static GColor AccentSoft => TrayTheme.Current.AccentSoft;
+    public static GColor Danger => TrayTheme.Current.Danger;
+    public static GColor KnobDark => TrayTheme.Current.KnobDark;
+    public static GColor Coffee => TrayTheme.Current.CoffeeFg;
 }
 
 /// <summary>
@@ -115,6 +202,11 @@ internal sealed class TrayIcon : IDisposable
         };
 
         I18n.Changed += Rebuild;
+        // The palette is resolved, not static: when Windows flips to dark (or
+        // the user picks one from the Theme sub-menu) the menu has to be
+        // rebuilt to repaint. Without this the choice would not take effect
+        // until the next launch.
+        AppTheme.Changed += Rebuild;
     }
 
     public void UpdateIcon()
@@ -180,6 +272,9 @@ internal sealed class TrayIcon : IDisposable
                                        + "M15.5 9.5h1.8a2.2 2.2 0 0 1 0 4.4h-1.8"
                                        + "M7 5.5c-.7-1.2.7-1.9 0-3M10.5 5.5c-.7-1.2.7-1.9 0-3"
                                        + "M3 20.5h15";
+    // A palette: the dish, the thumb hole, and three wells of paint.
+    private const string IcoPalette    = "M12 3.5a8.5 8.5 0 1 0 0 17c1.4 0 2-1 2-2s-.6-2-2-2h-1a2 2 0 0 1 0-4h5.5A5 5 0 0 0 12 3.5Z"
+                                       + "M8.5 8.5h.01M6.5 12.5h.01M9.5 15.5h.01M13.5 7.5h.01";
 
     /// <summary>
     /// Rasterises an icon and takes ownership of the bitmap so it can be
@@ -398,6 +493,31 @@ internal sealed class TrayIcon : IDisposable
             SetValue(lang, current);
         });
 
+        // Light / dark / follow-the-system, the first entry of the APP group
+        // in the mockups. Setting AppTheme.Mode fires AppTheme.Changed, which
+        // this icon listens for, so the menu repaints without a restart.
+        var theme = MakeParent(I18n.Get("Theme"), IcoPalette);
+        theme.DropDownItems.Add(MakeRadio(I18n.Get("ThemeLight"),
+                                          () => AppTheme.Mode == ThemeChoice.Light,
+                                          () => AppTheme.Mode = ThemeChoice.Light));
+        theme.DropDownItems.Add(MakeRadio(I18n.Get("ThemeDark"),
+                                          () => AppTheme.Mode == ThemeChoice.Dark,
+                                          () => AppTheme.Mode = ThemeChoice.Dark));
+        theme.DropDownItems.Add(MakeRadio(I18n.Get("ThemeSystem"),
+                                          () => AppTheme.Mode == ThemeChoice.System,
+                                          () => AppTheme.Mode = ThemeChoice.System));
+        menu.Items.Add(theme);
+        _refreshers.Add(() =>
+        {
+            SetValue(theme, AppTheme.Mode switch
+            {
+                ThemeChoice.Light => I18n.Get("ThemeLight"),
+                ThemeChoice.Dark => I18n.Get("ThemeDark"),
+                _ => I18n.Get("ThemeSystem"),
+            });
+            theme.Image = LoadIcon(IcoPalette, TrayPalette.FgSecondary);
+        });
+
         AddSeparator(menu);
 
         // ── APP ──
@@ -428,6 +548,14 @@ internal sealed class TrayIcon : IDisposable
             catch { }
         }, IcoRefresh);
         menu.Items.Add(update);
+
+        AddSeparator(menu);
+
+        // ── SUPPORT ──
+        // Its own group in the mockups, kept apart from the settings above it:
+        // the one row in the menu that asks for something rather than
+        // configuring the app.
+        AddSection(menu, I18n.Get("SectionSupport"));
 
         // Opens the codes directly, with no sub-menu: the mockups dropped the
         // two-step WeChat/Alipay picker (10-sub7 is marked obsolete there).
@@ -738,6 +866,9 @@ internal sealed class TrayIcon : IDisposable
         if (_disposed) return;
         _disposed = true;
         I18n.Changed -= Rebuild;
+        // Same for the theme: a static event holding a dead TrayIcon would
+        // keep the icon alive and repaint a menu nobody shows.
+        AppTheme.Changed -= Rebuild;
         // Capture the icon before disposing the NotifyIcon: NotifyIcon does
         // not own its Icon, so the HICON behind it would leak otherwise.
         var icon = _icon.Icon;

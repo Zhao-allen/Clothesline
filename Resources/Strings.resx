@@ -127,4 +127,9 @@ Save as a copy instead? Choose No to stay in the editor and try again later.</va
   <data name="DonationWeChat" xml:space="preserve"><value>WeChat Pay</value></data>
   <data name="DonationAlipay" xml:space="preserve"><value>Alipay</value></data>
   <data name="DonationFooter" xml:space="preserve"><value>Thanks for the support</value></data>
+  <data name="SectionSupport" xml:space="preserve"><value>SUPPORT</value></data>
+  <data name="Theme" xml:space="preserve"><value>Theme</value></data>
+  <data name="ThemeLight" xml:space="preserve"><value>Light</value></data>
+  <data name="ThemeDark" xml:space="preserve"><value>Dark</value></data>
+  <data name="ThemeSystem" xml:space="preserve"><value>System default</value></data>
 </root>
