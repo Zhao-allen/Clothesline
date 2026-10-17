@@ -119,4 +119,8 @@
 {0}</value></data>
   <data name="LoadFailedBody" xml:space="preserve"><value>无法加载图片：{0}</value></data>
   <data name="SaveErrorBody" xml:space="preserve"><value>保存失败：{0}</value></data>
+  <data name="BuyMeACoffee" xml:space="preserve"><value>请作者喝咖啡</value></data>
+  <data name="DonationTitle" xml:space="preserve"><value>支持作者</value></data>
+  <data name="DonationBody" xml:space="preserve"><value>你的支持是我持续维护的动力。扫码即可打赏任意金额。</value></data>
+  <data name="DonationReplaceHint" xml:space="preserve"><value>替换 Resources/donation_qr.png 为你的收款码。</value></data>
 </root>

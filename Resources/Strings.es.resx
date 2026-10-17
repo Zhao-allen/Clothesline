@@ -119,4 +119,8 @@
 {0}</value></data>
   <data name="LoadFailedBody" xml:space="preserve"><value>No se pudo cargar la imagen: {0}</value></data>
   <data name="SaveErrorBody" xml:space="preserve"><value>No se pudo guardar: {0}</value></data>
+  <data name="BuyMeACoffee" xml:space="preserve"><value>Invítame un café</value></data>
+  <data name="DonationTitle" xml:space="preserve"><value>Apoya al autor</value></data>
+  <data name="DonationBody" xml:space="preserve"><value>Tu apoyo mantiene Clothesline vivo. Escanea para donar cualquier cantidad.</value></data>
+  <data name="DonationReplaceHint" xml:space="preserve"><value>Reemplaza Resources/donation_qr.png con tu propio código QR.</value></data>
 </root>
