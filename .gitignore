@@ -23,3 +23,7 @@ _probe/
 
 ## Scratch files
 _commit_msg.txt
+
+## Local SDK (sandbox)
+.dotnet/
+
