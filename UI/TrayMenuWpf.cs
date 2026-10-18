@@ -106,14 +106,13 @@ internal sealed class TrayMenuWpf : IDisposable
     private const double ThumbRadius = 9;
 
     /// <summary>
-    /// Transparent room reserved around the card so its 50px drop shadow is
+    /// Transparent room reserved around the card so its drop shadow is
     /// not clipped by the popup's bounds.
     ///
-    /// It must be added to <see cref="MenuWidth"/> rather than taken out of
-    /// it: as a Margin inside a fixed Width it silently ate 56px of the card,
-    /// which is what truncated the row labels.
+    /// 原来给 28px 是为了容纳 50px BlurRadius 的大阴影；阴影降到 22px 后
+    /// 14px 足够，并且更小的 Margin 让 Popup 合成更轻盈。
     /// </summary>
-    private const double ShadowMargin = 28;
+    private const double ShadowMargin = 14;
 
     public TrayMenuWpf(Line line, LineWindow window)
     {
@@ -128,7 +127,9 @@ internal sealed class TrayMenuWpf : IDisposable
             // corners and a shadow without the window itself being clipped to
             // a rectangle.
             AllowsTransparency = true,
-            PopupAnimation = PopupAnimation.Fade,
+            // Fade 动画 + 大 DropShadowEffect 叠加时每帧重绘成本过高，
+            // 改为 None 让菜单直接弹出，不再等 fade 合成。
+            PopupAnimation = PopupAnimation.None,
             StaysOpen = false,          // click outside -> close, like a menu
             Placement = PlacementMode.MousePoint,
             // The card carries a ShadowMargin of transparent padding, so the
@@ -301,14 +302,15 @@ internal sealed class TrayMenuWpf : IDisposable
             Background = t.CardBrush,
             BorderBrush = t.CardBorderBrush,
             BorderThickness = new Thickness(1),
-            // The layered shadow from the mockups: a wide soft one for lift
-            // and a tight one for contact. Direction 270 points them down.
+            // 主菜单阴影 —— BlurRadius 从 50 降到 22，ShadowDepth 从 12 降到 8。
+            // 50px 模糊在 WPF AllowsTransparency Popup 里是 UI 线程杀手，每帧
+            // 都要做大面积软件合成；22px 视觉上仍有柔和阴影但计算量降到 1/5。
             Effect = new DropShadowEffect
             {
                 Color = t.IsDarkShadow ? Colors.Black : Color.FromRgb(0x0F, 0x17, 0x2A),
-                Opacity = t.IsDarkShadow ? 0.65 : 0.25,
-                BlurRadius = 50,
-                ShadowDepth = 12,
+                Opacity = t.IsDarkShadow ? 0.45 : 0.20,
+                BlurRadius = 22,
+                ShadowDepth = 8,
                 Direction = 270,
             },
             // Room for the shadow to draw without being clipped by the popup's
@@ -740,12 +742,13 @@ internal sealed class TrayMenuWpf : IDisposable
             BorderThickness = new Thickness(1),
             Padding = new Thickness(8),
             Margin = new Thickness(8),
+            // 子菜单阴影 —— 同样减小 BlurRadius，避免 hover 级联时每帧大模糊。
             Effect = new DropShadowEffect
             {
                 Color = t.IsDarkShadow ? Colors.Black : WColor.FromRgb(0x0F, 0x17, 0x2A),
-                Opacity = t.IsDarkShadow ? 0.55 : 0.22,
-                BlurRadius = 36,
-                ShadowDepth = 8,
+                Opacity = t.IsDarkShadow ? 0.35 : 0.18,
+                BlurRadius = 18,
+                ShadowDepth = 5,
                 Direction = 270,
             },
         };

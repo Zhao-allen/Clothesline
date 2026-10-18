@@ -463,7 +463,16 @@ internal partial class LineWindow : Window
         // full-screen note there), which used to leave a fresh capture hanging
         // on a line that never came down.
         Present();
-        if (App.PeeksAtNew) Reveal(peekSeconds: 2.5, animate: false);
+
+        // 无论 PeeksAtNew 开关与否，新截图到达时都必须把绳子亮出来。
+        // 如果用户关闭 peek 开关，ComeDown 只做了 Present() 没 Reveal()，
+        // 绳子虽然 Show 了但停在屏幕上方，卡片就挂在看不见的绳子上 ——
+        // 这就是 Bug 2 "截图后图没立即挂在绳子上，要再 Toggle 才看得见" 的根因。
+        if (App.PeeksAtNew)
+            Reveal(peekSeconds: 2.5, animate: false);
+        else if (!IsRevealed)
+            Reveal(peekSeconds: 0, animate: true);
+
         RequestRefresh?.Invoke();
     }
 

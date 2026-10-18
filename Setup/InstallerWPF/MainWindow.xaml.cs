@@ -341,6 +341,13 @@ public partial class MainWindow : Window
         UninstallSections.Visibility = Visibility.Collapsed;
         DoneSections.Visibility = Visibility.Visible;
 
+        // SetBusy 把按钮禁用了；Done 状态下完成按钮必须可点。
+        PrimaryButton.IsEnabled = true;
+        SecondaryButton.IsEnabled = true;
+        BrowseButton.IsEnabled = true;
+        PathBox.IsEnabled = true;
+        foreach (var b in _langButtons) b.IsEnabled = true;
+
         StatusText.Visibility = Visibility.Collapsed;
         ProgressBarTrack.Visibility = Visibility.Collapsed;
 
@@ -388,6 +395,14 @@ public partial class MainWindow : Window
     private void ShowUninstallDone()
     {
         _state = State.UninstallDone;
+
+        // SetBusy 把按钮禁用了；UninstallDone 下主按钮必须可点。
+        PrimaryButton.IsEnabled = true;
+        SecondaryButton.IsEnabled = true;
+        BrowseButton.IsEnabled = true;
+        PathBox.IsEnabled = true;
+        foreach (var b in _langButtons) b.IsEnabled = true;
+
         StatusText.Visibility = Visibility.Collapsed;
         ProgressBarTrack.Visibility = Visibility.Collapsed;
 
