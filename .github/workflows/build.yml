@@ -1,0 +1,137 @@
+name: Build & Release
+
+# Builds Clothesline and publishes a GitHub Release with two assets:
+#   - Clothesline-Setup.exe        (installer with language picker + custom path)
+#   - Clothesline-win-x64.zip      (portable folder, unzip and run)
+#
+# Trigger: push a tag "v*", or run the workflow manually (workflow_dispatch)
+# from the Actions tab and optionally type a version like v0.2.0.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release tag, e.g. v0.2.0. Leave empty to read <Version> from Clothesline.csproj."
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+
+env:
+  DOTNET_VERSION: "9.0.x"
+  RUNTIME: "win-x64"
+
+jobs:
+  build:
+    name: Build and package
+    runs-on: windows-latest
+    outputs:
+      tag: ${{ steps.ver.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET ${{ env.DOTNET_VERSION }}
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Determine version
+        id: ver
+        shell: pwsh
+        run: |
+          $tag = '${{ inputs.version }}'.Trim()
+          if ('${{ github.event_name }}' -eq 'push') {
+            $tag = '${{ github.ref_name }}'
+          }
+          if ([string]::IsNullOrWhiteSpace($tag)) {
+            $line = Select-String -Path Clothesline.csproj -Pattern '<Version>(.+?)</Version>' |
+                    Select-Object -First 1
+            if (-not $line) { throw "could not read <Version> from Clothesline.csproj" }
+            $tag = 'v' + $line.Matches[0].Groups[1].Value
+          }
+          if ($tag -notmatch '^v\d+\.\d+\.\d+$') {
+            throw "tag must look like v1.2.3, got '$tag'"
+          }
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          Write-Host "release tag: $tag"
+
+      # Folder publish, NOT PublishSingleFile: single-file silently drops the
+      # es/zh/ja/fr satellite resource DLLs and ships an English-only build.
+      - name: Publish app (self-contained folder, all 5 languages)
+        shell: pwsh
+        run: |
+          dotnet publish Clothesline.csproj `
+            -c Release -r ${{ env.RUNTIME }} --self-contained true -o publish
+          foreach ($lang in 'es', 'zh', 'ja', 'fr') {
+            if (-not (Test-Path "publish\$lang")) {
+              throw "satellite folder 'publish\$lang' missing - build would be English-only"
+            }
+          }
+          Get-ChildItem publish -Directory | Select-Object Name
+
+      - name: Package portable zip
+        shell: pwsh
+        run: |
+          Compress-Archive -Path publish\* -DestinationPath Clothesline-win-x64.zip -Force
+          "zip: {0:N1} MB" -f ((Get-Item Clothesline-win-x64.zip).Length / 1MB)
+
+      - name: Build installer payload
+        shell: pwsh
+        run: |
+          dotnet run --project Setup/MakePayload -- publish Setup\payload.zip
+          Move-Item Setup\payload.zip Setup\Installer\payload.zip -Force
+
+      - name: Build setup installer (single-file, payload embedded)
+        shell: pwsh
+        run: |
+          dotnet publish Setup\Installer\Installer.csproj `
+            -c Release -r ${{ env.RUNTIME }} --self-contained true `
+            -p:PublishSingleFile=true -o Setup\out
+          Move-Item Setup\out\Clothesline-Setup.exe Clothesline-Setup.exe -Force
+
+      - name: Verify artifacts
+        shell: pwsh
+        run: |
+          foreach ($f in 'Clothesline-Setup.exe', 'Clothesline-win-x64.zip') {
+            if (-not (Test-Path $f)) { throw "$f missing" }
+          }
+          Get-Item Clothesline-Setup.exe, Clothesline-win-x64.zip |
+            Select-Object Name, @{N='SizeMB';E={[math]::Round($_.Length/1MB,1)}}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          if-no-files-found: error
+          path: |
+            Clothesline-Setup.exe
+            Clothesline-win-x64.zip
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: assets
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.build.outputs.tag }}
+          name: Clothesline ${{ needs.build.outputs.tag }}
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+          files: |
+            assets/Clothesline-Setup.exe
+            assets/Clothesline-win-x64.zip

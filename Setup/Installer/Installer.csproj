@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>Clothesline-Setup</AssemblyName>
+    <RootNamespace>ClotheslineSetup</RootNamespace>
+    <Version>0.2.0</Version>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- The payload is embedded whole. Disable the normal resource compression
+         so the 67 MB zip is stored as-is rather than being re-compressed into
+         a build that takes minutes and saves nothing, since the zip is already
+         as small as it will get. -->
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- LogicalName pinned so the reader does not have to guess the
+         RootNamespace-prefixed form the SDK would otherwise generate. -->
+    <EmbeddedResource Include="payload.zip">
+      <LogicalName>payload.zip</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>

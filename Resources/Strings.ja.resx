@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="AppName" xml:space="preserve"><value>Clothesline</value></data>
+  <data name="HideLine" xml:space="preserve"><value>物干しを隠す</value></data>
+  <data name="ShowLine" xml:space="preserve"><value>物干しを表示</value></data>
+  <data name="TakeEverythingDown" xml:space="preserve"><value>すべて取り下ろす</value></data>
+  <data name="HandleScreenshots" xml:space="preserve"><value>スクリーンショットを管理</value></data>
+  <data name="HangCopiedImages" xml:space="preserve"><value>コピーした画像を掛ける</value></data>
+  <data name="BringLineDown" xml:space="preserve"><value>物干しを下ろす</value></data>
+  <data name="WhenPointerRestsAtTop" xml:space="preserve"><value>ポインタが上端に留まった時</value></data>
+  <data name="WhenSomethingNewHangs" xml:space="preserve"><value>新しいものが掛かった時</value></data>
+  <data name="OverFullScreenApps" xml:space="preserve"><value>全画面アプリの上に表示</value></data>
+  <data name="AlsoWatchFolders" xml:space="preserve"><value>フォルダも監視</value></data>
+  <data name="AddFolder" xml:space="preserve"><value>フォルダを追加…</value></data>
+  <data name="StopWatching" xml:space="preserve"><value>監視を停止</value></data>
+  <data name="KeepOnLine" xml:space="preserve"><value>物干しに残す</value></data>
+  <data name="AsManyAsFit" xml:space="preserve"><value>収まるだけ</value></data>
+  <data name="PhotosSuffix" xml:space="preserve"><value>{0} 枚</value><comment>{0} is the number</comment></data>
+  <data name="Size" xml:space="preserve"><value>サイズ</value></data>
+  <data name="Small" xml:space="preserve"><value>小</value></data>
+  <data name="Medium" xml:space="preserve"><value>中</value></data>
+  <data name="Large" xml:space="preserve"><value>大</value></data>
+  <data name="OpenScreenshotsFolder" xml:space="preserve"><value>スクリーンショット フォルダを開く</value></data>
+  <data name="Sounds" xml:space="preserve"><value>サウンド</value></data>
+  <data name="OpenAtLogin" xml:space="preserve"><value>ログイン時に起動</value></data>
+  <data name="Quit" xml:space="preserve"><value>Clothesline を終了</value></data>
+  <data name="FolderDialogDescription" xml:space="preserve"><value>このフォルダに保存された新しい画像は物干しに掛かります。</value></data>
+  <data name="Language" xml:space="preserve"><value>言語</value></data>
+  <data name="SystemDefault" xml:space="preserve"><value>システム既定</value></data>
+  <data name="Copy" xml:space="preserve"><value>コピー</value></data>
+  <data name="Copied" xml:space="preserve"><value>コピーしました</value></data>
+  <data name="Open" xml:space="preserve"><value>開く</value></data>
+  <data name="Edit" xml:space="preserve"><value>編集</value></data>
+  <data name="ShowInExplorer" xml:space="preserve"><value>エクスプローラーで表示</value></data>
+  <data name="SaveToDesktop" xml:space="preserve"><value>デスクトップに保存</value></data>
+  <data name="Discard" xml:space="preserve"><value>破棄</value></data>
+  <data name="TakeDown" xml:space="preserve"><value>下ろす</value></data>
+  <data name="MoveToTrash" xml:space="preserve"><value>ゴミ箱に移動</value></data>
+  <data name="TakeDownLeft" xml:space="preserve"><value>左側をすべて下ろす</value></data>
+  <data name="TakeDownRight" xml:space="preserve"><value>右側をすべて下ろす</value></data>
+  <data name="EmptyHint" xml:space="preserve"><value>Win+Shift+S でスクリーンショット</value></data>
+  <data name="InboxOfferTitle" xml:space="preserve"><value>Clothesline にスクリーンショットを任せますか？</value></data>
+  <data name="InboxOfferBody" xml:space="preserve"><value>Win+Shift+S または Win+PrintScreen で撮った画像は即座にラインに並び、デスクトップに溜まりません。フォルダにドラッグすれば保存、✕ をクリックすれば破棄。トレイメニューからいつでも解除できます。</value></data>
+  <data name="InboxOfferTurnOn" xml:space="preserve"><value>オンにする</value></data>
+  <data name="InboxOfferNotNow" xml:space="preserve"><value>後で</value></data>
+  <data name="CheckForUpdates" xml:space="preserve"><value>更新を確認</value></data>
+  <data name="SectionLine" xml:space="preserve"><value>物干し</value></data>
+  <data name="SectionCapture" xml:space="preserve"><value>取り込み</value></data>
+  <data name="SectionBehavior" xml:space="preserve"><value>動作</value></data>
+  <data name="SectionApp" xml:space="preserve"><value>アプリ</value></data>
+  <data name="TakeScreenshot" xml:space="preserve"><value>スクリーンショットを撮る</value></data>
+  <data name="ClearLineHint" xml:space="preserve"><value>ラインを空にする</value></data>
+  <data name="OnLineCount" xml:space="preserve"><value>ライン上 {0} 枚</value></data>
+  <data name="WatchingClipboard" xml:space="preserve"><value>クリップボードを監視中</value></data>
+  <data name="ClipboardOff" xml:space="preserve"><value>監視はオフです</value></data>
+  <data name="ValueNone" xml:space="preserve"><value>なし</value></data>
+  <data name="ItemsOn" xml:space="preserve"><value>{0} 件オン</value></data>
+  <data name="ShowAll" xml:space="preserve"><value>すべて</value></data>
+  <data name="AnnotateTitle" xml:space="preserve"><value>注釈</value></data>
+  <data name="Save" xml:space="preserve"><value>保存</value></data>
+  <data name="Cancel" xml:space="preserve"><value>キャンセル</value></data>
+  <data name="ToolPen" xml:space="preserve"><value>ペン</value></data>
+  <data name="ToolRectangle" xml:space="preserve"><value>矩形</value></data>
+  <data name="ToolArrow" xml:space="preserve"><value>矢印</value></data>
+  <data name="ToolText" xml:space="preserve"><value>テキスト</value></data>
+  <data name="ToolSelect" xml:space="preserve"><value>選択</value></data>
+  <data name="ToolEraser" xml:space="preserve"><value>消しゴム</value></data>
+  <data name="Undo" xml:space="preserve"><value>元に戻す</value></data>
+  <data name="Redo" xml:space="preserve"><value>やり直す</value></data>
+  <data name="ClearAnnotations" xml:space="preserve"><value>すべて消去</value></data>
+  <data name="MoreColors" xml:space="preserve"><value>その他の色</value></data>
+  <data name="StrokeThin" xml:space="preserve"><value>細</value></data>
+  <data name="StrokeMedium" xml:space="preserve"><value>中</value></data>
+  <data name="StrokeThick" xml:space="preserve"><value>太</value></data>
+  <data name="FitToWindow" xml:space="preserve"><value>ウィンドウに合わせる</value></data>
+  <data name="ZoomIn" xml:space="preserve"><value>拡大</value></data>
+  <data name="ZoomOut" xml:space="preserve"><value>縮小</value></data>
+  <data name="HoldSpaceToPan" xml:space="preserve"><value>スペースキーで移動</value></data>
+  <data name="SaveBlockedTitle" xml:space="preserve"><value>元の画像を上書きできません</value></data>
+  <data name="SaveBlockedBody" xml:space="preserve"><value>別のプログラムがファイルを開いています:
+{0}
+
+コピーとして保存しますか？「いいえ」で編集画面に戻り、後でもう一度試せます。</value></data>
+  <data name="SaveFailedTitle" xml:space="preserve"><value>保存できません</value></data>
+  <data name="SaveFailedBody" xml:space="preserve"><value>元のファイルもコピーも書き込めません:
+{0}</value></data>
+  <data name="LoadFailedBody" xml:space="preserve"><value>画像を読み込めませんでした: {0}</value></data>
+  <data name="SaveErrorBody" xml:space="preserve"><value>保存できませんでした: {0}</value></data>
+</root>

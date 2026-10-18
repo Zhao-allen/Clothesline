@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="AppName" xml:space="preserve"><value>Clothesline</value></data>
+  <data name="HideLine" xml:space="preserve"><value>Ocultar tendedero</value></data>
+  <data name="ShowLine" xml:space="preserve"><value>Mostrar tendedero</value></data>
+  <data name="TakeEverythingDown" xml:space="preserve"><value>Bajarlo todo</value></data>
+  <data name="HandleScreenshots" xml:space="preserve"><value>Gestionar capturas</value></data>
+  <data name="HangCopiedImages" xml:space="preserve"><value>Colgar imágenes copiadas</value></data>
+  <data name="BringLineDown" xml:space="preserve"><value>Bajar el tendedero</value></data>
+  <data name="WhenPointerRestsAtTop" xml:space="preserve"><value>Cuando el puntero reposa en el borde superior</value></data>
+  <data name="WhenSomethingNewHangs" xml:space="preserve"><value>Cuando cuelga algo nuevo</value></data>
+  <data name="OverFullScreenApps" xml:space="preserve"><value>Sobre apps a pantalla completa</value></data>
+  <data name="AlsoWatchFolders" xml:space="preserve"><value>Vigilar también carpetas</value></data>
+  <data name="AddFolder" xml:space="preserve"><value>Añadir carpeta…</value></data>
+  <data name="StopWatching" xml:space="preserve"><value>Dejar de vigilar</value></data>
+  <data name="KeepOnLine" xml:space="preserve"><value>Mantener en el tendedero</value></data>
+  <data name="AsManyAsFit" xml:space="preserve"><value>Tantas como quepan</value></data>
+  <data name="PhotosSuffix" xml:space="preserve"><value>{0} fotos</value><comment>{0} is the number</comment></data>
+  <data name="Size" xml:space="preserve"><value>Tamaño</value></data>
+  <data name="Small" xml:space="preserve"><value>Pequeño</value></data>
+  <data name="Medium" xml:space="preserve"><value>Mediano</value></data>
+  <data name="Large" xml:space="preserve"><value>Grande</value></data>
+  <data name="OpenScreenshotsFolder" xml:space="preserve"><value>Abrir carpeta de capturas</value></data>
+  <data name="Sounds" xml:space="preserve"><value>Sonidos</value></data>
+  <data name="OpenAtLogin" xml:space="preserve"><value>Abrir al iniciar sesión</value></data>
+  <data name="Quit" xml:space="preserve"><value>Salir de Clothesline</value></data>
+  <data name="FolderDialogDescription" xml:space="preserve"><value>Las imágenes nuevas guardadas en esta carpeta colgarán del tendedero.</value></data>
+  <data name="Language" xml:space="preserve"><value>Idioma</value></data>
+  <data name="SystemDefault" xml:space="preserve"><value>Predeterminado del sistema</value></data>
+  <data name="Copy" xml:space="preserve"><value>Copiar</value></data>
+  <data name="Copied" xml:space="preserve"><value>Copiado</value></data>
+  <data name="Open" xml:space="preserve"><value>Abrir</value></data>
+  <data name="Edit" xml:space="preserve"><value>Editar</value></data>
+  <data name="ShowInExplorer" xml:space="preserve"><value>Mostrar en el Explorador</value></data>
+  <data name="SaveToDesktop" xml:space="preserve"><value>Guardar en el escritorio</value></data>
+  <data name="Discard" xml:space="preserve"><value>Descartar</value></data>
+  <data name="TakeDown" xml:space="preserve"><value>Quitar</value></data>
+  <data name="MoveToTrash" xml:space="preserve"><value>Mover a la Papelera</value></data>
+  <data name="TakeDownLeft" xml:space="preserve"><value>Quitar todo lo de la izquierda</value></data>
+  <data name="TakeDownRight" xml:space="preserve"><value>Quitar todo lo de la derecha</value></data>
+  <data name="EmptyHint" xml:space="preserve"><value>Pulsa Win+Shift+S para hacer una captura</value></data>
+  <data name="InboxOfferTitle" xml:space="preserve"><value>¿Dejar que Clothesline gestione tus capturas?</value></data>
+  <data name="InboxOfferBody" xml:space="preserve"><value>Las capturas que hagas con Win+Shift+S o Win+PrintScreen se colgarán de la línea al instante y no se acumularán en el escritorio. Arrastra una a una carpeta para conservarla o descártala con la ✕. Puedes desactivarlo desde el menú de la bandeja.</value></data>
+  <data name="InboxOfferTurnOn" xml:space="preserve"><value>Activar</value></data>
+  <data name="InboxOfferNotNow" xml:space="preserve"><value>Ahora no</value></data>
+  <data name="CheckForUpdates" xml:space="preserve"><value>Buscar actualizaciones</value></data>
+  <data name="SectionLine" xml:space="preserve"><value>LÍNEA</value></data>
+  <data name="SectionCapture" xml:space="preserve"><value>CAPTURA</value></data>
+  <data name="SectionBehavior" xml:space="preserve"><value>COMPORTAMIENTO</value></data>
+  <data name="SectionApp" xml:space="preserve"><value>APP</value></data>
+  <data name="TakeScreenshot" xml:space="preserve"><value>Hacer una captura</value></data>
+  <data name="ClearLineHint" xml:space="preserve"><value>Vaciar la línea</value></data>
+  <data name="OnLineCount" xml:space="preserve"><value>{0} en la línea</value></data>
+  <data name="WatchingClipboard" xml:space="preserve"><value>Vigilando el portapapeles</value></data>
+  <data name="ClipboardOff" xml:space="preserve"><value>Vigilancia desactivada</value></data>
+  <data name="ValueNone" xml:space="preserve"><value>Ninguna</value></data>
+  <data name="ItemsOn" xml:space="preserve"><value>{0} activados</value></data>
+  <data name="ShowAll" xml:space="preserve"><value>Todo</value></data>
+  <data name="AnnotateTitle" xml:space="preserve"><value>Anotar</value></data>
+  <data name="Save" xml:space="preserve"><value>Guardar</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancelar</value></data>
+  <data name="ToolPen" xml:space="preserve"><value>Lápiz</value></data>
+  <data name="ToolRectangle" xml:space="preserve"><value>Rectángulo</value></data>
+  <data name="ToolArrow" xml:space="preserve"><value>Flecha</value></data>
+  <data name="ToolText" xml:space="preserve"><value>Texto</value></data>
+  <data name="ToolSelect" xml:space="preserve"><value>Seleccionar</value></data>
+  <data name="ToolEraser" xml:space="preserve"><value>Borrador</value></data>
+  <data name="Undo" xml:space="preserve"><value>Deshacer</value></data>
+  <data name="Redo" xml:space="preserve"><value>Rehacer</value></data>
+  <data name="ClearAnnotations" xml:space="preserve"><value>Borrar todo</value></data>
+  <data name="MoreColors" xml:space="preserve"><value>Más colores</value></data>
+  <data name="StrokeThin" xml:space="preserve"><value>Fino</value></data>
+  <data name="StrokeMedium" xml:space="preserve"><value>Medio</value></data>
+  <data name="StrokeThick" xml:space="preserve"><value>Grueso</value></data>
+  <data name="FitToWindow" xml:space="preserve"><value>Ajustar</value></data>
+  <data name="ZoomIn" xml:space="preserve"><value>Acercar</value></data>
+  <data name="ZoomOut" xml:space="preserve"><value>Alejar</value></data>
+  <data name="HoldSpaceToPan" xml:space="preserve"><value>Mantén Espacio para desplazar</value></data>
+  <data name="SaveBlockedTitle" xml:space="preserve"><value>No se pudo sobrescribir el original</value></data>
+  <data name="SaveBlockedBody" xml:space="preserve"><value>Otro programa mantiene el archivo abierto:
+{0}
+
+¿Guardar como copia? Elige No para seguir en el editor e intentarlo más tarde.</value></data>
+  <data name="SaveFailedTitle" xml:space="preserve"><value>No se pudo guardar</value></data>
+  <data name="SaveFailedBody" xml:space="preserve"><value>No se pudo escribir ni el original ni la copia:
+{0}</value></data>
+  <data name="LoadFailedBody" xml:space="preserve"><value>No se pudo cargar la imagen: {0}</value></data>
+  <data name="SaveErrorBody" xml:space="preserve"><value>No se pudo guardar: {0}</value></data>
+</root>
