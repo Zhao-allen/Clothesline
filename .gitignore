@@ -19,11 +19,3 @@ publish/
 
 ## Installer build output (payload.zip is already covered by *.zip)
 Setup/out/
-_probe/
-
-## Scratch files
-_commit_msg.txt
-
-## Local SDK (sandbox)
-.dotnet/
-

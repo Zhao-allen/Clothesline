@@ -73,18 +73,5 @@ namespace Clothesline.Resources {
         public static string InboxOfferTurnOn => ResourceManager.GetString("InboxOfferTurnOn", resourceCulture);
         public static string InboxOfferNotNow => ResourceManager.GetString("InboxOfferNotNow", resourceCulture);
         public static string CheckForUpdates => ResourceManager.GetString("CheckForUpdates", resourceCulture);
-        public static string BuyMeACoffee => ResourceManager.GetString("BuyMeACoffee", resourceCulture);
-        public static string DonationTitle => ResourceManager.GetString("DonationTitle", resourceCulture);
-        public static string DonationBody => ResourceManager.GetString("DonationBody", resourceCulture);
-        public static string DonationReplaceHint => ResourceManager.GetString("DonationReplaceHint", resourceCulture);
-        public static string DonationSubtitle => ResourceManager.GetString("DonationSubtitle", resourceCulture);
-        public static string DonationWeChat => ResourceManager.GetString("DonationWeChat", resourceCulture);
-        public static string DonationAlipay => ResourceManager.GetString("DonationAlipay", resourceCulture);
-        public static string DonationFooter => ResourceManager.GetString("DonationFooter", resourceCulture);
-        public static string SectionSupport => ResourceManager.GetString("SectionSupport", resourceCulture);
-        public static string Theme => ResourceManager.GetString("Theme", resourceCulture);
-        public static string ThemeLight => ResourceManager.GetString("ThemeLight", resourceCulture);
-        public static string ThemeDark => ResourceManager.GetString("ThemeDark", resourceCulture);
-        public static string ThemeSystem => ResourceManager.GetString("ThemeSystem", resourceCulture);
     }
 }

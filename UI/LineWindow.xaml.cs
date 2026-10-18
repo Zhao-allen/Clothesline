@@ -6,7 +6,6 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
-using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using System.Windows.Threading;
 using System.Windows.Forms;
@@ -51,7 +50,7 @@ internal partial class LineWindow : Window
         InitializeComponent();
         // Start tucked above the top edge. Must be set here (before Show)
         // so it never fights with the slide-in animation that Reveal starts.
-        SetSlideInstant(-Layout.PanelHeight - 12);
+        SlideTransform.Y = -Layout.PanelHeight - 12;
         SourceInitialized += (_, _) => ApplyWindowStyles();
         Loaded += (_, _) =>
         {
@@ -62,7 +61,6 @@ internal partial class LineWindow : Window
             _line.PropertyChanged += Line_PropertyChanged;
             _line.Fall += OnFall;
             _line.ThumbChanged += OnThumbChanged;
-            _line.Landed += OnLanded;
             foreach (var item in _line.Items) AddCard(item);
             LayoutItems();
         };
@@ -172,7 +170,7 @@ internal partial class LineWindow : Window
         UpdateRope();
     }
 
-    internal static double GetDpiForScreen(Screen screen)
+    private static double GetDpiForScreen(Screen screen)
     {
         try
         {
@@ -223,30 +221,14 @@ internal partial class LineWindow : Window
 
     private void OnFall(PeggedItem item)
     {
-        if (!_cards.TryGetValue(item.Id, out var card)) return;
-
-        int index = _line.Items.ToList().FindIndex(i => i.Id == item.Id);
-        if (index < 0) return;
-
-        double w = ActualWidth > 0 ? ActualWidth : Width;
-        double x = Layout.X(index, _line.Items.Count, w, _line.VisibleCount, _line.Scroll);
-        double ropeY = Layout.RopeY(x, w);
-        double cardH = Layout.PanelHeight - ropeY;
-        var from = new Rect(x - Layout.CardWidth / 2, ropeY - Layout.PinAbove, Layout.CardWidth, cardH);
-
-        card.Opacity = 0;
-
-        var screen = ScreenUnderPointer() ?? System.Windows.Forms.Screen.PrimaryScreen;
-        if (screen is not null)
-        {
-            FlightOverlay.Ensure(screen).StartFall(item, from, (BitmapSource)item.Thumb, () => { });
-        }
+        if (_cards.TryGetValue(item.Id, out var card)) card.Fall();
     }
 
-    private void OnLanded(Guid id)
-    {
-        if (_cards.TryGetValue(id, out var card)) card.Land();
-    }
+    /// <summary>
+    /// The file behind a card was rewritten (the annotation window saving over
+    /// the original). The card holds its own Image.Source, so it has to be
+    /// handed the fresh thumbnail explicitly.
+    /// </summary>
     private void OnThumbChanged(Guid id)
     {
         if (_cards.TryGetValue(id, out var card)) card.RefreshPhoto();
@@ -302,19 +284,20 @@ internal partial class LineWindow : Window
         }
     }
 
+    public new void Show()
+    {
+        if (IsPresent) return;
+        IsPresent = true;
+        base.Show();
+    }
+
     public void Present()
     {
+        if (IsPresent) return;
         IsPresent = true;
         Opacity = 1;
-        // Always go through base.Show(). There used to be a `new Show()` wrapper
-        // here that early-returned on IsPresent - so anything that set the flag
-        // first (Present itself, or SetRevealed) ended up with a window that
-        // counted as present but had no HWND behind it. IsPresent is our own
-        // bookkeeping, never the window's real state; Dismiss clears it and
-        // hides the window, which is a combination the flag alone cannot tell
-        // apart from "shown". base.Show() on an already-visible window is a
-        // no-op, so calling it unconditionally is safe.
-        base.Show();
+        if (IsRevealed) Show();
+        else base.Show();
     }
 
     public void Dismiss()
@@ -328,53 +311,25 @@ internal partial class LineWindow : Window
         });
     }
 
-    public void Reveal(bool pinned = false, double peekSeconds = 0, bool animate = true)
+    public void Reveal(bool pinned = false, double peekSeconds = 0)
     {
         if (!IsPresent) return;
         if (pinned) Pinned = true;
         if (peekSeconds > 0) _peekUntil = DateTime.Now.AddSeconds(peekSeconds);
         _awaySince = null;
-        SetRevealed(true, animate);
+        SetRevealed(true);
     }
 
-    public void SetRevealed(bool on, bool animate = true)
+    public void SetRevealed(bool on)
     {
-        // The early-out used to be `if (on == IsRevealed) return;`, which is
-        // wrong: IsRevealed and IsPresent are separate facts, and a window can
-        // be flagged revealed while not on screen - Dismiss() sets
-        // IsPresent=false but leaves the flag alone.
-        //
-        // So asking to reveal an already-revealed window still has to make
-        // sure it is present *and* where "revealed" says it is. Skipping that
-        // left captures hanging on a line nobody could see: the card was added
-        // (the log said "hung ... live=N"), ComeDown() asked for a reveal, and
-        // the flag said it was already done.
-        if (on == IsRevealed)
-        {
-            if (on)
-            {
-                Present();
-                // Flagged revealed but parked above the top edge is the same
-                // invisible line as one that was never shown. Snap it back -
-                // but only when it really is parked, so a slide already on its
-                // way down is left to finish.
-                if (SlideTransform.Y <= -Layout.PanelHeight) SetSlideInstant(0);
-            }
-            return;
-        }
-
-        double before = SlideTransform.Y;
-
+        if (on == IsRevealed) return;
         IsRevealed = on;
         _line.Revealed = on;
         if (on)
         {
             _line.Scroll = 0;
-            Present();
-            if (animate)
-                AnimateSlide(0, TimeSpan.FromMilliseconds(420));
-            else
-                SetSlideInstant(0);
+            Show();
+            AnimateSlide(0, TimeSpan.FromMilliseconds(420));
         }
         else
         {
@@ -387,41 +342,15 @@ internal partial class LineWindow : Window
             Pinned = false;
             _peekUntil = DateTime.MinValue;
         }
-
-        // Kept because it is the only way to see this class of failure from
-        // outside: the window reports IsVisible=true while the strip itself is
-        // translated off-screen. A reveal that does not end up at 0 is a bug.
-        Diag.Write("line", $"reveal={on} animate={animate} y {before:F0} -> {SlideTransform.Y:F0} visible={IsVisible}");
     }
 
     private void AnimateSlide(double to, TimeSpan duration)
     {
-        // A running or held animation on this property prevents a new one from
-        // starting reliably. Clear it first so the next BeginAnimation wins.
-        SlideTransform.BeginAnimation(TranslateTransform.YProperty, null);
         var anim = new DoubleAnimation(to, duration)
         {
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
         };
         SlideTransform.BeginAnimation(TranslateTransform.YProperty, anim);
-    }
-
-    /// <summary>
-    /// Parks the strip at <paramref name="y"/> with no animation.
-    ///
-    /// The animation has to be cleared first. AnimateSlide leaves a
-    /// DoubleAnimation holding its final value (FillBehavior.HoldEnd), and in
-    /// WPF's precedence list an animated value outranks the local one - so a
-    /// bare <c>SlideTransform.Y = 0</c> is accepted and then ignored, and the
-    /// strip stays parked above the top edge. That is exactly what broke the
-    /// instant reveal on a capture: ComeDown asked for Y=0, got -258, and the
-    /// line was invisible while IsRevealed said otherwise, which in turn made
-    /// the hover path think there was nothing left to reveal.
-    /// </summary>
-    private void SetSlideInstant(double y)
-    {
-        SlideTransform.BeginAnimation(TranslateTransform.YProperty, null);
-        SlideTransform.Y = y;
     }
 
     public void Toggle()
@@ -463,16 +392,7 @@ internal partial class LineWindow : Window
         // full-screen note there), which used to leave a fresh capture hanging
         // on a line that never came down.
         Present();
-
-        // 无论 PeeksAtNew 开关与否，新截图到达时都必须把绳子亮出来。
-        // 如果用户关闭 peek 开关，ComeDown 只做了 Present() 没 Reveal()，
-        // 绳子虽然 Show 了但停在屏幕上方，卡片就挂在看不见的绳子上 ——
-        // 这就是 Bug 2 "截图后图没立即挂在绳子上，要再 Toggle 才看得见" 的根因。
-        if (App.PeeksAtNew)
-            Reveal(peekSeconds: 2.5, animate: false);
-        else if (!IsRevealed)
-            Reveal(peekSeconds: 0, animate: true);
-
+        if (App.PeeksAtNew) Reveal(peekSeconds: 2.5);
         RequestRefresh?.Invoke();
     }
 
@@ -507,27 +427,13 @@ internal partial class LineWindow : Window
     private const double RevealDelay = 0.25;
     private const double RetractDelay = 0.5;
 
-    /// <summary>
-    /// How far below the top edge the pointer still counts as "at the menu
-    /// bar", in physical pixels.
-    ///
-    /// Was 2. That is one DIP at 96dpi and less at any scaling, so on a
-    /// 150% display the band was barely a pixel tall and the line often would
-    /// not come down at all - it looked like the hover trigger was broken
-    /// when it was really a target too small to hit. The original Tendedero
-    /// reveals as soon as the pointer enters the top couple of rows of the
-    /// screen; 8 physical pixels is close to that and still far enough down
-    /// that ordinary work near the top of a window does not trip it.
-    /// </summary>
-    private const int MenuBarBand = 8;
-
     private void Tick()
     {
         if (!NativeMethods.GetCursorPos(out var cursor)) return;
         var now = DateTime.Now;
 
         var screen = Screen.AllScreens.FirstOrDefault(s => s.Bounds.Contains(cursor.X, cursor.Y));
-        bool inTopBand = screen is not null && cursor.Y <= screen.Bounds.Top + MenuBarBand;
+        bool inTopBand = screen is not null && cursor.Y <= screen.Bounds.Top + 2;
 
         if (!inTopBand) _menuBarSuppressed = false;
 
@@ -566,8 +472,7 @@ internal partial class LineWindow : Window
         // not busy" and retracted the line after RetractDelay, which took the
         // menu with it.
         bool busy = Pinned || PeggedCard.IsDragging || _line.PressedId is not null
-                    || PeggedCard.IsMenuOpen || now < _peekUntil
-                    || (FlightOverlay.Instance?.IsAnimating == true);
+                    || PeggedCard.IsMenuOpen || now < _peekUntil;
         if (inside || busy)
         {
             _awaySince = null;

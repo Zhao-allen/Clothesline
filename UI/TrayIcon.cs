@@ -6,7 +6,6 @@ using System.Reflection;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Media;
-using System.Windows.Media.Effects;
 using System.Windows.Media.Imaging;
 using Clothesline.Models;
 using Clothesline.Services;
@@ -30,283 +29,30 @@ using WSolidBrush = System.Windows.Media.SolidColorBrush;
 using WScale = System.Windows.Media.ScaleTransform;
 using WTranslate = System.Windows.Media.TranslateTransform;
 
-// This file is mostly WinForms, but TrayTheme now also exposes WPF brushes
-// for the tray menu. Both namespaces are in scope because the project sets
-// UseWPF and UseWindowsForms, so name the WPF one explicitly.
-using Brush = System.Windows.Media.Brush;
-
 namespace Clothesline.UI;
 
 /// <summary>
-/// The tray menu palette, in both themes, taken from ui-redesign/02-main.
+/// The Win11 dark palette shared by the tray menu and its custom-painted
+/// parts (header strip, thumbnail strip, toggle switches).
 ///
-/// Two instances rather than one static set of fields, because the menu has
-/// to follow the Windows theme now: light and dark are the same design at
-/// different values, and keeping them side by side is the only way they stay
-/// in step. Read through <see cref="Current"/>; never a field directly.
-///
-/// Everything is translucent on purpose. The mockups' glass look
-/// (blur + saturate) cannot be reproduced by a WinForms drop-down, but a
-/// semi-transparent card still lets the desktop through where the surface is
-/// drawn, and opaque surfaces - the sub-menus - read as the raised layer
-/// above it.
-///
-/// This remains the single source of truth: CardMenuTheme in PeggedCard.cs
-/// adapts these to WPF brushes rather than restating them.
+/// This is the app's single source of truth for the dark theme. WPF surfaces
+/// do not restate these values: <see cref="CardMenuTheme"/> reads them and
+/// adapts them to WPF brushes, so the tray menu and the card's right-click
+/// menu cannot drift apart. Add a colour here, not in a UI file.
 /// </summary>
-internal sealed class TrayTheme
-{
-    // Card. Blurred, translucent, with a hairline that is white in dark and
-    // near-black in light - the trick that makes a light card visible on a
-    // light desktop.
-    public required GColor BgCard { get; init; }
-    public required int BgCardAlpha { get; init; }
-    public required GColor BgElevated { get; init; }
-    public required GColor BgHover { get; init; }
-    public required GColor Stroke { get; init; }
-    public required GColor StrokeSoft { get; init; }
-
-    public required GColor FgPrimary { get; init; }
-    public required GColor FgSecondary { get; init; }
-    public required GColor FgMuted { get; init; }
-
-    public required GColor Accent { get; init; }
-    public required GColor AccentSoft { get; init; }
-
-    /// <summary>
-    /// Indigo 700 / indigo 300 - the "add a folder" entry's ink. Darker than
-    /// <see cref="Accent"/> on purpose: 05-sub2 marks that row as an action
-    /// inside a list of choices, and the deeper indigo reads as a link rather
-    /// than as the selected state's #6366f1.
-    /// </summary>
-    public required GColor AccentStrong { get; init; }
-
-    public required GColor Danger { get; init; }
-
-    /// <summary>
-    /// The lighter red the mockups use for a destructive *value* rather than a
-    /// destructive label: "Empty the line" prints 清空 in #ef4444 while the quit
-    /// row prints 退出 in #dc2626. Two reds on purpose - one is a word inside a
-    /// row, the other is the row's own ink. In dark they collapse to the same
-    /// #f87171, which is what 02-main-dark does.
-    /// </summary>
-    public required GColor DangerValue { get; init; }
-
-    public required GColor KnobDark { get; init; }
-
-    /// <summary>Amber wash for the "buy me a coffee" row.</summary>
-    public required GColor CoffeeBg { get; init; }
-    /// <summary>Amber text and icon for that row.</summary>
-    public required GColor CoffeeFg { get; init; }
-
-    public static TrayTheme Light { get; } = new()
-    {
-        IsDarkSide = false,
-        // rgba(255,255,255,.62) - the mockup value, and legible here because
-        // a light card only ever lands on a light desktop.
-        BgCard = GColor.FromArgb(158, 255, 255, 255),
-        BgCardAlpha = 158,
-        BgElevated = GColor.FromArgb(235, 255, 255, 255),
-        BgHover = GColor.FromArgb(20, 15, 23, 42),          // rgba(15,23,42,.05)
-        Stroke = GColor.FromArgb(217, 255, 255, 255),      // rgba(255,255,255,.85)
-        StrokeSoft = GColor.FromArgb(20, 15, 23, 42),      // rgba(15,23,42,.08)
-
-        FgPrimary = GColor.FromArgb(15, 23, 42),           // #0f172a
-        FgSecondary = GColor.FromArgb(31, 41, 55),         // #1f2937
-        FgMuted = GColor.FromArgb(100, 116, 139),          // #64748b
-
-        Accent = GColor.FromArgb(99, 102, 241),            // #6366f1
-        AccentSoft = GColor.FromArgb(31, 99, 102, 241),
-        AccentStrong = GColor.FromArgb(67, 56, 202),       // #4338ca
-        Danger = GColor.FromArgb(220, 38, 38),             // #dc2626
-        DangerValue = GColor.FromArgb(239, 68, 68),        // #ef4444
-        KnobDark = GColor.FromArgb(255, 255, 255),
-
-        CoffeeBg = GColor.FromArgb(41, 245, 158, 11),      // rgba(245,158,11,.16)
-        CoffeeFg = GColor.FromArgb(154, 52, 18),           // #9a3412
-    };
-
-    public static TrayTheme Dark { get; } = new()
-    {
-        IsDarkSide = true,
-        // rgba(20,22,38,.55) - the mockup value. It is only safe now that the
-        // menu is a WPF Popup with AllowsTransparency: the old WinForms
-        // drop-down could not composite against the desktop, so the card had
-        // to be nearly opaque (.90) to keep its text readable. Still no real
-        // blur - see the note on the palette - so this is the glass look
-        // without the frost.
-        BgCard = GColor.FromArgb(140, 20, 22, 38),
-        BgCardAlpha = 140,
-        BgElevated = GColor.FromArgb(244, 30, 33, 52),
-        BgHover = GColor.FromArgb(15, 255, 255, 255),      // rgba(255,255,255,.06)
-        Stroke = GColor.FromArgb(26, 255, 255, 255),      // rgba(255,255,255,.10)
-        StrokeSoft = GColor.FromArgb(26, 255, 255, 255),
-
-        FgPrimary = GColor.FromArgb(248, 250, 252),        // #f8fafc
-        FgSecondary = GColor.FromArgb(226, 232, 240),      // #e2e8f0
-        FgMuted = GColor.FromArgb(148, 163, 184),          // #94a3b8
-
-        Accent = GColor.FromArgb(129, 140, 248),           // #818cf8
-        AccentSoft = GColor.FromArgb(46, 96, 165, 250),
-        AccentStrong = GColor.FromArgb(165, 180, 252),     // #a5b4fc
-        Danger = GColor.FromArgb(248, 113, 113),           // #f87171
-        DangerValue = GColor.FromArgb(248, 113, 113),      // #f87171
-        KnobDark = GColor.FromArgb(15, 23, 42),
-
-        CoffeeBg = GColor.FromArgb(56, 245, 158, 11),      // rgba(245,158,11,.22)
-        CoffeeFg = GColor.FromArgb(253, 230, 138),         // #fde68a
-    };
-
-    /// <summary>The palette in force right now.</summary>
-    public static TrayTheme Current => AppTheme.IsDark ? Dark : Light;
-
-    // MARK: WPF brushes
-    //
-    // The WPF tray menu (TrayMenuWpf) needs these as Media.Brush, and the
-    // GDI surfaces above need them as GColor. Both sets are derived from the
-    // same six GColor values rather than declared twice, so a colour cannot
-    // mean one thing in WPF and another in the old WinForms menu.
-
-    public Brush CardBrush => Frozen(BgCard);
-    public Brush ElevatedBrush => Frozen(BgElevated);
-    public Brush RowHoverBrush => Frozen(BgHover);
-    public Brush DividerBrush => Frozen(StrokeSoft);
-    public Brush CardBorderBrush => Frozen(Stroke);
-    public Brush ThumbBorderBrush => Frozen(StrokeSoft);
-
-    public Brush TitleBrush => Frozen(FgPrimary);
-    public Brush SubtitleBrush => Frozen(FgMuted);
-    public Brush RowTextBrush => Frozen(FgPrimary);
-    public Brush RowValueBrush => Frozen(FgMuted);
-    public Brush RowIconBrush => Frozen(FgSecondary);
-    public Brush ToggleKnobOnBrush => Frozen(GColor.FromArgb(255, 255, 255, 255));
-    public Brush ToggleKnobOffBrush => Frozen(FgMuted);
-    public Brush ToggleOnBrush => AccentBrush;
-    public Brush ToggleOffBrush => Frozen(IsDarkSide
-        ? GColor.FromArgb(255, 0x33, 0x41, 0x55)      // #334155
-        : GColor.FromArgb(255, 0xCB, 0xD5, 0xE1));    // #cbd5e1
-
-    public Brush AccentBrush => Frozen(Accent);
-    public Brush DangerBrush => Frozen(Danger);
-    public Brush DangerValueBrush => Frozen(DangerValue);
-    public Brush AccentStrongBrush => Frozen(AccentStrong);
-    public Brush CoffeeBrush => Frozen(CoffeeBg);
-    public Brush CoffeeTextBrush => Frozen(CoffeeFg);
-    public Brush CoffeeIconBrush => Frozen(CoffeeFg);
-
-    private Brush? _activeRowBrush;
-    private Brush? _checkBrush;
-
-    /// <summary>
-    /// The mockup's <c>.row.active</c>: the blue-to-indigo gradient a row wears
-    /// while the sub-menu it owns is open. White ink sits on top of it, which
-    /// is why every row that can go active keeps a handle on its own glyphs.
-    /// </summary>
-    public Brush ActiveRowBrush => _activeRowBrush ??= FreezeGradient(
-        WColor.FromArgb(235, 0x3B, 0x82, 0xF6),   // rgba(59,130,246,.92)
-        WColor.FromArgb(235, 0x63, 0x66, 0xF1));  // rgba(99,102,241,.92)
-
-    /// <summary>Ink for a row painted with <see cref="ActiveRowBrush"/>.</summary>
-    public Brush ActiveRowTextBrush => Frozen(WColor.FromRgb(0xFF, 0xFF, 0xFF));
-
-    /// <summary>
-    /// The mockup's <c>.check</c> / <c>.lbl</c> square: a 14-16px gradient tile
-    /// with a white tick. Used for "show the line" and for a selected
-    /// sub-menu entry, so both read as the same control.
-    /// </summary>
-    public Brush CheckBrush => _checkBrush ??= FreezeGradient(
-        WColor.FromRgb(0x3B, 0x82, 0xF6),         // #3b82f6
-        WColor.FromRgb(0x63, 0x66, 0xF1));        // #6366f1
-
-    private static Brush FreezeGradient(WColor from, WColor to)
-    {
-        // Fully qualified: System.Drawing.Drawing2D is also in scope here and
-        // it has its own LinearGradientBrush.
-        var brush = new System.Windows.Media.LinearGradientBrush(
-            new System.Windows.Media.GradientStopCollection
-            {
-                new System.Windows.Media.GradientStop(from, 0),
-                new System.Windows.Media.GradientStop(to, 1),
-            },
-            new WPoint(0, 0),
-            new WPoint(1, 1));
-        brush.Freeze();
-        return brush;
-    }
-
-    public Brush SheenBrush => IsDarkSide
-        ? Frozen(WColor.FromArgb(0x14, 0xFF, 0xFF, 0xFF))
-        : Frozen(WColor.FromArgb(0x45, 0xFF, 0xFF, 0xFF));
-
-    public WColor SheenColor => IsDarkSide
-        ? WColor.FromArgb(0x14, 0xFF, 0xFF, 0xFF)
-        : WColor.FromArgb(0x45, 0xFF, 0xFF, 0xFF);
-
-    public WColor LogoGradientStart => IsDarkSide
-        ? WColor.FromRgb(0x60, 0xA5, 0xFA)
-        : WColor.FromRgb(0x3B, 0x82, 0xF6);
-
-    public WColor LogoGradientEnd => IsDarkSide
-        ? WColor.FromRgb(0x81, 0x8C, 0xF8)
-        : WColor.FromRgb(0x63, 0x66, 0xF1);
-
-    public WColor BadgeGradientStart => IsDarkSide
-        ? WColor.FromArgb(0x2E, 0x60, 0xA5, 0xFA)
-        : WColor.FromArgb(0x1F, 0x3B, 0x82, 0xF6);
-
-    public WColor BadgeGradientEnd => IsDarkSide
-        ? WColor.FromArgb(0x2E, 0x81, 0x8C, 0xF8)
-        : WColor.FromArgb(0x1F, 0x63, 0x66, 0xF1);
-
-    public Brush BadgeTextBrush => IsDarkSide
-        ? Frozen(WColor.FromRgb(0xC7, 0xD2, 0xFE))
-        : Frozen(WColor.FromRgb(0x43, 0x38, 0xCA));
-
-    /// <summary>Which side of the pair this instance is, for the values above.</summary>
-    public bool IsDarkSide { get; init; }
-
-    /// <summary>True when the shadow should be black rather than slate.</summary>
-    public bool IsDarkShadow => IsDarkSide;
-
-    private static Brush Frozen(GColor c) => Frozen(WColor.FromArgb(c.A, c.R, c.G, c.B));
-
-    private static Brush Frozen(WColor c)
-    {
-        var b = new SolidColorBrush(c);
-        b.Freeze();
-        return b;
-    }
-
-    /// <summary>
-    /// The card colour with alpha forced opaque, for the places WinForms will
-    /// not take a translucent one: Control.BackColor and the drop-down's own
-    /// BackColor both throw ArgumentException on an alpha below 255.
-    ///
-    /// Surfaces that want the glass look paint it themselves in OnPaint with
-    /// <see cref="BgCard"/>; this is only for the property assignments that
-    /// sit behind those and still need a sane solid to erase with.
-    /// </summary>
-    public static GColor OpaqueCard => GColor.FromArgb(255,
-        Current.BgCard.R, Current.BgCard.G, Current.BgCard.B);
-}
-
-/// <summary>Kept as an alias so the rest of the file reads as before.</summary>
 internal static class TrayPalette
 {
-    public static GColor BgCard => TrayTheme.Current.BgCard;
-    public static GColor BgElevated => TrayTheme.Current.BgElevated;
-    public static GColor BgHover => TrayTheme.Current.BgHover;
-    public static GColor Stroke => TrayTheme.Current.Stroke;
-    public static GColor FgPrimary => TrayTheme.Current.FgPrimary;
-    public static GColor FgSecondary => TrayTheme.Current.FgSecondary;
-    public static GColor FgMuted => TrayTheme.Current.FgMuted;
-    public static GColor Accent => TrayTheme.Current.Accent;
-    public static GColor AccentSoft => TrayTheme.Current.AccentSoft;
-    public static GColor Danger => TrayTheme.Current.Danger;
-    public static GColor KnobDark => TrayTheme.Current.KnobDark;
-    public static GColor Coffee => TrayTheme.Current.CoffeeFg;
-    /// <summary>Opaque card, for the WinForms properties that reject alpha.</summary>
-    public static GColor BgCardOpaque => TrayTheme.OpaqueCard;
+    public static readonly GColor BgCard      = GColor.FromArgb(43, 43, 43);    // #2B2B2B
+    public static readonly GColor BgHover     = GColor.FromArgb(60, 60, 60);
+    public static readonly GColor BgElevated  = GColor.FromArgb(52, 52, 52);
+    public static readonly GColor FgPrimary   = GColor.FromArgb(255, 255, 255);
+    public static readonly GColor FgSecondary = GColor.FromArgb(200, 200, 200);
+    public static readonly GColor FgMuted     = GColor.FromArgb(138, 138, 138);
+    public static readonly GColor Accent      = GColor.FromArgb(76, 194, 255);  // #4CC2FF
+    public static readonly GColor AccentSoft  = GColor.FromArgb(40, 76, 194, 255);
+    public static readonly GColor Stroke      = GColor.FromArgb(61, 61, 61);    // #3D3D3D
+    public static readonly GColor Danger      = GColor.FromArgb(255, 153, 164);
+    public static readonly GColor KnobDark    = GColor.FromArgb(11, 42, 61);
 }
 
 /// <summary>
@@ -346,17 +92,6 @@ internal sealed class TrayIcon : IDisposable
     private MenuHeaderStrip? _header;
     private MenuThumbnailStrip? _thumbs;
 
-    /// <summary>
-    /// The WPF menu, which is what the user actually sees on right-click.
-    /// The WinForms strip is still built for <see cref="UiPreview"/> to render
-    /// off-screen, but it is no longer attached to the tray icon: a WinForms
-    /// drop-down cannot draw the mockups' glass, corners or translucency.
-    /// </summary>
-    private TrayMenuWpf? _menu;
-
-    /// <summary>Kept alive so the preview tool has a menu to render.</summary>
-    private ContextMenuStrip? _previewMenu;
-
     public TrayIcon(Line line, LineWindow window, bool showIcon = true)
     {
         _line = line;
@@ -367,48 +102,16 @@ internal sealed class TrayIcon : IDisposable
             Text = "Clothesline"
         };
         UpdateIcon();
-        // Still built (the preview tool renders exactly what the user sees),
-        // but no longer assigned to _icon.ContextMenuStrip.
-        _previewMenu = BuildMenu();
-        _menu = new TrayMenuWpf(line, window);
+        _icon.ContextMenuStrip = BuildMenu();
         _icon.MouseClick += (_, e) =>
         {
-            if (e.Button == MouseButtons.Left)
-            {
-                Diag.Write("tray", "tray icon left click -> toggle line");
-                try { _window.Toggle(); }
-                catch (Exception ex) { Diag.Error("tray", ex); }
-                return;
-            }
-
-            // Right-click opens the WPF menu. MouseUp rather than MouseClick:
-            // Click fires on Down, which would open the menu a beat before the
-            // shell's own "show menu" nudge and let it fight for focus.
-            if (e.Button == MouseButtons.Right)
-            {
-                Diag.Write("tray", "tray icon right click -> menu");
-                try { _menu?.Show(); }
-                catch (Exception ex) { Diag.Error("tray", ex); }
-            }
+            if (e.Button != MouseButtons.Left) return;
+            Diag.Write("tray", "tray icon left click -> toggle line");
+            try { _window.Toggle(); }
+            catch (Exception ex) { Diag.Error("tray", ex); }
         };
 
         I18n.Changed += Rebuild;
-        // The palette is resolved, not static: when Windows flips to dark (or
-        // the user picks one from the Theme sub-menu) the menu has to be
-        // rebuilt to repaint. Without this the choice would not take effect
-        // until the next launch.
-        AppTheme.Changed += OnThemeChanged;
-    }
-
-    /// <summary>
-    /// Rebuilds the menu and refreshes the card menu's styles. The card menu
-    /// caches its XAML per theme, so without this it would keep painting the
-    /// old palette until the next launch.
-    /// </summary>
-    private void OnThemeChanged()
-    {
-        CardMenuTheme.Refresh();
-        Rebuild();
     }
 
     public void UpdateIcon()
@@ -433,16 +136,10 @@ internal sealed class TrayIcon : IDisposable
         // owned by the strip rather than by the menu, so a rebuild (a language
         // change is enough to trigger one) would drop them on the floor.
         _thumbs?.Release();
-        _previewMenu?.Dispose();
+        _icon.ContextMenuStrip?.Dispose();
         ReleaseImages();
-        _previewMenu = BuildMenu();
+        _icon.ContextMenuStrip = BuildMenu();
         UpdateIcon();
-
-        // The WPF menu reads its palette and its localised strings when it
-        // builds, which it does on every open - so a language or theme change
-        // needs nothing here. It only has to close, otherwise it would sit on
-        // screen showing the old language under the cursor.
-        _menu?.Close();
     }
 
     private void ReleaseImages()
@@ -475,14 +172,6 @@ internal sealed class TrayIcon : IDisposable
     private const string IcoRefresh    = "M20 12a8 8 0 1 1-2.4-5.7M20 4v4h-4";
     private const string IcoWarning    = "M10.3 4.3 3.2 17a2 2 0 0 0 1.7 3h14.2a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0Z"
                                        + "M12 9.5v4.5M12 17.5h.01";
-    // A coffee cup: body, saucer, and two rising steam wisps.
-    private const string IcoCoffee     = "M4.5 8h11v6a4 4 0 0 1-4 4h-3a4 4 0 0 1-4-4z"
-                                       + "M15.5 9.5h1.8a2.2 2.2 0 0 1 0 4.4h-1.8"
-                                       + "M7 5.5c-.7-1.2.7-1.9 0-3M10.5 5.5c-.7-1.2.7-1.9 0-3"
-                                       + "M3 20.5h15";
-    // A palette: the dish, the thumb hole, and three wells of paint.
-    private const string IcoPalette    = "M12 3.5a8.5 8.5 0 1 0 0 17c1.4 0 2-1 2-2s-.6-2-2-2h-1a2 2 0 0 1 0-4h5.5A5 5 0 0 0 12 3.5Z"
-                                       + "M8.5 8.5h.01M6.5 12.5h.01M9.5 15.5h.01M13.5 7.5h.01";
 
     /// <summary>
     /// Rasterises an icon and takes ownership of the bitmap so it can be
@@ -504,15 +193,9 @@ internal sealed class TrayIcon : IDisposable
     /// </summary>
     internal ContextMenuStrip BuildMenu()
     {
-        // The mockups pin the menu at 340px. Left to auto-size, WinForms sizes
-        // to the widest row, so the card would be a different width in every
-        // language - "Save to Desktop" alone is much longer in Spanish than in
-        // Chinese. Locking the width keeps one card shape across all five.
-        const int MenuWidth = 340;
-
         var menu = new ContextMenuStrip
         {
-            Font = new GFont("Segoe UI Variable Display", 12.5f * 72f / 96f, GUnit.Point),
+            Font = new GFont("Segoe UI Variable Display", 10f, GUnit.Point),
             // No horizontal padding: rows run edge to edge (Win11 style) and
             // the header strip's divider can reach both sides. The vertical
             // inset does not live here either - ToolStripDropDownMenu
@@ -523,34 +206,30 @@ internal sealed class TrayIcon : IDisposable
             // ShowImageMargin MUST stay true: it is the column the per-row
             // icons live in now that the checkmarks are gone.
             ShowImageMargin = true,
-            // 14x14 in the mockups; WinForms still scales from a larger raster
-            // (see MakeIcon) so the stroke survives the reduction.
-            ImageScalingSize = new GSize(14, 14),
+            ImageScalingSize = new GSize(16, 16),
             Renderer = new ToolStripProfessionalRenderer(new TrayColorTable()),
             ForeColor = TrayPalette.FgPrimary,
-            BackColor = TrayPalette.BgCardOpaque
+            BackColor = TrayPalette.BgCard
         };
         _refreshers.Clear();
 
         // ── Header: name, version, watch state, live count ──
-        _header = new MenuHeaderStrip { Width = MenuWidth, Height = 58 };
+        _header = new MenuHeaderStrip { Width = 296, Height = 58 };
         var host = new ToolStripControlHost(_header)
         {
             AutoSize = false,
-            Size = new GSize(MenuWidth, 58),
+            Size = new GSize(296, 58),
             Margin = new Padding(0),
             Padding = new Padding(0)
         };
         menu.Items.Add(host);
 
         // ── Header thumbnail row ──
-        // 48px tall in the mockups, with the tiles sharing the width evenly
-        // rather than being a fixed 52x34 crop.
-        _thumbs = new MenuThumbnailStrip { Width = MenuWidth, Height = 48 };
+        _thumbs = new MenuThumbnailStrip { Width = 296, Height = 52 };
         menu.Items.Add(new ToolStripControlHost(_thumbs)
         {
             AutoSize = false,
-            Size = new GSize(MenuWidth, 48),
+            Size = new GSize(296, 52),
             Margin = new Padding(0),
             Padding = new Padding(0)
         });
@@ -711,31 +390,6 @@ internal sealed class TrayIcon : IDisposable
             SetValue(lang, current);
         });
 
-        // Light / dark / follow-the-system, the first entry of the APP group
-        // in the mockups. Setting AppTheme.Mode fires AppTheme.Changed, which
-        // this icon listens for, so the menu repaints without a restart.
-        var theme = MakeParent(I18n.Get("Theme"), IcoPalette);
-        theme.DropDownItems.Add(MakeRadio(I18n.Get("ThemeLight"),
-                                          () => AppTheme.Mode == ThemeChoice.Light,
-                                          () => AppTheme.Mode = ThemeChoice.Light));
-        theme.DropDownItems.Add(MakeRadio(I18n.Get("ThemeDark"),
-                                          () => AppTheme.Mode == ThemeChoice.Dark,
-                                          () => AppTheme.Mode = ThemeChoice.Dark));
-        theme.DropDownItems.Add(MakeRadio(I18n.Get("ThemeSystem"),
-                                          () => AppTheme.Mode == ThemeChoice.System,
-                                          () => AppTheme.Mode = ThemeChoice.System));
-        menu.Items.Add(theme);
-        _refreshers.Add(() =>
-        {
-            SetValue(theme, AppTheme.Mode switch
-            {
-                ThemeChoice.Light => I18n.Get("ThemeLight"),
-                ThemeChoice.Dark => I18n.Get("ThemeDark"),
-                _ => I18n.Get("ThemeSystem"),
-            });
-            theme.Image = LoadIcon(IcoPalette, TrayPalette.FgSecondary);
-        });
-
         AddSeparator(menu);
 
         // ── APP ──
@@ -769,20 +423,6 @@ internal sealed class TrayIcon : IDisposable
 
         AddSeparator(menu);
 
-        // ── SUPPORT ──
-        // Its own group in the mockups, kept apart from the settings above it:
-        // the one row in the menu that asks for something rather than
-        // configuring the app.
-        AddSection(menu, I18n.Get("SectionSupport"));
-
-        // Opens the codes directly, with no sub-menu: the mockups dropped the
-        // two-step WeChat/Alipay picker (10-sub7 is marked obsolete there).
-        var coffee = MakeItem(I18n.Get("BuyMeACoffee"), () => DonationWindow.ShowOrRaise(), IcoCoffee);
-        coffee.ForeColor = TrayPalette.Coffee;
-        menu.Items.Add(coffee);
-
-        AddSeparator(menu);
-
         var quit = MakeItem(I18n.Get("Quit"), () => App.Instance.ShutdownApp(), IcoWarning);
         quit.ForeColor = TrayPalette.Danger;
         menu.Items.Add(quit);
@@ -809,7 +449,7 @@ internal sealed class TrayIcon : IDisposable
     {
         menu.Items.Add(new ToolStripLabel(text)
         {
-            BackColor = TrayPalette.BgCardOpaque,
+            BackColor = TrayPalette.BgCard,
             ForeColor = TrayPalette.FgMuted,
             Font = new GFont("Segoe UI Variable Display", 8.5f, GFontStyle.Bold),
             Padding = new Padding(0, 8, 0, 3),
@@ -884,9 +524,9 @@ internal sealed class TrayIcon : IDisposable
             // and ImageScalingSize match the root strip, which is what makes
             // the two levels line up.
             drop.ShowImageMargin = true;
-            drop.ImageScalingSize = new GSize(14, 14);
+            drop.ImageScalingSize = new GSize(16, 16);
             drop.Font = new GFont("Segoe UI Variable Display", 10f, GUnit.Point);
-            drop.BackColor = TrayPalette.BgCardOpaque;
+            drop.BackColor = TrayPalette.BgCard;
             drop.ForeColor = TrayPalette.FgPrimary;
             drop.Renderer = new ToolStripProfessionalRenderer(new TrayColorTable());
         }
@@ -941,14 +581,8 @@ internal sealed class TrayIcon : IDisposable
     {
         // Set the font on every row: sub-menu rows live in their own
         // auto-created ContextMenuStrip whose font does not always inherit.
-        //
-        // 12.5px at 96dpi is the mockup's row text. Point sizes are the only
-        // thing GFont takes, so convert: px * 72 / 96.
-        item.Font = new GFont("Segoe UI Variable Display", 12.5f * 72f / 96f, GUnit.Point);
-        // 30px row height in the mockups, i.e. 12.5px text plus 8.75px above
-        // and below. Padding is in pixels and does not scale with font, so it
-        // is set to land on 30 rather than left to grow with the font.
-        item.Padding = new Padding(0, 8, 0, 8);
+        item.Font = new GFont("Segoe UI Variable Display", 10f, GUnit.Point);
+        item.Padding = new Padding(0, 6, 0, 6);
         item.Margin = new Padding(0);
         item.TextAlign = GAlign.MiddleLeft;
     }
@@ -1090,17 +724,12 @@ internal sealed class TrayIcon : IDisposable
         if (_disposed) return;
         _disposed = true;
         I18n.Changed -= Rebuild;
-        // Same for the theme: a static event holding a dead TrayIcon would
-        // keep the icon alive and repaint a menu nobody shows.
-        AppTheme.Changed -= OnThemeChanged;
         // Capture the icon before disposing the NotifyIcon: NotifyIcon does
         // not own its Icon, so the HICON behind it would leak otherwise.
         var icon = _icon.Icon;
         _thumbs?.Release();
         _icon.Visible = false;
-        _previewMenu?.Dispose();
-        _menu?.Dispose();
-        _menu = null;
+        _icon.ContextMenuStrip?.Dispose();
         ReleaseImages();
         _icon.Dispose();
         icon?.Dispose();
@@ -1251,7 +880,7 @@ internal sealed class MenuHeaderStrip : System.Windows.Forms.Control
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer
                  | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
-        BackColor = TrayPalette.BgCardOpaque;
+        BackColor = TrayPalette.BgCard;
     }
 
     public void SetCount(int count) => _count = count;
@@ -1389,7 +1018,7 @@ internal sealed class MenuThumbnailStrip : System.Windows.Forms.Control
     {
         SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer
                  | ControlStyles.UserPaint | ControlStyles.ResizeRedraw, true);
-        BackColor = TrayPalette.BgCardOpaque;
+        BackColor = TrayPalette.BgCard;
     }
 
     /// <summary>Re-reads the line. Bitmaps are converted once per menu open.</summary>
@@ -1446,14 +1075,7 @@ internal sealed class MenuThumbnailStrip : System.Windows.Forms.Control
         using (var bg = new GSolidBrush(TrayPalette.BgCard))
             g.FillRectangle(bg, ClientRectangle);
 
-        // Mockup metrics: 48px tall tiles, 6px gaps, 16px side inset, 9px
-        // radius. Unlike the old fixed 52x34 crop, the tiles share the
-        // available width (flex:1), so two cards get a wide pair instead of
-        // two narrow strips stranded in the middle.
-        const int th = 48, gap = 6, left = 16, top = 10;
-        const int slots = 3;
-        int usable = Width - left * 2;
-        int tw = (usable - gap * (slots - 1)) / slots;
+        const int tw = 52, th = 34, gap = 7, left = 16, top = 11;
 
         if (_thumbs.Count == 0)
         {
@@ -1466,7 +1088,7 @@ internal sealed class MenuThumbnailStrip : System.Windows.Forms.Control
             for (int i = 0; i < _thumbs.Count; i++)
             {
                 var box = new GRect(left + i * (tw + gap), top, tw, th);
-                using (var clip = ToggleRow.RoundRect(box, 9f))
+                using (var clip = ToggleRow.RoundRect(box, 4f))
                 {
                     var saved = g.Save();
                     g.SetClip(clip);
@@ -1480,7 +1102,7 @@ internal sealed class MenuThumbnailStrip : System.Windows.Forms.Control
             if (_extra > 0)
             {
                 var box = new GRect(left + _thumbs.Count * (tw + gap), top, tw, th);
-                using (var path = ToggleRow.RoundRect(box, 9f))
+                using (var path = ToggleRow.RoundRect(box, 4f))
                 {
                     using var fill = new GSolidBrush(TrayPalette.BgElevated);
                     g.FillPath(fill, path);

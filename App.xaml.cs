@@ -1,8 +1,6 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Forms;
-using System.Windows.Media.Imaging;
-using System.Windows.Threading;
 using Clothesline.Models;
 using Clothesline.Services;
 using Clothesline.UI;
@@ -21,9 +19,6 @@ internal partial class App : Application
     private List<ScreenshotWatcher> _folderWatchers = new();
     private ClipboardWatcher? _clipboardWatcher;
     private HotKey? _hotKey;
-    private System.Windows.Threading.DispatcherTimer? _cursorSampler;
-    private (int x, int y, DateTime t) _cursorSample;
-    private int _flightsInProgress;
 
     // v0.1.9: removed _screenshotHotKey and ScreenshotShortcut. The
     // screenshot flow is back to the user pressing Win+Shift+S themselves.
@@ -66,22 +61,7 @@ internal partial class App : Application
             if (args.ExceptionObject is Exception ex) Diag.Fatal("crash", ex);
             else Diag.Write("crash", $"non-CLR exception: {args.ExceptionObject}");
         };
-
-        // A dispatcher exception on the UI thread is normally fatal. For this
-        // app it must not be: the tray icon is the product, and losing it over
-        // a broken window leaves the user with nothing at all - not even a way
-        // to quit cleanly. Log it, keep running, and let whatever failed stay
-        // failed.
-        //
-        // This is deliberately not a blanket "swallow everything". The
-        // handlers above record the full stack to diag.log, and the donation
-        // window that used to crash here is now guarded at the source. This is
-        // the last line, not the first.
-        DispatcherUnhandledException += (_, args) =>
-        {
-            Diag.Fatal("crash", args.Exception);
-            args.Handled = true;
-        };
+        DispatcherUnhandledException += (_, args) => Diag.Fatal("crash", args.Exception);
         TaskScheduler.UnobservedTaskException += (_, args) => Diag.Fatal("task", args.Exception);
 
         Diag.Session($"v{TrayIcon.AppVersion} args=[{string.Join(" ", e.Args)}]");
@@ -126,21 +106,7 @@ internal partial class App : Application
         // produces (mirrors the original Tendedero design on macOS).
         _hotKey = HotKey.RegisterDefault(() => _window.Toggle());
 
-        // So "follow the system" actually follows: without this the resolved
-        // theme is only read once at launch and a Windows light/dark flip
-        // would not be picked up until the next start.
-        AppTheme.WatchSystemChanges();
-
         _tray = new TrayIcon(_line, _window);
-
-        // Cursor sampler for capture-flight origin (Tier 2 positioning).
-        _cursorSampler = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
-        _cursorSampler.Tick += (_, _) =>
-        {
-            if (NativeMethods.GetCursorPos(out var p))
-                _cursorSample = (p.X, p.Y, DateTime.Now);
-        };
-        _cursorSampler.Start();
 
         Diag.Write("app", $"ready - live={_line.LiveCount} clipboard={ClipboardWatcher.IsEnabled} " +
                           $"inbox={Inbox.IsEnabled} hotkey={(_hotKey is null ? "NONE" : _hotKey.DisplayString)}");
@@ -269,20 +235,7 @@ internal partial class App : Application
     {
         if (ClipboardWatcher.IsEnabled)
         {
-            _clipboardWatcher ??= new ClipboardWatcher(url =>
-            {
-                // The capture was just written into a watched folder. Tell
-                // every watcher that owns it so the folder scan does not
-                // announce the same file a second time - Hang() dedups the
-                // card, but the second pass still re-runs ComeDown and
-                // resets the peek timer on every clipboard capture. Adopt
-                // self-filters to its own folder, so calling it on all of
-                // them is safe.
-                _watcher?.Adopt(url);
-                _safetyWatcher?.Adopt(url);
-                foreach (var w in _folderWatchers) w.Adopt(url);
-                HangCapture(url);
-            });
+            _clipboardWatcher ??= new ClipboardWatcher(HangCapture);
             _clipboardWatcher.Start();
         }
         else
@@ -307,16 +260,10 @@ internal partial class App : Application
         _watcher = new ScreenshotWatcher(primary, HangCapture, _line.Prune);
         _watcher.Start();
 
-        // Safety: also watch the Desktop in case captures land there. The
-        // desktop holds mixed content, so this one is name-gated: only
-        // files that call themselves screenshots hang, everything else
-        // (a photo saved from an editor, a download dropped there) is
-        // left alone. The Inbox and the system Screenshots folder are
-        // dedicated capture locations and stay ungated.
+        // Safety: also watch the Desktop in case captures land there.
         if (Inbox.IsEnabled && !SamePath(primary, Inbox.DesktopFolder))
         {
-            _safetyWatcher = new ScreenshotWatcher(Inbox.DesktopFolder, HangCapture, _line.Prune,
-                                                   requireScreenshotName: true);
+            _safetyWatcher = new ScreenshotWatcher(Inbox.DesktopFolder, HangCapture, _line.Prune);
             _safetyWatcher.Start();
         }
 
@@ -342,78 +289,8 @@ internal partial class App : Application
         {
             var screen = LineWindow.ScreenUnderPointer();
             _window.ComeDown(screen);
-
-        bool fly = _flightsInProgress < 2;
-        var id = _line.Hang(path, flying: fly);
-
-        if (fly && id is not null)
-        {
-            _flightsInProgress++;
-            bool landed = false;
-            Action land = () =>
-            {
-                if (landed) return;
-                landed = true;
-                _line.Land(id.Value);
-                _flightsInProgress--;
-            };
-            StartFlight(id.Value, path, screen, land);
-
-            // 兜底：飞入动画因窗口隐藏（peek 期间）、CompositionTarget 未推进
-            // 等原因无法在合理时间内完成时，强制让卡片落到绳上，避免"截图后
-            // 图片迟迟不显示，要再开一次晾衣绳才看得见"的问题。
-            var guard = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1200) };
-            guard.Tick += (_, _) => { guard.Stop(); land(); };
-            guard.Start();
-        }
+            _line.Hang(path);
         });
-    }
-
-    private void StartFlight(Guid id, string path, Screen screen, Action onLanded)
-    {
-        int count = _line.Items.Count;
-        int index = _line.Items.ToList().FindIndex(i => i.Id == id);
-        if (index < 0) { onLanded(); return; }
-
-        double w = _window.Width;
-        double x = Layout.X(index, count, w, _line.VisibleCount, _line.Scroll);
-        double ropeY = Layout.RopeY(x, w);
-        double cardH = Layout.PanelHeight - ropeY;
-        var to = new Rect(x - Layout.CardWidth / 2, ropeY - Layout.PinAbove, Layout.CardWidth, cardH);
-
-        var photo = Thumbnail.Make(path, int.MaxValue);
-        if (photo is null) { onLanded(); return; }
-
-        var from = ComputeFromRect(photo, screen, to);
-        var item = _line.Items.First(i => i.Id == id);
-
-        FlightOverlay.Ensure(screen).StartFlight(item, from, to, photo, onLanded);
-    }
-
-    private Rect ComputeFromRect(BitmapSource photo, Screen screen, Rect to)
-    {
-        var bounds = screen.Bounds;
-        double scale = LineWindow.GetDpiForScreen(screen) / 96.0;
-        double screenW = bounds.Width / scale;
-        double screenH = bounds.Height / scale;
-        double imgW = photo.PixelWidth / scale;
-        double imgH = photo.PixelHeight / scale;
-
-        // Tier 1 — full-screen match
-        if (Math.Abs(imgW - screenW) / screenW < 0.01 && Math.Abs(imgH - screenH) / screenH < 0.01)
-            return new Rect(0, 0, screenW, screenH);
-
-        // Tier 2 — cursor anchor (bottom-right pinned to cursor)
-        var (cx, cy, t) = _cursorSample;
-        if ((DateTime.Now - t).TotalMilliseconds < 700)
-        {
-            double left = Math.Max(0, cx / scale - imgW);
-            double top = Math.Max(0, cy / scale - imgH);
-            return new Rect(left, top, imgW, imgH);
-        }
-
-        // Tier 3 — screen centre
-        return new Rect(screenW / 2 - imgW / 2, screenH / 2 - imgH / 2, imgW, imgH);
     }
 
     public void Refresh()
@@ -425,19 +302,8 @@ internal partial class App : Application
         // Dismiss() the line and turn the peek in ComeDown() into a no-op on a
         // hidden window - the capture hung, but the line never came down.
         bool showingNewCapture = _window.IsPeeking;
-
-        // Also protect a capture that is still flying in. The flight overlay
-        // runs for ~650ms, and BlocksLineUnderPointer() reads the foreground
-        // window during that window - the Snipping Tool overlay, or whatever
-        // the user clicked to take the shot - so a card mid-flight could be
-        // dismissed before it landed. The line is only hidden if the user has
-        // cards on it AND nothing new is arriving.
-        bool somethingArriving = showingNewCapture || _flightsInProgress > 0;
-
-        if (_window.Wanted && (!blocked || somethingArriving)) _window.Present();
-        else if (!blocked || somethingArriving) { /* not wanted: leave as is */ }
+        if (_window.Wanted && (!blocked || showingNewCapture)) _window.Present();
         else _window.Dismiss();
-
         if (_window.Wanted) _window.StartMouseTracking();
         else _window.StopMouseTracking();
     }

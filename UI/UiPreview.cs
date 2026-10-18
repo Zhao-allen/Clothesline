@@ -46,9 +46,6 @@ internal static class UiPreview
                 case "--export-menu":
                     RenderMenu(outputPath, demo);
                     return true;
-                case "--export-traymenu-wpf":
-                    RenderTrayMenuWpf(outputPath, demo);
-                    return true;
                 case "--export-annotation":
                     RenderAnnotation(outputPath);
                     return true;
@@ -61,9 +58,6 @@ internal static class UiPreview
                     // card lives in the inbox.
                     RenderCardMenu(outputPath, inbox: args.Length > 2
                         && string.Equals(args[2], "inbox", StringComparison.OrdinalIgnoreCase));
-                    return true;
-                case "--export-submenus":
-                    RenderSubmenus(outputPath);
                     return true;
                 case "--export-header":
                     RenderHeader(outputPath);
@@ -720,22 +714,12 @@ internal static class UiPreview
         window.Show();
         window.UpdateLayout();
         System.Windows.Forms.Application.DoEvents();
-        // The annotation window resizes itself on Loaded via BeginInvoke so
-        // the toolbar fits. That runs during DoEvents, but the layout pass
-        // that commits the new size is separate - a second flush is needed
-        // before we read RenderSize, or the capture is a frame behind.
-        window.UpdateLayout();
 
         var root = (Visual)window.Content;
         var size = ((FrameworkElement)root).RenderSize;
-        // If the async resize has not landed yet, the width is still the
-        // image plus shell margins, which clips the right-hand actions. Give
-        // it a generous floor so the preview cannot be cropped regardless of
-        // the timing of the dispatcher queue.
-        int w = Math.Max((int)Math.Ceiling(size.Width), 1200);
-        int h = (int)Math.Ceiling(size.Height);
         var rtb = new RenderTargetBitmap(
-            w, h, 96, 96, PixelFormats.Pbgra32);
+            (int)Math.Ceiling(size.Width), (int)Math.Ceiling(size.Height),
+            96, 96, PixelFormats.Pbgra32);
         rtb.Render(root);
 
         var encoder = new PngBitmapEncoder();
@@ -825,183 +809,5 @@ internal static class UiPreview
         rtb.Render(visual);
         rtb.Freeze();
         return rtb;
-    }
-
-    /// <summary>
-    /// Renders the WPF tray menu to a PNG.
-    ///
-    /// The menu is a Popup, and a Popup has its own top-level window that only
-    /// exists while it is open - so it cannot be handed to RenderTargetBitmap
-    /// the way an in-tree visual can. Instead the card is built the same way
-    /// TrayMenuWpf builds it, placed in a temporary window, measured and
-    /// rendered, then thrown away.
-    ///
-    /// This exists because the menu is now the app's most-seen surface and it
-    /// is built entirely in code: without this, a layout regression is
-    /// invisible until someone right-clicks the tray.
-    /// </summary>
-    private static void RenderTrayMenuWpf(string outputPath, bool demo)
-    {
-        var line = new Line();
-        if (demo)
-        {
-            for (int i = 0; i < 2; i++)
-                line.Items.Add(new PeggedItem($"demo-{i}.png", DemoThumb(i)));
-        }
-
-        var window = new LineWindow(line);
-        using var tray = new TrayIcon(line, window, showIcon: false);
-
-        // Force the WPF menu to exist and build its card.
-        var menu = new TrayMenuWpf(line, window);
-        var card = menu.BuildCardForPreview();
-        if (card is null) throw new InvalidOperationException("tray menu produced no card");
-
-        // A throwaway host to measure and render against. Never shown.
-        var host = new System.Windows.Window
-        {
-            Width = 1, Height = 1,
-            WindowStyle = System.Windows.WindowStyle.None,
-            ShowInTaskbar = false,
-            ShowActivated = false,
-            AllowsTransparency = true,
-            Background = Brushes.Transparent,
-            WindowState = System.Windows.WindowState.Minimized,
-            Left = -4000, Top = -4000,
-        };
-        host.Content = card;
-
-        // The card reserves a transparent margin so its shadow is not clipped
-        // by the popup. RenderTargetBitmap paints an element at its visual
-        // offset, so leaving that margin in shifts the card down-right and
-        // crops the same amount off the far edge - which looks exactly like a
-        // menu that is too narrow. Drop it for the measurement.
-        card.Margin = new Thickness(0);
-
-        card.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
-        card.Arrange(new System.Windows.Rect(0, 0, card.DesiredSize.Width, card.DesiredSize.Height));
-        card.UpdateLayout();
-
-        int w = (int)Math.Ceiling(card.ActualWidth);
-        int h = (int)Math.Ceiling(card.ActualHeight);
-        if (w <= 0 || h <= 0) throw new InvalidOperationException($"tray menu measured {w}x{h}");
-
-        var rtb = new RenderTargetBitmap(w, h, 96, 96, PixelFormats.Pbgra32);
-        rtb.Render(card);
-
-        var encoder = new PngBitmapEncoder();
-        encoder.Frames.Add(BitmapFrame.Create(rtb));
-        using var fs = File.Create(outputPath);
-        encoder.Save(fs);
-    }
-
-    /// <summary>
-    /// Renders the three sub-menu shapes side by side: the switch cascade, the
-    /// folder cascade (add / tick / danger) and a single-choice cascade.
-    ///
-    /// A sub-menu only exists while its parent row is hovered, so without this
-    /// there is no way to review one without a mouse - and the cascade is
-    /// rebuilt from scratch each time, which makes it easy to break silently.
-    /// </summary>
-    private static void RenderSubmenus(string outputPath)
-    {
-        var line = new Line();
-        var window = new LineWindow(line);
-        using var tray = new TrayIcon(line, window, showIcon: false);
-        var menu = new TrayMenuWpf(line, window);
-
-        // Each cascade carries its own SubKind because the mockups do not use one
-        // row height everywhere: 04 is 32px, 05 is 34px, and the single-choice
-        // cascades (06-09) are 36px with a larger label. The samples below also
-        // mirror the real rows - 05 really does paint 添加文件夹… in the indigo
-        // accent with a plus glyph, and 09 really does use sun/moon rather than a
-        // generic palette swatch - so a regression in either shows up here.
-        var specs = new (string Title, TrayMenuWpf.SubKind Kind,
-                         Func<IEnumerable<TrayMenuWpf.SubItem>> Items)[]
-        {
-            ("04 switches", TrayMenuWpf.SubKind.Toggle, () => new[]
-            {
-                new TrayMenuWpf.SubItem("当指针停在屏幕顶部", true, () => { },
-                                        Icon: MenuIcons.Line, IsToggle: true),
-                new TrayMenuWpf.SubItem("当有新内容挂上时", true, () => { },
-                                        Icon: MenuIcons.Camera, IsToggle: true),
-                new TrayMenuWpf.SubItem("覆盖全屏应用", false, () => { },
-                                        Icon: MenuIcons.Desktop, IsToggle: true),
-            }),
-            ("05 folders", TrayMenuWpf.SubKind.Folder, () => new[]
-            {
-                new TrayMenuWpf.SubItem("添加文件夹…", false, () => { },
-                                        Icon: MenuIcons.Plus, Accent: true),
-                new TrayMenuWpf.SubItem("Documents", true, () => { }),
-                new TrayMenuWpf.SubItem("停止监视", false, () => { },
-                                        Icon: MenuIcons.StopWatching, Danger: true),
-            }),
-            ("09 theme", TrayMenuWpf.SubKind.Choice, () => new[]
-            {
-                new TrayMenuWpf.SubItem("浅色", false, () => { }, Icon: MenuIcons.Sun),
-                new TrayMenuWpf.SubItem("深色", false, () => { }, Icon: MenuIcons.Moon),
-                new TrayMenuWpf.SubItem("跟随系统", true, () => { }, Icon: MenuIcons.Desktop),
-            }),
-        };
-
-        var row = new System.Windows.Controls.StackPanel
-        {
-            Orientation = System.Windows.Controls.Orientation.Horizontal,
-            Margin = new Thickness(8),
-        };
-
-        foreach (var spec in specs)
-        {
-            var card = menu.BuildSubCardForPreview(spec.Items, spec.Kind)
-                       ?? throw new InvalidOperationException($"{spec.Title} produced no card");
-            card.VerticalAlignment = System.Windows.VerticalAlignment.Top;
-            row.Children.Add(card);
-        }
-
-        var host = new System.Windows.Controls.Border
-        {
-            Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(0xEE, 0xF2, 0xFF)),
-            Child = row,
-        };
-
-        host.Measure(new System.Windows.Size(double.PositiveInfinity, double.PositiveInfinity));
-        host.Arrange(new System.Windows.Rect(0, 0, host.DesiredSize.Width, host.DesiredSize.Height));
-        host.UpdateLayout();
-
-        int w = (int)Math.Ceiling(host.ActualWidth);
-        int h = (int)Math.Ceiling(host.ActualHeight);
-        if (w <= 0 || h <= 0) throw new InvalidOperationException($"sub-menus measured {w}x{h}");
-
-        var rtb = new RenderTargetBitmap(w, h, 96, 96, PixelFormats.Pbgra32);
-        rtb.Render(host);
-
-        var encoder = new PngBitmapEncoder();
-        encoder.Frames.Add(BitmapFrame.Create(rtb));
-        using var fs = File.Create(outputPath);
-        encoder.Save(fs);
-    }
-
-    /// <summary>
-    /// Opens the donation window repeatedly, stealing focus from it each time.
-    ///
-    /// This reproduces a crash that reached users: closing from inside a
-    /// Deactivated handler - which can fire before the window has finished
-    /// coming up, or twice before the first Close lands - makes WPF throw
-    /// InvalidOperationException out of VerifyNotClosing. That exception went
-    /// unhandled on the dispatcher and took the tray icon with it, so the app
-    /// looked like it had simply died.
-    ///
-    /// The loop is the point: one open might survive, ten in a row with the
-    /// focus yanked away mid-open is what actually broke it. Exits non-zero if
-    /// anything throws.
-    /// </summary>
-
-    private static void Pump()
-    {
-        for (int i = 0; i < 3; i++)
-        {
-            System.Windows.Forms.Application.DoEvents();
-            System.Threading.Thread.Sleep(60);
-        }
     }
 }

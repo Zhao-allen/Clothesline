@@ -14,7 +14,7 @@
     <AssemblyName>Clothesline</AssemblyName>
     <!-- Without this the assembly version defaults to 1.0.0 and the tray
          menu header shows "v1.0.0". Kept in step with the release tag. -->
-    <Version>0.3.6</Version>
+    <Version>0.2.0</Version>
     <SatelliteResourceLanguages>en;es;zh;ja;fr</SatelliteResourceLanguages>
   </PropertyGroup>
 
@@ -23,7 +23,6 @@
          project by build.ps1 and the release workflow. The default **/*.cs
          glob would otherwise pull its WinForms sources into this WPF app. -->
     <Compile Remove="Setup/**/*.cs" />
-    <Page Remove="Setup/**/*.xaml" />
   </ItemGroup>
 
   <ItemGroup>
@@ -52,29 +51,6 @@
     <EmbeddedResource Update="Resources\Strings.fr.resx">
       <Generator></Generator>
     </EmbeddedResource>
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- Donation QR code.
-
-         Two entries on purpose:
-         * <Resource> embeds it in the assembly so the installed app always
-           finds it via pack://application:,,, regardless of layout.
-         * <Content> copies it next to the exe so the file fallback in
-           DonationWindow.LoadQrImage works when running from the build
-           output, and so the file is visible/editable for a user dropping in
-           their own code. -->
-    <Resource Include="Resources\donation_qr_wechat.png" />
-    <Content Include="Resources\donation_qr_wechat.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <TargetPath>Resources\donation_qr_wechat.png</TargetPath>
-    </Content>
-
-    <Resource Include="Resources\donation_qr_alipay.png" />
-    <Content Include="Resources\donation_qr_alipay.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <TargetPath>Resources\donation_qr_alipay.png</TargetPath>
-    </Content>
   </ItemGroup>
 
 </Project>

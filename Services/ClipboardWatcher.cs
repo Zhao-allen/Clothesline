@@ -135,25 +135,16 @@ internal sealed class ClipboardWatcher : IDisposable
         // Our own click-to-copy. Never hang it a second time.
         if (formats.Contains(OwnCopyFormat)) { reason = "our own copy"; return null; }
 
-        // Text and document copies render themselves as a picture (copying
-        // cells out of a spreadsheet, a selection out of a browser), and the
-        // original ignores anything riding along with text. A deliberate
-        // image copy is a different shape: browsers publish a real PNG
-        // stream *together with* the HTML fragment, so the old flat "any
-        // text means no" veto rejected every browser copy-image - a copy
-        // that should hang, since the original judges clipboard items one
-        // by one and the image item survives. Only veto text-carrying
-        // clipboards that lack a native PNG stream; that is the
-        // document-copy shape, not the copy-image shape.
-        // FileDrop is deliberately NOT in this list: the Windows Snipping
-        // Tool hands a Win+Shift+S capture over as a temporary PNG that is
-        // exposed as a file drop *as well as* an image, so rejecting
+        // Text and document copies also carry an image of themselves - copying
+        // cells out of a spreadsheet, a selection out of a browser - so those
+        // stay ignored. FileDrop is deliberately NOT in this list: the Windows
+        // Snipping Tool hands a Win+Shift+S capture over as a temporary PNG
+        // that is exposed as a file drop *as well as* an image, so rejecting
         // everything carrying a file drop threw away every single capture.
-        if (!formats.Contains("PNG") && !formats.Contains("image/png")
-            && (formats.Contains(DataFormats.Text) || formats.Contains(DataFormats.UnicodeText)
-                || formats.Contains(DataFormats.Html)))
+        if (formats.Contains(DataFormats.Text) || formats.Contains(DataFormats.UnicodeText)
+            || formats.Contains(DataFormats.Html))
         {
-            reason = "carries text/html and no native PNG stream";
+            reason = "carries text/html";
             return null;
         }
 

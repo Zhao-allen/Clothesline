@@ -82,7 +82,7 @@
   <data name="SectionBehavior" xml:space="preserve"><value>動作</value></data>
   <data name="SectionApp" xml:space="preserve"><value>アプリ</value></data>
   <data name="TakeScreenshot" xml:space="preserve"><value>スクリーンショットを撮る</value></data>
-  <data name="ClearLineHint" xml:space="preserve"><value>空にする</value></data>
+  <data name="ClearLineHint" xml:space="preserve"><value>ラインを空にする</value></data>
   <data name="OnLineCount" xml:space="preserve"><value>ライン上 {0} 枚</value></data>
   <data name="WatchingClipboard" xml:space="preserve"><value>クリップボードを監視中</value></data>
   <data name="ClipboardOff" xml:space="preserve"><value>監視はオフです</value></data>
@@ -119,17 +119,4 @@
 {0}</value></data>
   <data name="LoadFailedBody" xml:space="preserve"><value>画像を読み込めませんでした: {0}</value></data>
   <data name="SaveErrorBody" xml:space="preserve"><value>保存できませんでした: {0}</value></data>
-  <data name="BuyMeACoffee" xml:space="preserve"><value>コーヒーをおごる</value></data>
-  <data name="DonationTitle" xml:space="preserve"><value>作者にコーヒーをおごる</value></data>
-  <data name="DonationBody" xml:space="preserve"><value>あなたの支援が Clothesline を支えています。任意の金額を寄付してください。</value></data>
-  <data name="DonationReplaceHint" xml:space="preserve"><value>Resources/donation_qr.png を自分の QR コードに置き換えてください。</value></data>
-  <data name="DonationSubtitle" xml:space="preserve"><value>どちらかでスキャンしてください · ご支援ありがとう</value></data>
-  <data name="DonationWeChat" xml:space="preserve"><value>WeChat Pay</value></data>
-  <data name="DonationAlipay" xml:space="preserve"><value>Alipay</value></data>
-  <data name="DonationFooter" xml:space="preserve"><value>ご支援ありがとう</value></data>
-  <data name="SectionSupport" xml:space="preserve"><value>サポート</value></data>
-  <data name="Theme" xml:space="preserve"><value>テーマ</value></data>
-  <data name="ThemeLight" xml:space="preserve"><value>ライト</value></data>
-  <data name="ThemeDark" xml:space="preserve"><value>ダーク</value></data>
-  <data name="ThemeSystem" xml:space="preserve"><value>システム既定</value></data>
 </root>

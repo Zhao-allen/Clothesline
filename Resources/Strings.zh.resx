@@ -82,7 +82,7 @@
   <data name="SectionBehavior" xml:space="preserve"><value>行为</value></data>
   <data name="SectionApp" xml:space="preserve"><value>应用</value></data>
   <data name="TakeScreenshot" xml:space="preserve"><value>截取屏幕区域</value></data>
-  <data name="ClearLineHint" xml:space="preserve"><value>清空</value></data>
+  <data name="ClearLineHint" xml:space="preserve"><value>清空晾衣绳</value></data>
   <data name="OnLineCount" xml:space="preserve"><value>线上 {0} 张</value></data>
   <data name="WatchingClipboard" xml:space="preserve"><value>正在监视剪贴板</value></data>
   <data name="ClipboardOff" xml:space="preserve"><value>剪贴板监视已关</value></data>
@@ -119,17 +119,4 @@
 {0}</value></data>
   <data name="LoadFailedBody" xml:space="preserve"><value>无法加载图片：{0}</value></data>
   <data name="SaveErrorBody" xml:space="preserve"><value>保存失败：{0}</value></data>
-  <data name="BuyMeACoffee" xml:space="preserve"><value>请作者喝咖啡</value></data>
-  <data name="DonationTitle" xml:space="preserve"><value>请作者喝杯咖啡</value></data>
-  <data name="DonationBody" xml:space="preserve"><value>你的支持是我持续维护的动力。扫码即可打赏任意金额。</value></data>
-  <data name="DonationReplaceHint" xml:space="preserve"><value>替换 Resources/donation_qr.png 为你的收款码。</value></data>
-  <data name="DonationSubtitle" xml:space="preserve"><value>选择任意一种方式扫码支付 · 感谢你的支持</value></data>
-  <data name="DonationWeChat" xml:space="preserve"><value>微信支付</value></data>
-  <data name="DonationAlipay" xml:space="preserve"><value>支付宝</value></data>
-  <data name="DonationFooter" xml:space="preserve"><value>感谢你的支持</value></data>
-  <data name="SectionSupport" xml:space="preserve"><value>支持</value></data>
-  <data name="Theme" xml:space="preserve"><value>主题</value></data>
-  <data name="ThemeLight" xml:space="preserve"><value>浅色</value></data>
-  <data name="ThemeDark" xml:space="preserve"><value>深色</value></data>
-  <data name="ThemeSystem" xml:space="preserve"><value>跟随系统</value></data>
 </root>

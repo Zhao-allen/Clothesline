@@ -14,8 +14,6 @@ using Clothesline.Services;
 
 using Line = Clothesline.Models.Line;
 using Image = System.Windows.Controls.Image;
-using Brush = System.Windows.Media.Brush;
-using SolidColorBrush = System.Windows.Media.SolidColorBrush;
 using UserControl = System.Windows.Controls.UserControl;
 using MouseEventArgs = System.Windows.Input.MouseEventArgs;
 using HA = System.Windows.HorizontalAlignment;
@@ -320,10 +318,6 @@ internal sealed class PeggedCard : UserControl, IDisposable
 
     public void UpdateFade(double x, double width)
     {
-        // 飞入过程中卡片由 Arrive() 隐藏、着陆后由 Land() 淡入。这里若直接
-        // 改写 Opacity，会抢在 Land 之前把飞行中的卡片亮出来（飞入缩略图和
-        // 绳上卡片叠在一起），或在 Land 之后又被布局覆盖。飞入期间交还控制权。
-        if (_item.Flying) { Opacity = 0; return; }
         double fade = Math.Min(1, Math.Max(0, Math.Min(x, width - x) / 90.0));
         Opacity = fade;
     }
@@ -337,28 +331,18 @@ internal sealed class PeggedCard : UserControl, IDisposable
 
     private void Arrive()
     {
-        if (_item.Flying) { Opacity = 0; return; }
+        if (_item.Flying) return;
         _arrival.Y = -46;
-        _swing.Angle = 16 + _item.Tilt;
+        _swing.Angle = 16;
         var drop = new DoubleAnimation(0, TimeSpan.FromMilliseconds(420))
         {
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
         };
         _arrival.BeginAnimation(TranslateTransform.YProperty, drop);
-        SwingTo(_item.Tilt, TimeSpan.FromMilliseconds(600));
+        SwingTo(0, TimeSpan.FromMilliseconds(600));
     }
 
-    public void Land()
-    {
-        Opacity = 0;
-        var fade = new DoubleAnimation(1, TimeSpan.FromMilliseconds(160))
-        {
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut },
-            FillBehavior = FillBehavior.Stop
-        };
-        BeginAnimation(OpacityProperty, fade);
-        Nudge(2.2);
-    }
+    public void Land() => Nudge(2.2);
 
     /// <summary>
     /// The card lets go of the line: it swings, accelerates downward and
@@ -376,7 +360,7 @@ internal sealed class PeggedCard : UserControl, IDisposable
         };
         _arrival.BeginAnimation(TranslateTransform.YProperty, dropAnim);
 
-        var swingAnim = new DoubleAnimation(_item.Tilt * 8 + 20, duration)
+        var swingAnim = new DoubleAnimation(40, duration)
         {
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
         };
@@ -398,12 +382,12 @@ internal sealed class PeggedCard : UserControl, IDisposable
 
     private void Nudge(double degrees)
     {
-        var outAnim = new DoubleAnimation(_item.Tilt + degrees, TimeSpan.FromMilliseconds(300))
+        var outAnim = new DoubleAnimation(degrees, TimeSpan.FromMilliseconds(300))
         {
             EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
         };
         _swing.BeginAnimation(RotateTransform.AngleProperty, outAnim);
-        Task.Delay(300).ContinueWith(_ => Dispatcher.Invoke(() => SwingTo(_item.Tilt, TimeSpan.FromMilliseconds(500))));
+        Task.Delay(300).ContinueWith(_ => Dispatcher.Invoke(() => SwingTo(0, TimeSpan.FromMilliseconds(500))));
     }
 
     private void SwingTo(double degrees, TimeSpan duration)
@@ -438,13 +422,11 @@ internal sealed class PeggedCard : UserControl, IDisposable
             {
                 _didLongPress = true;
                 _line.PressedId = null;
-                Services.Diag.Write("card", $"hold fired -> markup {System.IO.Path.GetFileName(_item.Url)}");
                 _line.Markup(_item.Id);
             }
         };
         _holdTimer.Start();
         CaptureMouse();
-        Services.Diag.Write("card", $"press down at {_downPoint.X:F0},{_downPoint.Y:F0}");
     }
 
     private void OnMouseMove(object sender, MouseEventArgs e)
@@ -639,81 +621,41 @@ internal sealed class PeggedCard : UserControl, IDisposable
         var menu = new ContextMenu { Style = CardMenuTheme.MenuStyle };
         var inInbox = line.IsInInbox(item.Id);
 
-        // Icons on every row, per 01-ctx: a menu that has to be read is slower
-        // than one that can be scanned. The glyphs are the tray menu's, read
-        // from MenuIcons so the two surfaces cannot drift.
-        var copy = AddItem(menu, I18n.Get("Copy"), () => line.Copy(item.Id), MenuIcons.Copy);
-        copy.InputGestureText = "Ctrl+C";
-        AddItem(menu, I18n.Get("Open"), () => line.Open(item.Id), MenuIcons.Folder);
+        AddItem(menu, I18n.Get("Copy"), () => line.Copy(item.Id));
+        AddItem(menu, I18n.Get("Open"), () => line.Open(item.Id));
         if (!item.IsRecording)
-            AddItem(menu, I18n.Get("Edit"), () => line.Markup(item.Id), MenuIcons.Pen);
-        AddItem(menu, I18n.Get("ShowInExplorer"), () => line.Reveal(item.Id), MenuIcons.Search);
-
-        // Save to desktop is always offered, per 01-ctx - the mockup draws one
-        // canonical menu, not two, so a row that vanishes depending on where
-        // the file happens to live is a surprise. What it *does* differs by
-        // origin, because a move means something different in each place:
-        //   inbox capture  - the inbox is staging, so the file moves out to
-        //                    the desktop and the card leaves the line (this
-        //                    has always been the behaviour);
-        //   watched folder - the file is the user's own, so it is copied. A
-        //                    move here would silently relocate a file out of
-        //                    the folder they pointed us at.
-        // Line.SaveToDesktop owns that branch so the menu stays declarative.
-        AddItem(menu, I18n.Get("SaveToDesktop"), () => line.SaveToDesktop(item.Id), MenuIcons.Desktop);
+            AddItem(menu, I18n.Get("Edit"), () => line.Markup(item.Id));
+        AddItem(menu, I18n.Get("ShowInExplorer"), () => line.Reveal(item.Id));
+        if (inInbox)
+            AddItem(menu, I18n.Get("SaveToDesktop"), () => line.SaveToDesktop(item.Id));
 
         AddSeparator(menu);
-
-        // Two rows outside the inbox, one inside it. That asymmetry is
-        // deliberate and this comment is the record of the decision: outside
-        // the inbox, "take down" (drop from the line, file untouched) and
-        // "move to trash" (drop and recycle the file) are genuinely different
-        // outcomes, and collapsing them into the mockup's single 丢弃 row
-        // would make one label mean two things. Inside the inbox the file is
-        // ours to recycle, so there is only one sensible outcome and the
-        // single 丢弃 row is right. The mockup only draws the inbox case.
         if (inInbox)
         {
             // In the inbox, Discard recycles the file, so it is the
             // destructive row here.
-            AddItem(menu, I18n.Get("Discard"), () => line.Discard(item.Id), MenuIcons.Clear, danger: true);
+            AddItem(menu, I18n.Get("Discard"), () => line.Discard(item.Id), danger: true);
         }
         else
         {
-            AddItem(menu, I18n.Get("TakeDown"), () => line.Discard(item.Id), MenuIcons.Line);
-            AddItem(menu, I18n.Get("MoveToTrash"), () => line.Trash(item.Id), MenuIcons.Clear, danger: true);
+            AddItem(menu, I18n.Get("TakeDown"), () => line.Discard(item.Id));
+            AddItem(menu, I18n.Get("MoveToTrash"), () => line.Trash(item.Id), danger: true);
         }
 
-        // Mockup 01-ctx separates the discard group from the take-down group.
-        AddSeparator(menu);
-
-        var left = AddItem(menu, I18n.Get("TakeDownLeft"), () => line.TakeDown(item.Id, true), MenuIcons.ChevronLeft);
+        var left = AddItem(menu, I18n.Get("TakeDownLeft"), () => line.TakeDown(item.Id, true));
         left.IsEnabled = line.Neighbours(item.Id, true).Count > 0;
-        var right = AddItem(menu, I18n.Get("TakeDownRight"), () => line.TakeDown(item.Id, false), MenuIcons.ChevronRight);
+        var right = AddItem(menu, I18n.Get("TakeDownRight"), () => line.TakeDown(item.Id, false));
         right.IsEnabled = line.Neighbours(item.Id, false).Count > 0;
 
         return menu;
     }
 
-    private static MenuItem AddItem(ContextMenu menu, string header, Action action,
-                                    MenuIcons.Entry icon, bool danger = false)
+    private static MenuItem AddItem(ContextMenu menu, string header, Action action, bool danger = false)
     {
         var item = new MenuItem
         {
             Header = header,
-            Style = danger ? CardMenuTheme.DangerItemStyle : CardMenuTheme.MenuItemStyle,
-            // The icon is a stroked path in a 24x24 box, drawn at 16px to match
-            // the mockup. Icon takes a ImageSource, so the geometry is rendered
-            // to a bitmap first - the same conversion MenuIcons serves for the
-            // tray menu's WinForms rows.
-            Icon = new Image
-            {
-                Source = MenuIcons.Render(icon, TrayTheme.Current.RowIconBrush, 16),
-                Width = 16,
-                Height = 16,
-                Stretch = Stretch.Uniform,
-                VerticalAlignment = VA.Center,
-            },
+            Style = danger ? CardMenuTheme.DangerItemStyle : CardMenuTheme.MenuItemStyle
         };
         item.Click += (_, _) => action();
         menu.Items.Add(item);
@@ -769,152 +711,73 @@ internal sealed class PeggedCard : UserControl, IDisposable
 ///   1px #3D3D3D hairline for both the shell border and separators
 ///   #8A8A8A for a disabled row, #FF99A4 for a destructive one
 /// </summary>
-/// <summary>
-/// The card's right-click menu, to ui-redesign/01-ctx.
-///
-/// 260px wide, 20px shell radius, 40px rows at 10px radius, a 16px icon on
-/// every row, the shortcut right-aligned and dimmed, and a red danger row.
-///
-/// The values used to be hardcoded here - a second copy of the same numbers
-/// that lived in TrayIcon, which drifted the moment either side moved. They
-/// are now generated from <see cref="TrayTheme"/> each time the theme
-/// changes, so the card menu, the tray menu and the mockups cannot disagree.
-/// The styles are built once per theme and cached: XamlReader is far too slow
-/// to run on every right-click.
-/// </summary>
 public static class CardMenuTheme
 {
-    private static bool _dark = true;
-    private static Style? _menu;
-    private static Style? _row;
-    private static Style? _dangerRow;
-    private static Style? _separator;
-
-    /// <summary>
-    /// Builds (or rebuilds) the styles for the theme in force. Called when the
-    /// app starts and again whenever <see cref="AppTheme.Changed"/> fires, so
-    /// a theme switch repaints the card menu too.
-    /// </summary>
-    public static void Refresh()
-    {
-        if (AppTheme.IsDark == _dark && _menu is not null) return;
-        _dark = AppTheme.IsDark;
-        var t = TrayTheme.Current;
-
-        // Hex, because XAML is a string. The palette hands back frozen WPF
-        // brushes; the palette builds them all as solid colours, so a cast is
-        // safe - and it keeps this file free of a second colour type.
-        string Hex(Brush b) => b is SolidColorBrush solid
-            ? $"#{solid.Color.A:X2}{solid.Color.R:X2}{solid.Color.G:X2}{solid.Color.B:X2}"
-            : "#00000000";
-
-        var card = Hex(t.CardBrush);
-        var border = Hex(t.CardBorderBrush);
-        var text = Hex(t.RowTextBrush);
-        var muted = Hex(t.RowValueBrush);
-        var hover = Hex(t.RowHoverBrush);
-        var divider = Hex(t.DividerBrush);
-        var danger = Hex(t.DangerBrush);
-
-        // Opacity is the only place the mockup's translucency has to be
-        // fudged. A ContextMenu is a real popup window, so it cannot blur what
-        // is behind it the way backdrop-filter does; at the mockup's .62 the
-        // light card averages against the desktop and its text loses contrast.
-        // The shell is therefore painted at the palette's card colour, which
-        // is already raised for exactly this reason.
-        var xaml = $@"
+    private const string Xaml = @"
 <ResourceDictionary
     xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'
     xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'>
 
-  <!-- Shell: 260 wide, radius 20, hairline border, layered shadow. The 28px
-       margin is what keeps the 50px blur from being clipped by the popup's
-       own bounds - a ContextMenu clips its content to the window.
-
-       The width therefore has to be 260 + 2x28: setting it to a flat 260 and
-       then insetting by 28 left the visible card 204 wide, which truncated
-       the longest row label. The offsets pull the window back so the card
-       still lands under the cursor. -->
+  <!-- Shell. 8px radius and a 1px hairline: the Win11 dark silhouette. The
+       6px transparent ring is there so the drop shadow has room to draw
+       instead of being clipped at the popup edge. -->
   <Style x:Key='CardMenu' TargetType='ContextMenu'>
-    <Setter Property='Width' Value='316'/>
-    <Setter Property='HorizontalOffset' Value='-28'/>
-    <Setter Property='VerticalOffset' Value='-28'/>
-    <Setter Property='Background' Value='Transparent'/>
-    <Setter Property='Foreground' Value='{text}'/>
+    <Setter Property='Background' Value='#2B2B2B'/>
+    <Setter Property='Foreground' Value='#FFFFFF'/>
     <Setter Property='FontFamily' Value='Segoe UI Variable Display, Segoe UI'/>
-    <Setter Property='FontSize' Value='13.5'/>
+    <Setter Property='FontSize' Value='13.33'/>
     <Setter Property='SnapsToDevicePixels' Value='True'/>
     <Setter Property='UseLayoutRounding' Value='True'/>
-    <Setter Property='HasDropShadow' Value='False'/>
+    <Setter Property='HasDropShadow' Value='True'/>
     <Setter Property='Template'>
       <Setter.Value>
         <ControlTemplate TargetType='ContextMenu'>
-          <Border Margin='28' SnapsToDevicePixels='True'>
-            <Border CornerRadius='20' Background='{card}'
-                    BorderBrush='{border}' BorderThickness='1'
-                    Padding='10' SnapsToDevicePixels='True'>
-              <Border.Effect>
-                <DropShadowEffect Color='#0F172A' Opacity='{(_dark ? "0.55" : "0.25")}'
-                                  BlurRadius='50' ShadowDepth='12' Direction='270'/>
-              </Border.Effect>
-              <ItemsPresenter/>
-            </Border>
+          <Border Margin='6' Padding='0,5,0,5'
+                  Background='#2B2B2B'
+                  BorderBrush='#3D3D3D'
+                  BorderThickness='1'
+                  CornerRadius='8'
+                  SnapsToDevicePixels='True'>
+            <Border.Effect>
+              <DropShadowEffect Color='#000000' Opacity='0.45' BlurRadius='14'
+                                ShadowDepth='3' Direction='270'/>
+            </Border.Effect>
+            <ItemsPresenter/>
           </Border>
         </ControlTemplate>
       </Setter.Value>
     </Setter>
   </Style>
 
-  <!-- Row: 40 tall, 10 radius, icon gutter on the left, shortcut on the
-       right. The 12px gap is the mockup's, so an icon and its label read as
-       one unit rather than two columns.
-
-       The shortcut column asks for tabular figures (font-variant-numeric:
-       tabular-nums in the mockup). Proportional digits give Ctrl+C and a
-       future Ctrl+Shift+C different widths per digit, which makes the
-       right edge of the column ragged; Tabular pins every digit to the same
-       advance. Segoe UI carries the tnum feature, so this is honoured
-       rather than quietly dropped - and if a fallback font lacks it, WPF
-       ignores the request instead of substituting a different face. -->
+  <!-- Row. 13.33px text plus 7px above and below lands on the tray menu's
+       34px row, and MinHeight keeps the click target above 32px. -->
   <Style x:Key='CardRow' TargetType='MenuItem'>
-    <Setter Property='Foreground' Value='{text}'/>
+    <Setter Property='Foreground' Value='#FFFFFF'/>
     <Setter Property='FontFamily' Value='Segoe UI Variable Display, Segoe UI'/>
-    <Setter Property='FontSize' Value='13.5'/>
-    <Setter Property='FontWeight' Value='Medium'/>
+    <Setter Property='FontSize' Value='13.33'/>
     <Setter Property='SnapsToDevicePixels' Value='True'/>
     <Setter Property='Template'>
       <Setter.Value>
         <ControlTemplate TargetType='MenuItem'>
-          <Border x:Name='Bd' Height='40' Margin='0,1,0,1' Padding='14,0,14,0'
-                  CornerRadius='10' Background='Transparent'
-                  SnapsToDevicePixels='True'>
-            <Grid>
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width='Auto'/>
-                <ColumnDefinition Width='*'/>
-                <ColumnDefinition Width='Auto'/>
-              </Grid.ColumnDefinitions>
-              <ContentPresenter Grid.Column='0' ContentSource='Icon'
-                                Margin='0,0,12,0'
-                                VerticalAlignment='Center'
-                                RecognizesAccessKey='False'/>
-              <ContentPresenter Grid.Column='1' ContentSource='Header'
-                                VerticalAlignment='Center'
-                                RecognizesAccessKey='False'
-                                TextElement.Foreground='{{TemplateBinding Foreground}}'/>
-              <TextBlock Grid.Column='2' Margin='12,0,0,0' FontSize='11.5'
-                         Opacity='0.5' VerticalAlignment='Center'
-                         Typography.NumeralAlignment='Tabular'
-                         Text='{{Binding InputGestureText, RelativeSource={{RelativeSource AncestorType=MenuItem}}}}'
-                         TextElement.Foreground='{muted}'/>
-            </Grid>
+          <Border x:Name='Bd'
+                  Margin='4,1,4,1'
+                  Padding='8,7,8,7'
+                  MinHeight='32'
+                  CornerRadius='4'
+                  Background='Transparent'
+                  SnapsToDevicePixels='True'
+                  TextElement.Foreground='{TemplateBinding Foreground}'>
+            <ContentPresenter ContentSource='Header'
+                              RecognizesAccessKey='False'
+                              VerticalAlignment='Center'
+                              TextElement.Foreground='{TemplateBinding Foreground}'/>
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property='IsHighlighted' Value='True'>
-              <Setter TargetName='Bd' Property='Background' Value='{hover}'/>
+              <Setter TargetName='Bd' Property='Background' Value='#3C3C3C'/>
             </Trigger>
             <Trigger Property='IsEnabled' Value='False'>
-              <Setter Property='Foreground' Value='{muted}'/>
+              <Setter Property='Foreground' Value='#8A8A8A'/>
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -922,88 +785,45 @@ public static class CardMenuTheme
     </Setter>
   </Style>
 
-  <!-- Destructive row: same metrics, danger ink, and a red wash on hover so
-       the row reads as destructive before it is clicked. -->
-  <Style x:Key='CardRowDanger' TargetType='MenuItem' BasedOn='{{StaticResource CardRow}}'>
-    <Setter Property='Foreground' Value='{danger}'/>
-    <Setter Property='Template'>
-      <Setter.Value>
-        <ControlTemplate TargetType='MenuItem'>
-          <Border x:Name='Bd' Height='40' Margin='0,1,0,1' Padding='14,0,14,0'
-                  CornerRadius='10' Background='Transparent'
-                  SnapsToDevicePixels='True'>
-            <Grid>
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width='Auto'/>
-                <ColumnDefinition Width='*'/>
-                <ColumnDefinition Width='Auto'/>
-              </Grid.ColumnDefinitions>
-              <ContentPresenter Grid.Column='0' Margin='0,0,12,0'
-                                VerticalAlignment='Center' RecognizesAccessKey='False'/>
-              <ContentPresenter Grid.Column='1' ContentSource='Header'
-                                VerticalAlignment='Center' RecognizesAccessKey='False'
-                                TextElement.Foreground='{{TemplateBinding Foreground}}'/>
-              <TextBlock Grid.Column='2' Margin='12,0,0,0' FontSize='11.5'
-                         Opacity='0.5' VerticalAlignment='Center'
-                         Typography.NumeralAlignment='Tabular'
-                         Text='{{Binding InputGestureText, RelativeSource={{RelativeSource AncestorType=MenuItem}}}}'
-                         TextElement.Foreground='{muted}'/>
-            </Grid>
-          </Border>
-          <ControlTemplate.Triggers>
-            <Trigger Property='IsHighlighted' Value='True'>
-              <Setter TargetName='Bd' Property='Background' Value='#14DC2626'/>
-            </Trigger>
-            <Trigger Property='IsEnabled' Value='False'>
-              <Setter Property='Foreground' Value='{muted}'/>
-            </Trigger>
-          </ControlTemplate.Triggers>
-        </ControlTemplate>
-      </Setter.Value>
-    </Setter>
+  <!-- Destructive row: identical metrics, danger ink. A trigger in the base
+       template still wins over this setter, so a disabled danger row greys
+       out instead of staying pink. -->
+  <Style x:Key='CardRowDanger' TargetType='MenuItem' BasedOn='{StaticResource CardRow}'>
+    <Setter Property='Foreground' Value='#FF99A4'/>
   </Style>
 
-  <!-- Separator: 1px, 6 above and below, 8 inset from each side. -->
+  <!-- Separator. 8px side inset, the same as the tray menu's. -->
   <Style x:Key='CardSeparator' TargetType='Separator'>
     <Setter Property='Template'>
       <Setter.Value>
         <ControlTemplate TargetType='Separator'>
-          <Border Height='1' Margin='8,6,8,6'
-                  Background='{divider}' SnapsToDevicePixels='True'/>
+          <Border Height='1' Margin='8,4,8,4'
+                  Background='#3D3D3D'
+                  SnapsToDevicePixels='True'/>
         </ControlTemplate>
       </Setter.Value>
     </Setter>
   </Style>
 </ResourceDictionary>";
 
-        var dict = (ResourceDictionary)XamlReader.Parse(xaml);
-        _menu = (Style)dict["CardMenu"];
-        _row = (Style)dict["CardRow"];
-        _dangerRow = (Style)dict["CardRowDanger"];
-        _separator = (Style)dict["CardSeparator"];
+    static CardMenuTheme()
+    {
+        var dict = (ResourceDictionary)XamlReader.Parse(Xaml);
+        MenuStyle = (Style)dict["CardMenu"];
+        MenuItemStyle = (Style)dict["CardRow"];
+        DangerItemStyle = (Style)dict["CardRowDanger"];
+        MenuSeparatorStyle = (Style)dict["CardSeparator"];
     }
 
     /// <summary>Shell style for the <see cref="ContextMenu"/> itself.</summary>
-    public static Style MenuStyle
-    {
-        get { Refresh(); return _menu!; }
-    }
+    public static Style MenuStyle { get; }
 
     /// <summary>Row style for an ordinary entry.</summary>
-    public static Style MenuItemStyle
-    {
-        get { Refresh(); return _row!; }
-    }
+    public static Style MenuItemStyle { get; }
 
     /// <summary>Row style for an entry that destroys or recycles the file.</summary>
-    public static Style DangerItemStyle
-    {
-        get { Refresh(); return _dangerRow!; }
-    }
+    public static Style DangerItemStyle { get; }
 
     /// <summary>Style for a <see cref="Separator"/> row.</summary>
-    public static Style MenuSeparatorStyle
-    {
-        get { Refresh(); return _separator!; }
-    }
+    public static Style MenuSeparatorStyle { get; }
 }

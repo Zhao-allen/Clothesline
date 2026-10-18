@@ -21,7 +21,6 @@ internal sealed class Line : INotifyPropertyChanged
 
     public event Action<PeggedItem>? Fall;
     public event Action? ItemsChanged;
-    public event Action<Guid>? Landed;
 
     /// <summary>
     /// Raised after a card's thumbnail has been replaced - e.g. the annotation
@@ -158,11 +157,7 @@ internal sealed class Line : INotifyPropertyChanged
     public void Land(Guid id)
     {
         var i = Items.FirstIndex(it => it.Id == id);
-        if (i >= 0)
-        {
-            Items[i].Flying = false;
-            Landed?.Invoke(id);
-        }
+        if (i >= 0) Items[i].Flying = false;
     }
 
     /// <summary>
@@ -402,36 +397,16 @@ internal sealed class Line : INotifyPropertyChanged
         Drop(id, quietly: true);
     }
 
-    /// <summary>
-    /// Puts the item's file on the desktop.
-    ///
-    /// The card menu now offers this row for every card, not just inbox ones,
-    /// so the two origins need different handling. An inbox capture is staging
-    /// - it was copied there by us, nothing else points at it - so the file is
-    /// moved out and the card comes down. A file in a watched folder belongs to
-    /// the user and may be referenced by other apps, so it is copied and the
-    /// card stays: moving it would quietly relocate the original out of the
-    /// folder they asked us to watch.
-    /// </summary>
     public void SaveToDesktop(Guid id)
     {
         var item = Items.FirstOrDefault(i => i.Id == id);
         if (item is null) return;
         var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
         var target = UniquePath(desktop, Path.GetFileName(item.Url));
-        bool inbox = IsInInbox(id);
         try
         {
-            if (inbox)
-            {
-                File.Move(item.Url, target);
-                Drop(id, quietly: true);
-            }
-            else
-            {
-                File.Copy(item.Url, target);
-            }
-            Diag.Write("line", $"save to desktop -> {(inbox ? "moved out of inbox" : "copied, original kept")}");
+            File.Move(item.Url, target);
+            Drop(id, quietly: true);
         }
         catch { Sound.Beep(); }
     }
@@ -453,7 +428,6 @@ internal sealed class Line : INotifyPropertyChanged
     public void Markup(Guid id)
     {
         var item = Items.FirstOrDefault(i => i.Id == id);
-        Diag.Write("line", $"markup enter: id={(item is null ? "gone" : "ok")} exists={(item is not null && File.Exists(item.Url))}");
         if (item is null || !File.Exists(item.Url)) return;
         try
         {

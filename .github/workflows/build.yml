@@ -54,14 +54,8 @@ jobs:
             if (-not $line) { throw "could not read <Version> from Clothesline.csproj" }
             $tag = 'v' + $line.Matches[0].Groups[1].Value
           }
-          # Accept v1.2.3 or v1.2.3.4 (3 or 4 numeric segments).
-          # Auto-prepend 'v' if the user forgot it (so '0.3.4' → 'v0.3.4').
-          if ($tag -notmatch '^v\d+\.\d+\.\d+(\.\d+)?$') {
-            if ($tag -match '^\d+\.\d+\.\d+(\.\d+)?$') {
-              $tag = 'v' + $tag
-            } else {
-              throw "tag must look like v1.2.3 or v1.2.3.4, got '$tag'"
-            }
+          if ($tag -notmatch '^v\d+\.\d+\.\d+$') {
+            throw "tag must look like v1.2.3, got '$tag'"
           }
           "tag=$tag" >> $env:GITHUB_OUTPUT
           Write-Host "release tag: $tag"
@@ -90,61 +84,15 @@ jobs:
         shell: pwsh
         run: |
           dotnet run --project Setup/MakePayload -- publish Setup\payload.zip
-          Move-Item Setup\payload.zip Setup\InstallerWPF\payload.zip -Force
+          Move-Item Setup\payload.zip Setup\Installer\payload.zip -Force
 
       - name: Build setup installer (single-file, payload embedded)
         shell: pwsh
         run: |
-          dotnet publish Setup\InstallerWPF\InstallerWPF.csproj `
+          dotnet publish Setup\Installer\Installer.csproj `
             -c Release -r ${{ env.RUNTIME }} --self-contained true `
-            -p:PublishSingleFile=true `
-            -p:IncludeAllContentForSelfExtract=true -o Setup\out
+            -p:PublishSingleFile=true -o Setup\out
           Move-Item Setup\out\Clothesline-Setup.exe Clothesline-Setup.exe -Force
-
-      - name: Smoke-test the installer
-        shell: pwsh
-        run: |
-          # Run the artifact before publishing it. Three releases in a row
-          # shipped installers that crashed on first double-click while CI
-          # stayed green, because every check so far only verified that the
-          # files EXIST. Existence is not the contract: the contract is that
-          # a user can run it. /silent takes the same Install() path the GUI
-          # does, minus the window - and the v0.3.3 regression was exactly a
-          # window-creation crash, which is why the GUI is exercised too
-          # (started, given three seconds to show its first window, then
-          # killed; surviving that long means chrome construction worked).
-          $smoke = Join-Path $env:TEMP 'clothesline-smoke'
-          Remove-Item $smoke -Recurse -Force -ErrorAction SilentlyContinue
-          $logDir = Join-Path $env:LOCALAPPDATA 'Clothesline'
-          Remove-Item $logDir -Recurse -Force -ErrorAction SilentlyContinue
-
-          # Use Start-Process -Wait -PassThru so ExitCode is always captured,
-          # even when the process is killed by WER (which makes $LASTEXITCODE
-          # empty on PowerShell 7).
-          $p = Start-Process -FilePath .\Clothesline-Setup.exe -ArgumentList '/silent','/dir=$smoke','/nostartmenu' -Wait -PassThru -NoNewWindow
-          Write-Host "silent install exit: $($p.ExitCode)"
-          if (Test-Path (Join-Path $logDir 'install.log')) {
-            Write-Host '--- install.log ---'
-            Get-Content (Join-Path $logDir 'install.log')
-            Write-Host '--- end install.log ---'
-          }
-          if ($p.ExitCode -ne 0) { throw "silent install failed with exit $($p.ExitCode)" }
-          if (-not (Test-Path (Join-Path $smoke 'Clothesline.exe'))) { throw 'Clothesline.exe missing after silent install' }
-
-          $gui = Start-Process -FilePath .\Clothesline-Setup.exe -PassThru
-          Start-Sleep -Seconds 4
-          if ($gui.HasExited) {
-            if (Test-Path (Join-Path $logDir 'install.log')) {
-              Write-Host '--- install.log (GUI crash) ---'
-              Get-Content (Join-Path $logDir 'install.log')
-              Write-Host '--- end install.log ---'
-            }
-            throw "installer GUI exited with code $($gui.ExitCode) - window creation crashed"
-          }
-          Stop-Process -Id $gui.Id -Force
-          $p2 = Start-Process -FilePath .\Clothesline-Setup.exe -ArgumentList '/silent','/uninstall','/dir=$smoke' -Wait -PassThru -NoNewWindow
-          Remove-Item $smoke -Recurse -Force -ErrorAction SilentlyContinue
-          Write-Output "installer smoke test passed (uninstall exit: $($p2.ExitCode))"
 
       - name: Verify artifacts
         shell: pwsh

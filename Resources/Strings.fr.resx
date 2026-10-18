@@ -82,7 +82,7 @@
   <data name="SectionBehavior" xml:space="preserve"><value>COMPORTEMENT</value></data>
   <data name="SectionApp" xml:space="preserve"><value>APP</value></data>
   <data name="TakeScreenshot" xml:space="preserve"><value>Prendre une capture</value></data>
-  <data name="ClearLineHint" xml:space="preserve"><value>Vider</value></data>
+  <data name="ClearLineHint" xml:space="preserve"><value>Vider la corde</value></data>
   <data name="OnLineCount" xml:space="preserve"><value>{0} sur la corde</value></data>
   <data name="WatchingClipboard" xml:space="preserve"><value>Surveillance du presse-papiers</value></data>
   <data name="ClipboardOff" xml:space="preserve"><value>Surveillance désactivée</value></data>
@@ -119,17 +119,4 @@ Enregistrer une copie ? Choisissez Non pour rester dans l'éditeur et réessayer
 {0}</value></data>
   <data name="LoadFailedBody" xml:space="preserve"><value>Impossible de charger l'image : {0}</value></data>
   <data name="SaveErrorBody" xml:space="preserve"><value>Impossible d'enregistrer : {0}</value></data>
-  <data name="BuyMeACoffee" xml:space="preserve"><value>Offre-moi un café</value></data>
-  <data name="DonationTitle" xml:space="preserve"><value>Offre un café à l'auteur</value></data>
-  <data name="DonationBody" xml:space="preserve"><value>Votre soutien maintient Clothesline en vie. Scannez pour donner le montant de votre choix.</value></data>
-  <data name="DonationReplaceHint" xml:space="preserve"><value>Remplacez Resources/donation_qr.png par votre propre code QR.</value></data>
-  <data name="DonationSubtitle" xml:space="preserve"><value>Scannez avec l'un ou l'autre · merci du soutien</value></data>
-  <data name="DonationWeChat" xml:space="preserve"><value>WeChat Pay</value></data>
-  <data name="DonationAlipay" xml:space="preserve"><value>Alipay</value></data>
-  <data name="DonationFooter" xml:space="preserve"><value>Merci du soutien</value></data>
-  <data name="SectionSupport" xml:space="preserve"><value>SOUTIEN</value></data>
-  <data name="Theme" xml:space="preserve"><value>Thème</value></data>
-  <data name="ThemeLight" xml:space="preserve"><value>Clair</value></data>
-  <data name="ThemeDark" xml:space="preserve"><value>Sombre</value></data>
-  <data name="ThemeSystem" xml:space="preserve"><value>Valeur système par défaut</value></data>
 </root>
