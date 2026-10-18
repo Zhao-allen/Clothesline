@@ -52,6 +52,7 @@ internal static class TrayPalette
     public static readonly GColor AccentSoft  = GColor.FromArgb(40, 76, 194, 255);
     public static readonly GColor Stroke      = GColor.FromArgb(61, 61, 61);    // #3D3D3D
     public static readonly GColor Danger      = GColor.FromArgb(255, 153, 164);
+    public static readonly GColor Coffee      = GColor.FromArgb(253, 230, 138);  // #FDE68A
     public static readonly GColor KnobDark    = GColor.FromArgb(11, 42, 61);
 }
 
@@ -172,6 +173,11 @@ internal sealed class TrayIcon : IDisposable
     private const string IcoRefresh    = "M20 12a8 8 0 1 1-2.4-5.7M20 4v4h-4";
     private const string IcoWarning    = "M10.3 4.3 3.2 17a2 2 0 0 0 1.7 3h14.2a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0Z"
                                        + "M12 9.5v4.5M12 17.5h.01";
+    // A coffee cup: body, saucer, and two rising steam wisps.
+    private const string IcoCoffee     = "M4.5 8h11v6a4 4 0 0 1-4 4h-3a4 4 0 0 1-4-4z"
+                                       + "M15.5 9.5h1.8a2.2 2.2 0 0 1 0 4.4h-1.8"
+                                       + "M7 5.5c-.7-1.2.7-1.9 0-3M10.5 5.5c-.7-1.2.7-1.9 0-3"
+                                       + "M3 20.5h15";
 
     /// <summary>
     /// Rasterises an icon and takes ownership of the bitmap so it can be
@@ -420,6 +426,19 @@ internal sealed class TrayIcon : IDisposable
             catch { }
         }, IcoRefresh);
         menu.Items.Add(update);
+
+        AddSeparator(menu);
+
+        // ── SUPPORT ──
+        // Its own group in the menu, kept apart from the settings above it:
+        // the one row in the menu that asks for something rather than
+        // configuring the app.
+        AddSection(menu, I18n.Get("SectionSupport"));
+
+        // Opens the codes directly, with no sub-menu.
+        var coffee = MakeItem(I18n.Get("BuyMeACoffee"), () => DonationWindow.ShowOrRaise(), IcoCoffee);
+        coffee.ForeColor = TrayPalette.Coffee;
+        menu.Items.Add(coffee);
 
         AddSeparator(menu);
 

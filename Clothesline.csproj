@@ -53,4 +53,27 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Donation QR codes.
+
+         Two entries each on purpose:
+         * <Resource> embeds it in the assembly so the installed app always
+           finds it via pack://application:,,, regardless of layout.
+         * <Content> copies it next to the exe so the file fallback in
+           DonationWindow.LoadCode works when running from the build output,
+           and so the file is visible/editable for a user dropping in their
+           own code. -->
+    <Resource Include="Resources\donation_qr_wechat.png" />
+    <Content Include="Resources\donation_qr_wechat.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Resources\donation_qr_wechat.png</TargetPath>
+    </Content>
+
+    <Resource Include="Resources\donation_qr_alipay.png" />
+    <Content Include="Resources\donation_qr_alipay.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <TargetPath>Resources\donation_qr_alipay.png</TargetPath>
+    </Content>
+  </ItemGroup>
+
 </Project>
