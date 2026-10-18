@@ -6,6 +6,31 @@ namespace ClotheslineSetup;
 
 public partial class App : Application
 {
+    // 全局崩溃捕获 —— 否则进程在 Application_Startup 之前崩的话，
+    // 连 InstallContext.Log 都走不到，CI 只能看到 exit code 为空。
+    public App()
+    {
+        DispatcherUnhandledException += (_, args) =>
+            DumpCrash("DispatcherUnhandledException", args.Exception);
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            DumpCrash("AppDomainUnhandledException", args.ExceptionObject as Exception);
+    }
+
+    private static void DumpCrash(string kind, Exception? ex)
+    {
+        try
+        {
+            var dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Clothesline");
+            Directory.CreateDirectory(dir);
+            var log = Path.Combine(dir, "install.log");
+            var line = $"[{DateTime.Now:HH:mm:ss}] CRASH ({kind}): {ex}\n\n{ex?.StackTrace}\n";
+            File.AppendAllText(log, line);
+        }
+        catch { /* best-effort */ }
+    }
+
     private void Application_Startup(object sender, StartupEventArgs e)
     {
         bool uninstall = e.Args.Contains("/uninstall", StringComparer.OrdinalIgnoreCase);

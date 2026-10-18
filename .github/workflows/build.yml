@@ -115,20 +115,36 @@ jobs:
           # killed; surviving that long means chrome construction worked).
           $smoke = Join-Path $env:TEMP 'clothesline-smoke'
           Remove-Item $smoke -Recurse -Force -ErrorAction SilentlyContinue
+          $logDir = Join-Path $env:LOCALAPPDATA 'Clothesline'
+          Remove-Item $logDir -Recurse -Force -ErrorAction SilentlyContinue
 
-          .\Clothesline-Setup.exe /silent /dir=$smoke /nostartmenu
-          if ($LASTEXITCODE -ne 0) { throw "silent install failed with exit $LASTEXITCODE" }
+          # Use Start-Process -Wait -PassThru so ExitCode is always captured,
+          # even when the process is killed by WER (which makes $LASTEXITCODE
+          # empty on PowerShell 7).
+          $p = Start-Process -FilePath .\Clothesline-Setup.exe -ArgumentList '/silent','/dir=$smoke','/nostartmenu' -Wait -PassThru -NoNewWindow
+          Write-Host "silent install exit: $($p.ExitCode)"
+          if (Test-Path (Join-Path $logDir 'install.log')) {
+            Write-Host '--- install.log ---'
+            Get-Content (Join-Path $logDir 'install.log')
+            Write-Host '--- end install.log ---'
+          }
+          if ($p.ExitCode -ne 0) { throw "silent install failed with exit $($p.ExitCode)" }
           if (-not (Test-Path (Join-Path $smoke 'Clothesline.exe'))) { throw 'Clothesline.exe missing after silent install' }
 
           $gui = Start-Process -FilePath .\Clothesline-Setup.exe -PassThru
           Start-Sleep -Seconds 4
           if ($gui.HasExited) {
+            if (Test-Path (Join-Path $logDir 'install.log')) {
+              Write-Host '--- install.log (GUI crash) ---'
+              Get-Content (Join-Path $logDir 'install.log')
+              Write-Host '--- end install.log ---'
+            }
             throw "installer GUI exited with code $($gui.ExitCode) - window creation crashed"
           }
           Stop-Process -Id $gui.Id -Force
-          .\Clothesline-Setup.exe /silent /uninstall /dir=$smoke 2>$null | Out-Null
+          $p2 = Start-Process -FilePath .\Clothesline-Setup.exe -ArgumentList '/silent','/uninstall','/dir=$smoke' -Wait -PassThru -NoNewWindow
           Remove-Item $smoke -Recurse -Force -ErrorAction SilentlyContinue
-          Write-Output 'installer smoke test passed'
+          Write-Output "installer smoke test passed (uninstall exit: $($p2.ExitCode))"
 
       - name: Verify artifacts
         shell: pwsh
